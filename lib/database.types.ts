@@ -1341,6 +1341,7 @@ export type Database = {
       }
       is_org_admin: { Args: { p_org: string }; Returns: boolean }
       is_org_member: { Args: { p_org: string }; Returns: boolean }
+      is_org_member_raw: { Args: { p_org: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
       log_audit: {
         Args: {
