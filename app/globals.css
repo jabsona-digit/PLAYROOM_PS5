@@ -169,3 +169,70 @@
 @utility text-glow {
   text-shadow: 0 0 14px color-mix(in oklch, var(--primary) 60%, transparent);
 }
+
+/* Neon pulse keyframes for console status cards */
+@keyframes neon-pulse-blue {
+  0%, 100% {
+    box-shadow:
+      6px 6px 14px var(--nm-dark),
+      -6px -6px 14px var(--nm-light),
+      0 0 0 1px color-mix(in oklch, var(--status-active) 28%, transparent),
+      0 0 14px 2px color-mix(in oklch, var(--status-active) 16%, transparent);
+  }
+  50% {
+    box-shadow:
+      6px 6px 14px var(--nm-dark),
+      -6px -6px 14px var(--nm-light),
+      0 0 0 1px color-mix(in oklch, var(--status-active) 55%, transparent),
+      0 0 28px 7px color-mix(in oklch, var(--status-active) 30%, transparent);
+  }
+}
+
+@keyframes neon-pulse-orange {
+  0%, 100% {
+    box-shadow:
+      6px 6px 14px var(--nm-dark),
+      -6px -6px 14px var(--nm-light),
+      0 0 0 1px color-mix(in oklch, var(--status-warning10) 38%, transparent),
+      0 0 18px 3px color-mix(in oklch, var(--status-warning10) 26%, transparent);
+  }
+  50% {
+    box-shadow:
+      6px 6px 14px var(--nm-dark),
+      -6px -6px 14px var(--nm-light),
+      0 0 0 1px color-mix(in oklch, var(--status-warning10) 68%, transparent),
+      0 0 34px 9px color-mix(in oklch, var(--status-warning10) 46%, transparent);
+  }
+}
+
+@keyframes neon-pulse-red {
+  0%, 100% {
+    box-shadow:
+      6px 6px 14px var(--nm-dark),
+      -6px -6px 14px var(--nm-light),
+      0 0 0 1px color-mix(in oklch, var(--status-expired) 42%, transparent),
+      0 0 20px 4px color-mix(in oklch, var(--status-expired) 30%, transparent);
+  }
+  50% {
+    box-shadow:
+      6px 6px 14px var(--nm-dark),
+      -6px -6px 14px var(--nm-light),
+      0 0 0 1px color-mix(in oklch, var(--status-expired) 72%, transparent),
+      0 0 38px 11px color-mix(in oklch, var(--status-expired) 52%, transparent);
+  }
+}
+
+@utility nm-neon-blue {
+  background: linear-gradient(145deg, var(--surface-2), var(--surface));
+  animation: neon-pulse-blue 3.5s ease-in-out infinite;
+}
+
+@utility nm-neon-orange {
+  background: linear-gradient(145deg, var(--surface-2), var(--surface));
+  animation: neon-pulse-orange 2s ease-in-out infinite;
+}
+
+@utility nm-neon-red {
+  background: linear-gradient(145deg, var(--surface-2), var(--surface));
+  animation: neon-pulse-red 1.2s ease-in-out infinite;
+}

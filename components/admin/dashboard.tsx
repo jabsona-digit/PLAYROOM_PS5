@@ -73,8 +73,7 @@ function StatCard({
 }
 
 function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
-  const { endSession, extendSession } = usePlayroom()
-  const { fiscalEnabled, issueReceipt } = useFiscal()
+  const { extendSession } = usePlayroom()
   const [startOpen, setStartOpen] = useState(false)
   const [extendOpen, setExtendOpen] = useState(false)
   const [endOpen, setEndOpen] = useState(false)
@@ -89,26 +88,19 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
   const elapsed = s
     ? Math.min(100, Math.max(0, (1 - remainingMs / totalMs) * 100))
     : 0
-  const glow =
+  const isWarning =
     unit.status === 'expired' ||
     unit.status === 'warning_5' ||
     unit.status === 'warning_10'
 
+  const neonClass =
+    unit.status === 'warning_10' ? 'nm-neon-orange' :
+    unit.status === 'warning_5' || unit.status === 'expired' ? 'nm-neon-red' :
+    'nm-neon-blue'
+
   return (
     <>
-      <div
-        className={cn(
-          'rounded-3xl p-5 transition-shadow',
-          isFree ? 'nm-raised' : 'nm-raised',
-        )}
-        style={
-          glow
-            ? {
-                boxShadow: `6px 6px 14px var(--nm-dark), -6px -6px 14px var(--nm-light), 0 0 0 1px color-mix(in oklch, ${meta.color} 55%, transparent), 0 0 26px 1px color-mix(in oklch, ${meta.color} 40%, transparent)`,
-              }
-            : undefined
-        }
-      >
+      <div className={cn('rounded-3xl p-5', neonClass)}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
@@ -131,7 +123,7 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
             <span
               className={cn(
                 'size-1.5 rounded-full',
-                glow && 'animate-pulse',
+                isWarning && 'animate-pulse',
               )}
               style={{ background: meta.color }}
             />
@@ -160,7 +152,7 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
                 <p className="text-xs text-muted-foreground">დარჩენილი დრო</p>
                 <p
                   className="font-mono text-3xl font-extrabold tabular-nums"
-                  style={{ color: glow ? meta.color : undefined }}
+                  style={{ color: isWarning ? meta.color : undefined }}
                 >
                   {formatClock(Math.max(0, remainingMs))}
                 </p>

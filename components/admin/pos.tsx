@@ -258,18 +258,20 @@ export function Pos() {
             <button
               key={p.id}
               onClick={() => addToCart(p)}
-              className="nm-btn flex flex-col items-center justify-center gap-3 rounded-3xl p-4 transition-all"
+              className="nm-btn flex flex-col gap-3 rounded-3xl p-3 transition-all"
             >
-              <div className="nm-inset flex size-14 items-center justify-center overflow-hidden rounded-2xl">
+              <div className="nm-inset relative w-full aspect-square overflow-hidden rounded-2xl">
                 {p.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+                  <img src={p.image_url} alt={p.name} className="absolute inset-0 h-full w-full object-cover" />
                 ) : (
-                  <Coffee className="size-6 text-primary" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Coffee className="size-10 text-primary/50" />
+                  </div>
                 )}
               </div>
-              <div className="text-center">
-                <p className="font-bold leading-tight">{p.name}</p>
+              <div className="pb-1 text-center">
+                <p className="text-sm font-bold leading-tight">{p.name}</p>
                 <p className="mt-1 text-sm font-semibold text-primary">{gel(p.price)}</p>
               </div>
             </button>
