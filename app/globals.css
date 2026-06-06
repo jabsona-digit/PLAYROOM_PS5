@@ -170,6 +170,18 @@
   text-shadow: 0 0 14px color-mix(in oklch, var(--primary) 60%, transparent);
 }
 
+/* Module entrance animation */
+@keyframes slide-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Neon pulse keyframes for console status cards */
 @keyframes neon-pulse-blue {
   0%, 100% {

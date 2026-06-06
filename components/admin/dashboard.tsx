@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useCountUp, use3dTilt } from '@/lib/hooks'
 import {
   Activity,
   ArrowLeftRight,
@@ -48,14 +49,32 @@ function StatCard({
   label,
   value,
   hint,
+  countup,
+  formatCountup,
 }: {
   icon: typeof Activity
   label: string
   value: string
   hint?: string
+  countup?: number
+  formatCountup?: (n: number) => string
 }) {
+  const { style, onMouseMove, onMouseLeave } = use3dTilt(5)
+  const animated = useCountUp(countup ?? 0)
+  const displayValue =
+    countup !== undefined
+      ? formatCountup
+        ? formatCountup(animated)
+        : String(Math.round(animated))
+      : value
+
   return (
-    <div className="nm-raised rounded-3xl p-5">
+    <div
+      className="nm-raised cursor-default rounded-3xl p-5"
+      style={style}
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
+    >
       <div className="flex items-center gap-3">
         <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
           <Icon className="size-5 text-primary" />
@@ -63,7 +82,7 @@ function StatCard({
         <p className="text-sm text-muted-foreground">{label}</p>
       </div>
       <p className="mt-4 font-mono text-3xl font-extrabold tracking-tight">
-        {value}
+        {displayValue}
       </p>
       {hint ? (
         <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
@@ -74,6 +93,7 @@ function StatCard({
 
 function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
   const { extendSession } = usePlayroom()
+  const tilt = use3dTilt(4)
   const [startOpen, setStartOpen] = useState(false)
   const [extendOpen, setExtendOpen] = useState(false)
   const [endOpen, setEndOpen] = useState(false)
@@ -100,7 +120,12 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
 
   return (
     <>
-      <div className={cn('rounded-3xl p-5', neonClass)}>
+      <div
+        className={cn('rounded-3xl p-5', neonClass)}
+        style={tilt.style}
+        onMouseMove={tilt.onMouseMove}
+        onMouseLeave={tilt.onMouseLeave}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
@@ -504,30 +529,18 @@ export function Dashboard() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard
-          icon={Activity}
-          label="აქტიური სესია"
-          value={String(stats.active)}
-          hint={`${consoles.length} კონსოლიდან`}
-        />
-        <StatCard
-          icon={CircleDot}
-          label="თავისუფალი"
-          value={String(stats.free)}
-          hint="მზადაა ახალი სესიისთვის"
-        />
-        <StatCard
-          icon={Coins}
-          label="მიმდინარე შემოსავალი"
-          value={gel(stats.liveRevenue)}
-          hint="აქტიური სესიები"
-        />
-        <StatCard
-          icon={Clock}
-          label="იწურება"
-          value={String(stats.expiring)}
-          hint="≤ 5 წუთი ან ამოწურული"
-        />
+        <div style={{ animation: 'slide-in-up 0.4s ease-out 0s both' }}>
+          <StatCard icon={Activity} label="აქტიური სესია" value={String(stats.active)} countup={stats.active} hint={`${consoles.length} კონსოლიდან`} />
+        </div>
+        <div style={{ animation: 'slide-in-up 0.4s ease-out 0.09s both' }}>
+          <StatCard icon={CircleDot} label="თავისუფალი" value={String(stats.free)} countup={stats.free} hint="მზადაა ახალი სესიისთვის" />
+        </div>
+        <div style={{ animation: 'slide-in-up 0.4s ease-out 0.18s both' }}>
+          <StatCard icon={Coins} label="მიმდინარე შემოსავალი" value={gel(stats.liveRevenue)} countup={stats.liveRevenue} formatCountup={gel} hint="აქტიური სესიები" />
+        </div>
+        <div style={{ animation: 'slide-in-up 0.4s ease-out 0.27s both' }}>
+          <StatCard icon={Clock} label="იწურება" value={String(stats.expiring)} countup={stats.expiring} hint="≤ 5 წუთი ან ამოწურული" />
+        </div>
       </div>
 
       <div className="flex items-center justify-between gap-4">
@@ -549,8 +562,10 @@ export function Dashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {consoles.map((unit) => (
-          <ConsoleCard key={unit.id} unit={unit} now={now} />
+        {consoles.map((unit, i) => (
+          <div key={unit.id} style={{ animation: `slide-in-up 0.45s ease-out ${i * 0.07}s both` }}>
+            <ConsoleCard unit={unit} now={now} />
+          </div>
         ))}
         <button
           type="button"
@@ -559,6 +574,7 @@ export function Dashboard() {
             setAddOpen(true)
           }}
           className="nm-btn flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-3xl text-muted-foreground"
+          style={{ animation: `slide-in-up 0.45s ease-out ${consoles.length * 0.07}s both` }}
         >
           <span className="nm-inset flex size-14 items-center justify-center rounded-2xl">
             <Plus className="size-6 text-primary" />

@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCountUp, use3dTilt } from '@/lib/hooks'
 import { BarChart3, Coins, Flame, TrendingUp } from 'lucide-react'
 import { useOrg } from '@/lib/org'
 import { supabase } from '@/lib/supabase/client'
@@ -17,6 +18,8 @@ const MONTH_FMT = (d: Date) => d.toLocaleDateString('ka-GE', { month: 'short' })
 export function Analytics() {
   const { currentVenueId } = useOrg()
   const [data, setData] = useState<Point | null>(null)
+  const [barsReady, setBarsReady] = useState(false)
+  const barsTriggered = useRef(false)
 
   // last 6 month buckets, oldest → newest
   const months = useMemo(() => {
@@ -88,6 +91,10 @@ export function Analytics() {
       }
 
       setData({ sessRevenue, profit, hours })
+      if (!barsTriggered.current) {
+        barsTriggered.current = true
+        requestAnimationFrame(() => requestAnimationFrame(() => setBarsReady(true)))
+      }
     })()
 
     return () => {
@@ -124,20 +131,21 @@ export function Analytics() {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard icon={Coins} label="შემოსავალი" value={gel(totals.revenue)} />
-        <KpiCard
-          icon={TrendingUp}
-          label="სუფთა მოგება"
-          value={gel(totals.profit)}
-          accent="var(--status-free)"
-        />
-        <KpiCard
-          icon={Flame}
-          label="პიკის საათი"
-          value={totals.peakHour >= 0 ? `${String(totals.peakHour).padStart(2, '0')}:00` : '—'}
-          hint={totals.peakVal ? `${totals.peakVal} აქტივობა` : 'მონაცემი არ არის'}
-          accent="var(--status-warning5)"
-        />
+        <div style={{ animation: 'slide-in-up 0.4s ease-out 0s both' }}>
+          <KpiCard icon={Coins} label="შემოსავალი" value={gel(totals.revenue)} countup={totals.revenue} formatCountup={gel} />
+        </div>
+        <div style={{ animation: 'slide-in-up 0.4s ease-out 0.1s both' }}>
+          <KpiCard icon={TrendingUp} label="სუფთა მოგება" value={gel(totals.profit)} countup={totals.profit} formatCountup={gel} accent="var(--status-free)" />
+        </div>
+        <div style={{ animation: 'slide-in-up 0.4s ease-out 0.2s both' }}>
+          <KpiCard
+            icon={Flame}
+            label="პიკის საათი"
+            value={totals.peakHour >= 0 ? `${String(totals.peakHour).padStart(2, '0')}:00` : '—'}
+            hint={totals.peakVal ? `${totals.peakVal} აქტივობა` : 'მონაცემი არ არის'}
+            accent="var(--status-warning5)"
+          />
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -152,7 +160,11 @@ export function Analytics() {
                 const val = data!.profit[i]
                 const pct = Math.max(2, (val / maxProfit) * 100)
                 return (
-                  <div key={m.key} className="flex flex-1 flex-col items-center gap-2">
+                  <div
+                    key={m.key}
+                    className="flex flex-1 flex-col items-center gap-2"
+                    style={{ animation: `slide-in-up 0.4s ease-out ${i * 0.08}s both` }}
+                  >
                     <span className="font-mono text-[11px] font-bold text-primary">
                       {val > 0 ? gel(val) : ''}
                     </span>
@@ -160,10 +172,11 @@ export function Analytics() {
                       <div
                         className="w-full rounded-xl transition-[height] duration-700 ease-out"
                         style={{
-                          height: `${pct}%`,
+                          height: barsReady ? `${pct}%` : '0%',
                           background:
                             'linear-gradient(180deg, var(--primary), color-mix(in oklch, var(--primary) 45%, transparent))',
                           boxShadow: '0 0 16px color-mix(in oklch, var(--primary) 45%, transparent)',
+                          transitionDelay: `${i * 0.06}s`,
                         }}
                       />
                     </div>
@@ -229,22 +242,40 @@ function KpiCard({
   value,
   hint,
   accent,
+  countup,
+  formatCountup,
 }: {
   icon: typeof Coins
   label: string
   value: string
   hint?: string
   accent?: string
+  countup?: number
+  formatCountup?: (n: number) => string
 }) {
+  const { style, onMouseMove, onMouseLeave } = use3dTilt(4)
+  const animated = useCountUp(countup ?? 0)
+  const displayValue =
+    countup !== undefined
+      ? formatCountup
+        ? formatCountup(animated)
+        : String(Math.round(animated))
+      : value
+
   return (
-    <div className="nm-raised flex items-center gap-3 rounded-3xl p-5">
+    <div
+      className="nm-raised flex cursor-default items-center gap-3 rounded-3xl p-5"
+      style={style}
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
+    >
       <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
         <Icon className="size-5" style={{ color: accent ?? 'var(--primary)' }} />
       </div>
       <div>
         <p className="text-sm text-muted-foreground">{label}</p>
         <p className="font-mono text-2xl font-extrabold" style={accent ? { color: accent } : undefined}>
-          {value}
+          {displayValue}
         </p>
         {hint ? <p className="text-[11px] text-muted-foreground">{hint}</p> : null}
       </div>
