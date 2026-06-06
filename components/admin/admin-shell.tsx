@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Eye, LoaderCircle } from 'lucide-react'
+import { Eye, LoaderCircle, Lock } from 'lucide-react'
 import type { Session as AuthSession } from '@supabase/supabase-js'
 import type { ModuleKey } from '@/lib/types'
 import { PlayroomProvider, usePlayroom } from '@/lib/store'
@@ -41,6 +41,46 @@ function Splash() {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-background">
       <LoaderCircle className="size-8 animate-spin text-primary" />
+    </div>
+  )
+}
+
+function Suspended({ email }: { email?: string }) {
+  const logout = async () => {
+    await supabase.auth.signOut()
+  }
+  return (
+    <div className="flex min-h-screen w-full items-center justify-center bg-background p-5">
+      <div className="nm-raised flex max-w-md flex-col items-center gap-5 rounded-[2rem] p-10 text-center">
+        <div
+          className="flex size-16 items-center justify-center rounded-3xl"
+          style={{
+            background: 'color-mix(in oklch, var(--status-expired) 16%, transparent)',
+            boxShadow: 'inset 0 0 0 1px color-mix(in oklch, var(--status-expired) 45%, transparent)',
+          }}
+        >
+          <Lock className="size-7" style={{ color: 'var(--status-expired)' }} />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-extrabold">ანგარიში შეჩერებულია</h2>
+          <p className="text-sm text-muted-foreground">
+            თქვენი ორგანიზაციის წვდომა დროებით შეზღუდულია. გასააქტიურებლად
+            დაუკავშირდით ადმინისტრაციას.
+          </p>
+        </div>
+        {email && (
+          <p className="nm-inset rounded-2xl px-4 py-2 text-xs font-semibold text-muted-foreground">
+            {email}
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={logout}
+          className="nm-btn rounded-2xl px-6 py-3 text-sm font-bold text-muted-foreground"
+        >
+          გასვლა
+        </button>
+      </div>
     </div>
   )
 }
@@ -127,9 +167,10 @@ function Workspace({ email }: { email?: string }) {
 
 /* Inside OrgProvider: decide between loading / onboarding / the workspace. */
 function OrgGate({ email }: { email?: string }) {
-  const { loading, needsOnboarding } = useOrg()
+  const { loading, needsOnboarding, suspended } = useOrg()
   if (loading) return <Splash />
   if (needsOnboarding) return <Onboarding />
+  if (suspended) return <Suspended email={email} />
   return <Workspace email={email} />
 }
 

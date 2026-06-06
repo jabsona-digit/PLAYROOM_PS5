@@ -24,6 +24,7 @@ export interface OrgSummary {
 interface OrgState {
   loading: boolean
   needsOnboarding: boolean
+  suspended: boolean // current org is canceled and the user is not a platform admin
   isPlatformAdmin: boolean
   orgs: OrgSummary[] // every org the user can access (RLS-scoped; all of them for a platform admin)
   memberOrgIds: string[] // orgs where the user is actually a member
@@ -120,6 +121,14 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     () => isPlatformAdmin && !!currentOrgId && !memberOrgIds.includes(currentOrgId),
     [isPlatformAdmin, currentOrgId, memberOrgIds],
   )
+  // A canceled tenant is frozen for its own members. Platform admins are never
+  // locked out (God Mode must be able to inspect a suspended tenant).
+  const suspended = useMemo(
+    () =>
+      !isPlatformAdmin &&
+      orgs.find((o) => o.id === currentOrgId)?.subscription_status === 'canceled',
+    [isPlatformAdmin, orgs, currentOrgId],
+  )
 
   const stopImpersonating = useCallback(() => {
     setOrgId(memberOrgIds[0] ?? null)
@@ -129,6 +138,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     () => ({
       loading,
       needsOnboarding: !loading && orgs.length === 0,
+      suspended: !!suspended,
       isPlatformAdmin,
       orgs,
       memberOrgIds,
@@ -145,6 +155,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     [
       loading,
       orgs,
+      suspended,
       isPlatformAdmin,
       memberOrgIds,
       venues,
