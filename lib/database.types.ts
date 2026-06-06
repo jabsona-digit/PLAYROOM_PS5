@@ -742,6 +742,13 @@ export type Database = {
             foreignKeyName: "reservations_console_id_fkey"
             columns: ["console_id"]
             isOneToOne: false
+            referencedRelation: "console_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_console_id_fkey"
+            columns: ["console_id"]
+            isOneToOne: false
             referencedRelation: "consoles"
             referencedColumns: ["id"]
           },
@@ -750,6 +757,20 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_revenue"
             referencedColumns: ["id"]
           },
           {
@@ -1250,36 +1271,73 @@ export type Database = {
         }
         Returns: string
       }
+      cancel_reservation: {
+        Args: { p_reason?: string; p_reservation_id: string }
+        Returns: undefined
+      }
       clock_toggle: {
         Args: { p_pin: string; p_venue_id: string }
         Returns: Json
       }
-      create_bar_sale: {
-        Args: {
-          p_bank?: string
-          p_created_by?: number
-          p_customer_name?: string
-          p_items?: Json
-          p_payment_method: string
-          p_session_id?: string
-          p_tip?: number
-          p_venue_id: string
-        }
-        Returns: string
+      confirm_reservation: {
+        Args: { p_reservation_id: string }
+        Returns: undefined
       }
+      create_bar_sale:
+        | {
+            Args: {
+              p_bank?: string
+              p_created_by?: number
+              p_customer_name?: string
+              p_items?: Json
+              p_payment_method: string
+              p_session_id?: string
+              p_venue_id: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_bank?: string
+              p_created_by?: number
+              p_customer_name?: string
+              p_items: Json
+              p_payment_method: string
+              p_session_id?: string
+              p_tip?: number
+              p_venue_id: string
+            }
+            Returns: string
+          }
       create_organization: {
         Args: { p_org_name: string; p_venue_name: string }
         Returns: string
       }
-      delete_expense: { Args: { p_expense_id: string }; Returns: undefined }
-      end_session: { Args: { p_session_id: string; p_tip?: number }; Returns: undefined }
-      get_venue_pnl: {
-        Args: { p_from: string; p_to: string; p_venue_id: string }
-        Returns: Json
+      create_reservation: {
+        Args: {
+          p_console_id?: number
+          p_customer_name: string
+          p_customer_phone?: string
+          p_duration_min: number
+          p_notes?: string
+          p_start_time: string
+          p_venue_id: string
+        }
+        Returns: string
       }
+      delete_console: { Args: { p_console_id: number }; Returns: undefined }
+      delete_customer: { Args: { p_customer_id: string }; Returns: undefined }
+      delete_expense: { Args: { p_expense_id: string }; Returns: undefined }
+      end_session:
+        | { Args: { p_session_id: string }; Returns: undefined }
+        | { Args: { p_session_id: string; p_tip?: number }; Returns: undefined }
       extend_session: {
         Args: { p_extra_min: number; p_session_id: string }
         Returns: undefined
+      }
+      get_venue_pnl: {
+        Args: { p_from: string; p_to: string; p_venue_id: string }
+        Returns: Json
       }
       is_org_admin: { Args: { p_org: string }; Returns: boolean }
       is_org_member: { Args: { p_org: string }; Returns: boolean }
@@ -1340,6 +1398,7 @@ export type Database = {
           refunded_at: string | null
           started_at: string
           status: string
+          tip_amount: number
           venue_id: string
         }
         SetofOptions: {
@@ -1352,34 +1411,6 @@ export type Database = {
       void_bar_sale: {
         Args: { p_reason?: string; p_sale_id: string }
         Returns: undefined
-      }
-      cancel_reservation: {
-        Args: { p_reservation_id: string; p_reason?: string }
-        Returns: undefined
-      }
-      delete_console: {
-        Args: { p_console_id: number }
-        Returns: undefined
-      }
-      delete_customer: {
-        Args: { p_customer_id: string }
-        Returns: undefined
-      }
-      confirm_reservation: {
-        Args: { p_reservation_id: string }
-        Returns: undefined
-      }
-      create_reservation: {
-        Args: {
-          p_venue_id: string
-          p_customer_name: string
-          p_start_time: string
-          p_duration_min: number
-          p_console_id?: number
-          p_customer_phone?: string
-          p_notes?: string
-        }
-        Returns: string
       }
     }
     Enums: {
