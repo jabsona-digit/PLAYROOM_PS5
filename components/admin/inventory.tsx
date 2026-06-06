@@ -1,0 +1,468 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Plus, Edit2, Archive, ListTree, PackageSearch, AlertTriangle, Save } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { usePlayroom } from '@/lib/store'
+import { useOrg } from '@/lib/org'
+import { gel } from '@/lib/ui'
+import { supabase } from '@/lib/supabase/client'
+import { Modal } from './modal'
+
+// Temporary generic API calls since backend is pending schema expansion
+interface BarCategory {
+  id: number
+  name: string
+  sort_order: number
+  is_active: boolean
+  parent_id?: number | null
+}
+
+interface BarProduct {
+  id: number
+  category_id: number | null
+  name: string
+  price: number
+  is_active: boolean
+  stock_quantity?: number
+  low_stock_threshold?: number
+  cost_price?: number
+  barcode?: string
+  image_url?: string
+}
+
+export function Inventory() {
+  const { currentOrgId } = useOrg()
+  const { pushToast } = usePlayroom()
+
+  const [categories, setCategories] = useState<BarCategory[]>([])
+  const [products, setProducts] = useState<BarProduct[]>([])
+  const [activeCategoryId, setActiveCategoryId] = useState<number | 'all'>('all')
+
+  const [catModalOpen, setCatModalOpen] = useState(false)
+  const [prodModalOpen, setProdModalOpen] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<BarProduct | null>(null)
+  const [scannedBarcode, setScannedBarcode] = useState<string>('')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const fetchAll = async () => {
+    if (!currentOrgId) return
+    const [{ data: cats }, { data: prods }] = await Promise.all([
+      supabase.from('bar_categories').select('*').eq('org_id', currentOrgId).order('sort_order'),
+      supabase.from('bar_products').select('*').eq('org_id', currentOrgId).order('name')
+    ])
+    if (cats) setCategories(cats as any)
+    if (prods) setProducts(prods as any)
+  }
+
+  useEffect(() => {
+    fetchAll()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentOrgId])
+
+  const displayedProducts = products
+    .filter(p => activeCategoryId === 'all' || p.category_id === activeCategoryId)
+    .filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.barcode === searchQuery)
+
+  useEffect(() => {
+    let buffer = ''
+    let lastTime = 0
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+      const time = Date.now()
+      if (time - lastTime > 100) buffer = ''
+      lastTime = time
+
+      if (e.key === 'Enter') {
+        if (buffer.length > 2) {
+          const match = products.find(x => x.barcode === buffer)
+          if (match) {
+            setEditingProduct(match)
+            pushToast('info', 'პროდუქტი ნაპოვნია, ჩაირთო რედაქტირების რეჟიმი')
+          } else {
+            setScannedBarcode(buffer)
+            setProdModalOpen(true)
+            pushToast('info', 'ახალი ბარკოდი დაფიქსირდა, დაამატეთ პროდუქტი')
+          }
+        }
+        buffer = ''
+      } else if (e.key.length === 1) {
+        buffer += e.key
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [products, pushToast])
+
+  return (
+    <div className="flex w-full flex-col gap-6 lg:flex-row">
+      
+      {/* Sidebar: Categories */}
+      <div className="nm-raised flex h-fit w-full flex-col rounded-[2rem] p-5 lg:w-[320px] shrink-0">
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
+              <ListTree className="size-5 text-primary" />
+            </div>
+            <h2 className="text-xl font-extrabold tracking-tight">კატეგორიები</h2>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => setActiveCategoryId('all')}
+            className={cn(
+              "flex items-center justify-between rounded-xl px-4 py-3 text-sm font-bold transition-all",
+              activeCategoryId === 'all' ? "nm-daylight text-primary" : "nm-btn text-muted-foreground"
+            )}
+          >
+            <span>ყველა პროდუქტი</span>
+            <span className="nm-inset flex size-6 items-center justify-center rounded-full text-xs">
+              {products.length}
+            </span>
+          </button>
+          
+          {categories.map(c => {
+            const count = products.filter(p => p.category_id === c.id).length
+            return (
+              <button
+                key={c.id}
+                onClick={() => setActiveCategoryId(c.id)}
+                className={cn(
+                  "flex items-center justify-between rounded-xl px-4 py-3 text-sm font-bold transition-all",
+                  activeCategoryId === c.id ? "nm-daylight text-primary" : "nm-btn text-muted-foreground"
+                )}
+              >
+                <span>{c.name}</span>
+                <span className="nm-inset flex size-6 items-center justify-center rounded-full text-xs">
+                  {count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        <button
+          onClick={() => setCatModalOpen(true)}
+          className="nm-btn mt-6 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-primary"
+        >
+          <Plus className="size-4" />
+          კატეგორიის დამატება
+        </button>
+      </div>
+
+      {/* Main Grid: Products */}
+      <div className="flex flex-1 flex-col gap-6 min-w-0">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
+              <PackageSearch className="size-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-extrabold tracking-tight">მარაგი</h2>
+              <p className="text-xs text-muted-foreground">მართეთ ფასები და ნაშთები</p>
+            </div>
+          </div>
+          <div className="flex flex-1 items-center gap-3 sm:max-w-md">
+            <input
+              type="search"
+              placeholder="🔍 ძებნა..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="nm-inset flex-1 rounded-2xl px-4 py-2.5 text-sm outline-none placeholder:text-muted-foreground"
+            />
+            <button
+              onClick={() => { setScannedBarcode(''); setProdModalOpen(true); }}
+              className="nm-btn flex shrink-0 items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary"
+            >
+              <Plus className="size-4" />
+              <span className="hidden sm:inline">დამატება</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {displayedProducts.map(p => {
+            const stock = p.stock_quantity ?? 0
+            const threshold = p.low_stock_threshold ?? 5
+            const cost = p.cost_price ?? 0
+            const profit = p.price - cost
+            const lowStock = stock <= threshold && p.is_active
+
+            return (
+              <div
+                key={p.id}
+                className={cn(
+                  "nm-raised relative flex flex-col gap-3 rounded-[2rem] p-5",
+                  !p.is_active && "opacity-60 grayscale"
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex items-center gap-3">
+                    <div className="nm-inset hidden size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl sm:flex">
+                      {p.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.image_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <PackageSearch className="size-5 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="truncate font-extrabold leading-tight">{p.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {p.barcode ? `ბარკოდი: ${p.barcode}` : `ID: ${p.id}`} • {gel(p.price)}
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setEditingProduct(p)}
+                    className="nm-btn shrink-0 rounded-xl p-2 text-muted-foreground"
+                  >
+                    <Edit2 className="size-4" />
+                  </button>
+                </div>
+
+                <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
+                  <div className="nm-inset rounded-xl p-3">
+                    <p className="text-[10px] text-muted-foreground uppercase">შესყიდვა</p>
+                    <p className="font-mono font-bold">{gel(cost)}</p>
+                  </div>
+                  <div className="nm-inset rounded-xl p-3">
+                    <p className="text-[10px] text-muted-foreground uppercase">მოგება</p>
+                    <p className="font-mono font-bold text-primary">{gel(profit)}</p>
+                  </div>
+                </div>
+
+                <div className="mt-1 flex items-center justify-between nm-inset rounded-xl p-3">
+                  <div className="flex items-center gap-2">
+                    <Archive className="size-4 text-muted-foreground" />
+                    <span className="text-sm font-semibold">ნაშთი:</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {lowStock && (
+                      <AlertTriangle className="size-4 text-[var(--status-expired)] animate-pulse" />
+                    )}
+                    <span className={cn("font-mono font-extrabold", lowStock && "text-[var(--status-expired)]")}>
+                      {stock} ცალი
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          {displayedProducts.length === 0 && (
+            <div className="col-span-full py-20 text-center text-muted-foreground">
+              ამ კატეგორიაში პროდუქტები არ არის
+            </div>
+          )}
+        </div>
+      </div>
+
+      <AddCategoryModal open={catModalOpen} onClose={() => setCatModalOpen(false)} parentCategories={categories} onSaved={fetchAll} />
+      <ProductModal
+        open={prodModalOpen || editingProduct !== null}
+        onClose={() => { setProdModalOpen(false); setEditingProduct(null); setScannedBarcode(''); }}
+        categories={categories}
+        product={editingProduct}
+        initialBarcode={scannedBarcode}
+        onSaved={fetchAll}
+      />
+
+    </div>
+  )
+}
+
+function AddCategoryModal({ open, onClose, parentCategories, onSaved }: { open: boolean; onClose: () => void; parentCategories: BarCategory[]; onSaved: () => void }) {
+  const { pushToast } = usePlayroom()
+  const { currentOrgId } = useOrg()
+  const [name, setName] = useState('')
+  const [parentId, setParentId] = useState<string>('none')
+
+  const handleSave = async () => {
+    if (!name.trim()) return pushToast('danger', 'დასახელება სავალდებულოა')
+    if (!currentOrgId) return
+    const { error } = await supabase.from('bar_categories').insert({
+      org_id: currentOrgId,
+      name: name.trim(),
+      parent_id: parentId === 'none' ? null : Number(parentId),
+    })
+    if (error) return pushToast('danger', error.message)
+    pushToast('success', 'კატეგორია დაემატა')
+    setName('')
+    setParentId('none')
+    onSaved()
+    onClose()
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="კატეგორიის დამატება">
+      <div className="space-y-4">
+        <label className="block">
+          <span className="text-sm font-semibold text-muted-foreground">დასახელება</span>
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="მაგ: ენერგეტიკული"
+            className="nm-inset mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none"
+          />
+        </label>
+        
+        <label className="block">
+          <span className="text-sm font-semibold text-muted-foreground">მშობელი კატეგორია (არასავალდებულო)</span>
+          <select
+            value={parentId}
+            onChange={e => setParentId(e.target.value)}
+            className="nm-inset mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none appearance-none bg-transparent"
+          >
+            <option value="none" className="bg-background">-- მთავარი კატეგორია --</option>
+            {parentCategories.map(c => (
+              <option key={c.id} value={c.id} className="bg-background">{c.name}</option>
+            ))}
+          </select>
+        </label>
+
+        <button onClick={handleSave} className="nm-daylight mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-primary">
+          <Save className="size-4" /> შენახვა
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
+function ProductModal({ open, onClose, categories, product, initialBarcode, onSaved }: { open: boolean; onClose: () => void; categories: BarCategory[]; product?: BarProduct | null; initialBarcode?: string; onSaved: () => void }) {
+  const { pushToast } = usePlayroom()
+  const { currentOrgId } = useOrg()
+  const [name, setName] = useState('')
+  const [categoryId, setCategoryId] = useState<string>('')
+  const [price, setPrice] = useState('0')
+  const [costPrice, setCostPrice] = useState('0')
+  const [stock, setStock] = useState('0')
+  const [barcode, setBarcode] = useState('')
+  const [imgUrl, setImgUrl] = useState('')
+  
+  useEffect(() => {
+    if (open && product) {
+      setName(product.name)
+      setCategoryId(String(product.category_id ?? ''))
+      setPrice(String(product.price))
+      setCostPrice(String(product.cost_price ?? 0))
+      setStock(String(product.stock_quantity ?? 0))
+      setBarcode(product.barcode ?? '')
+      setImgUrl(product.image_url ?? '')
+    } else if (open && !product) {
+      setName('')
+      setCategoryId('')
+      setPrice('0')
+      setCostPrice('0')
+      setStock('0')
+      setBarcode(initialBarcode ?? '')
+      setImgUrl('')
+    }
+  }, [open, product, initialBarcode])
+
+  const handleSave = async () => {
+    if (!name.trim()) return pushToast('danger', 'დასახელება სავალდებულოა')
+    if (!currentOrgId) return
+    const payload = {
+      org_id: currentOrgId,
+      name: name.trim(),
+      category_id: categoryId ? Number(categoryId) : null,
+      price: Number(price) || 0,
+      cost_price: Number(costPrice) || 0,
+      stock_quantity: Number(stock) || 0,
+      barcode: barcode.trim() || null,
+      image_url: imgUrl.trim() || null,
+    }
+    const { error } = product
+      ? await supabase.from('bar_products').update(payload).eq('id', product.id)
+      : await supabase.from('bar_products').insert(payload)
+    if (error) return pushToast('danger', error.message)
+    pushToast('success', product ? 'პროდუქტი განახლდა' : 'პროდუქტი დაემატა')
+    onSaved()
+    onClose()
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title={product ? 'რედაქტირება' : 'პროდუქტის დამატება'}>
+      <div className="space-y-4 border-b border-white/5 pb-4">
+        
+        <label className="block">
+          <span className="text-sm font-semibold text-muted-foreground">დასახელება</span>
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="მაგ: Redbull ორიგინალი 0.25L"
+            className="nm-inset mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-semibold text-muted-foreground">კატეგორია</span>
+          <select
+            value={categoryId}
+            onChange={e => setCategoryId(e.target.value)}
+            className="nm-inset mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none appearance-none bg-transparent"
+          >
+            <option value="" disabled className="bg-background">-- აირჩიეთ --</option>
+            {categories.map(c => (
+              <option key={c.id} value={c.id} className="bg-background">{c.name}</option>
+            ))}
+          </select>
+        </label>
+
+        <div className="grid grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-xs font-semibold text-muted-foreground">შესყიდვის ფასი (₾)</span>
+            <input
+              type="number" step="0.1" min="0" value={costPrice}
+              onChange={e => setCostPrice(e.target.value)}
+              className="nm-inset mt-2 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-semibold text-muted-foreground">გასაყიდი ფასი (₾)</span>
+            <input
+              type="number" step="0.1" min="0" value={price}
+              onChange={e => setPrice(e.target.value)}
+              className="nm-inset mt-2 w-full rounded-xl px-4 py-2.5 text-sm outline-none font-bold text-primary"
+            />
+          </label>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-xs font-semibold text-muted-foreground">საწყისი ნაშთი (ცალი)</span>
+            <input
+              type="number" min="0" value={stock}
+              onChange={e => setStock(e.target.value)}
+              className="nm-inset mt-2 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-semibold text-muted-foreground">ბარკოდი</span>
+            <input
+              value={barcode}
+              onChange={e => setBarcode(e.target.value)}
+              placeholder="სკანერი ან კოდი"
+              className="nm-inset mt-2 w-full rounded-xl px-4 py-2.5 text-sm outline-none text-primary font-mono"
+            />
+          </label>
+        </div>
+        <label className="block">
+          <span className="text-xs font-semibold text-muted-foreground">სურათის URL (ფოტო)</span>
+          <input
+            value={imgUrl}
+            onChange={e => setImgUrl(e.target.value)}
+            placeholder="https://..."
+            className="nm-inset mt-2 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+          />
+        </label>
+
+      </div>
+      <button onClick={handleSave} className="nm-daylight mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-primary">
+        <Save className="size-4" /> შენახვა
+      </button>
+    </Modal>
+  )
+}

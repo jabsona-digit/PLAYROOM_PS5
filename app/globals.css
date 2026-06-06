@@ -1,0 +1,171 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: var(--font-noto-georgian), 'Geist Fallback';
+  --font-mono: var(--font-geist-mono), 'Geist Mono Fallback';
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-status-free: var(--status-free);
+  --color-status-active: var(--status-active);
+  --color-status-warning10: var(--status-warning10);
+  --color-status-warning5: var(--status-warning5);
+  --color-status-expired: var(--status-expired);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+}
+
+:root {
+  /* dark neumorphic palette */
+  --background: oklch(0.21 0.006 270);
+  --foreground: oklch(0.96 0.005 260);
+  --surface: oklch(0.235 0.006 270);
+  --surface-2: oklch(0.27 0.007 270);
+
+  --card: oklch(0.235 0.006 270);
+  --card-foreground: oklch(0.96 0.005 260);
+  --popover: oklch(0.24 0.006 270);
+  --popover-foreground: oklch(0.96 0.005 260);
+
+  /* PlayStation-leaning teal/cyan accent */
+  --primary: oklch(0.78 0.13 195);
+  --primary-foreground: oklch(0.2 0.02 250);
+  --secondary: oklch(0.3 0.007 270);
+  --secondary-foreground: oklch(0.96 0.005 260);
+  --muted: oklch(0.3 0.007 270);
+  --muted-foreground: oklch(0.66 0.01 270);
+  --accent: oklch(0.78 0.13 195);
+  --accent-foreground: oklch(0.2 0.02 250);
+  --destructive: oklch(0.62 0.21 25);
+
+  --border: oklch(1 0 0 / 7%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.78 0.13 195);
+
+  /* console status colors */
+  --status-free: oklch(0.74 0.16 155);
+  --status-active: oklch(0.7 0.14 235);
+  --status-warning10: oklch(0.83 0.14 90);
+  --status-warning5: oklch(0.74 0.16 55);
+  --status-expired: oklch(0.64 0.21 25);
+
+  --chart-1: oklch(0.78 0.13 195);
+  --chart-2: oklch(0.74 0.16 155);
+  --chart-3: oklch(0.7 0.14 235);
+  --chart-4: oklch(0.83 0.14 90);
+  --chart-5: oklch(0.66 0.01 270);
+
+  --radius: 0.9rem;
+
+  /* neumorphic shadow vars */
+  --nm-dark: oklch(0.16 0.006 270);
+  --nm-light: oklch(0.29 0.008 270);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    @apply font-sans;
+    background-color: var(--background);
+  }
+  body {
+    @apply text-foreground;
+    background-color: var(--background);
+  }
+}
+
+/* Raised, slightly extruded neumorphic surface */
+@utility nm-raised {
+  background: linear-gradient(145deg, var(--surface-2), var(--surface));
+  box-shadow:
+    6px 6px 14px var(--nm-dark),
+    -6px -6px 14px var(--nm-light);
+}
+@utility nm-raised-sm {
+  background: linear-gradient(145deg, var(--surface-2), var(--surface));
+  box-shadow:
+    4px 4px 9px var(--nm-dark),
+    -4px -4px 9px var(--nm-light);
+}
+/* Pressed / inset */
+@utility nm-inset {
+  background: var(--surface);
+  box-shadow:
+    inset 4px 4px 9px var(--nm-dark),
+    inset -4px -4px 9px var(--nm-light);
+}
+/* Interactive button — lifts up on hover, presses on active */
+@utility nm-btn {
+  background: linear-gradient(145deg, var(--surface-2), var(--surface));
+  box-shadow:
+    5px 5px 12px var(--nm-dark),
+    -5px -5px 12px var(--nm-light);
+  transition:
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      7px 9px 18px var(--nm-dark),
+      -6px -6px 16px var(--nm-light);
+  }
+  &:active {
+    transform: translateY(0);
+    box-shadow:
+      inset 4px 4px 9px var(--nm-dark),
+      inset -4px -4px 9px var(--nm-light);
+  }
+}
+
+/* "Daylight" — glowing active state, like a light turning on */
+@utility nm-daylight {
+  background: linear-gradient(145deg, var(--surface-2), var(--surface));
+  transform: translateY(-2px);
+  box-shadow:
+    6px 8px 16px var(--nm-dark),
+    -5px -5px 14px var(--nm-light),
+    0 0 0 1px color-mix(in oklch, var(--primary) 50%, transparent),
+    0 0 22px 2px color-mix(in oklch, var(--primary) 45%, transparent),
+    inset 0 1px 0 color-mix(in oklch, var(--primary) 35%, transparent);
+}
+
+@utility text-glow {
+  text-shadow: 0 0 14px color-mix(in oklch, var(--primary) 60%, transparent);
+}
