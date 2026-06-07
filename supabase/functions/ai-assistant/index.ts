@@ -165,6 +165,27 @@ async function runTool(
   }
 }
 
+// Attach human-readable names to a proposed action so the confirm card shows
+// "Red Bull" instead of "#7". Best-effort; runs as the caller (RLS applies).
+async function enrichAction(
+  db: SupabaseClient,
+  action: { name: string; args: Record<string, unknown> },
+) {
+  const a = action.args
+  try {
+    if (action.name === 'restock_product' && a.product_id && !a.product_name) {
+      const { data } = await db.from('bar_products').select('name').eq('id', a.product_id).single()
+      if (data) a.product_name = data.name
+    }
+    if (action.name === 'start_session' && a.console_id && !a.console_name) {
+      const { data } = await db.from('consoles').select('name').eq('id', a.console_id).single()
+      if (data) a.console_name = data.name
+    }
+  } catch {
+    // display-only enrichment — ignore failures
+  }
+}
+
 // Gemini call with model fallback + retry on transient 429/503.
 async function callGemini(systemPrompt: string, contents: unknown[]) {
   const payload = JSON.stringify({
@@ -288,7 +309,9 @@ Deno.serve(async (req) => {
         return json({ type: 'text', text })
       }
       if (WRITE_TOOLS.has(fnCall.name)) {
-        return json({ type: 'confirm', action: { name: fnCall.name, args: fnCall.args ?? {} }, messages: body.messages ?? [] })
+        const action = { name: fnCall.name, args: fnCall.args ?? {} }
+        await enrichAction(db, action)
+        return json({ type: 'confirm', action, messages: body.messages ?? [] })
       }
       if (READ_TOOLS.has(fnCall.name)) {
         let result: unknown

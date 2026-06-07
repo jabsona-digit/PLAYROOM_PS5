@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Edit2, Archive, ListTree, PackageSearch, AlertTriangle, Save } from 'lucide-react'
+import { Plus, Edit2, Archive, ListTree, PackageSearch, AlertTriangle, Save, Trash2, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
@@ -44,6 +44,35 @@ export function Inventory() {
   const [editingProduct, setEditingProduct] = useState<BarProduct | null>(null)
   const [scannedBarcode, setScannedBarcode] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [delCatId, setDelCatId] = useState<number | null>(null)
+
+  // Hard-delete a product; if it's referenced by past sales the FK blocks it,
+  // so fall back to deactivating (hides it from POS, keeps history intact).
+  const handleDeleteProduct = async (id: number) => {
+    const { error } = await supabase.from('bar_products').delete().eq('id', id)
+    if (error) {
+      const { error: e2 } = await supabase.from('bar_products').update({ is_active: false }).eq('id', id)
+      if (e2) return pushToast('danger', e2.message)
+      pushToast('info', 'პროდუქტი გაყიდვებშია გამოყენებული — დაიმალა (გათიშულია)')
+    } else {
+      pushToast('success', 'პროდუქტი წაიშალა')
+    }
+    setDeletingId(null)
+    fetchAll()
+  }
+
+  // Delete a category; detach its products first so they aren't lost (become uncategorized).
+  const handleDeleteCategory = async (id: number) => {
+    if (!currentOrgId) return
+    await supabase.from('bar_products').update({ category_id: null }).eq('category_id', id).eq('org_id', currentOrgId)
+    const { error } = await supabase.from('bar_categories').delete().eq('id', id)
+    if (error) return pushToast('danger', error.message)
+    pushToast('success', 'კატეგორია წაიშალა')
+    if (activeCategoryId === id) setActiveCategoryId('all')
+    setDelCatId(null)
+    fetchAll()
+  }
 
   const fetchAll = async () => {
     if (!currentOrgId) return
@@ -126,19 +155,40 @@ export function Inventory() {
           {categories.map(c => {
             const count = products.filter(p => p.category_id === c.id).length
             return (
-              <button
+              <div
                 key={c.id}
-                onClick={() => setActiveCategoryId(c.id)}
                 className={cn(
-                  "flex items-center justify-between rounded-xl px-4 py-3 text-sm font-bold transition-all",
-                  activeCategoryId === c.id ? "nm-daylight text-primary" : "nm-btn text-muted-foreground"
+                  "flex items-center gap-1 rounded-xl pr-1.5 transition-all",
+                  activeCategoryId === c.id ? "nm-daylight" : "nm-btn"
                 )}
               >
-                <span>{c.name}</span>
-                <span className="nm-inset flex size-6 items-center justify-center rounded-full text-xs">
-                  {count}
-                </span>
-              </button>
+                <button
+                  onClick={() => setActiveCategoryId(c.id)}
+                  className={cn(
+                    "flex flex-1 items-center justify-between px-4 py-3 text-sm font-bold",
+                    activeCategoryId === c.id ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  <span>{c.name}</span>
+                  <span className="nm-inset flex size-6 items-center justify-center rounded-full text-xs">
+                    {count}
+                  </span>
+                </button>
+                {delCatId === c.id ? (
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => handleDeleteCategory(c.id)} title="დადასტურება" className="rounded-lg p-1.5 text-[var(--status-expired)]">
+                      <Check className="size-4" />
+                    </button>
+                    <button onClick={() => setDelCatId(null)} title="გაუქმება" className="rounded-lg p-1.5 text-muted-foreground">
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setDelCatId(c.id)} title="წაშლა" className="shrink-0 rounded-lg p-1.5 text-muted-foreground/60 hover:text-[var(--status-expired)]">
+                    <Trash2 className="size-3.5" />
+                  </button>
+                )}
+              </div>
             )
           })}
         </div>
@@ -215,12 +265,27 @@ export function Inventory() {
                       </p>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => setEditingProduct(p)}
-                    className="nm-btn shrink-0 rounded-xl p-2 text-muted-foreground"
-                  >
-                    <Edit2 className="size-4" />
-                  </button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {deletingId === p.id ? (
+                      <>
+                        <button onClick={() => handleDeleteProduct(p.id)} title="დადასტურება" className="nm-btn rounded-xl p-2 text-[var(--status-expired)]">
+                          <Check className="size-4" />
+                        </button>
+                        <button onClick={() => setDeletingId(null)} title="გაუქმება" className="nm-btn rounded-xl p-2 text-muted-foreground">
+                          <X className="size-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => setEditingProduct(p)} title="რედაქტირება" className="nm-btn rounded-xl p-2 text-muted-foreground">
+                          <Edit2 className="size-4" />
+                        </button>
+                        <button onClick={() => setDeletingId(p.id)} title="წაშლა" className="nm-btn rounded-xl p-2 text-muted-foreground hover:text-[var(--status-expired)]">
+                          <Trash2 className="size-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
