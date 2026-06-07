@@ -121,9 +121,15 @@ function ImpersonationBar({ onBack }: { onBack: () => void }) {
 
 function Workspace({ email }: { email?: string }) {
   const [active, setActive] = useState<ModuleKey>('dashboard')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const logout = async () => {
     await supabase.auth.signOut()
+  }
+
+  const handleSelect = (key: ModuleKey) => {
+    setActive(key)
+    setSidebarOpen(false)
   }
 
   return (
@@ -133,14 +139,16 @@ function Workspace({ email }: { email?: string }) {
         <div className="nm-raised flex w-full overflow-hidden rounded-[2rem]">
           <Sidebar
             active={active}
-            onSelect={setActive}
+            onSelect={handleSelect}
             email={email}
             onLogout={logout}
+            open={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
           />
 
           <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
             <ImpersonationBar onBack={() => setActive('platform')} />
-            <Topbar active={active} />
+            <Topbar active={active} onMenuClick={() => setSidebarOpen(true)} />
             <div className="mt-8">
               {active === 'dashboard' && <Dashboard />}
               {active === 'pos' && <Pos />}

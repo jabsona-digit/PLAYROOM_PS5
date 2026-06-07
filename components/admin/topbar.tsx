@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, Search, Settings } from 'lucide-react'
+import { Bell, Menu, Search, Settings } from 'lucide-react'
 import { usePlayroom } from '@/lib/store'
 import type { ModuleKey } from '@/lib/types'
 import { VenueSwitcher } from './venue-switcher'
@@ -21,7 +21,7 @@ const TITLES: Record<ModuleKey, { title: string; subtitle: string }> = {
   reservations: { title: 'ჯავშნები', subtitle: 'კონსოლების წინასწარი დაჯავშნა' },
 }
 
-export function Topbar({ active }: { active: ModuleKey }) {
+export function Topbar({ active, onMenuClick }: { active: ModuleKey; onMenuClick?: () => void }) {
   const meta = TITLES[active]
   const { consoles, pushToast } = usePlayroom()
 
@@ -42,11 +42,22 @@ export function Topbar({ active }: { active: ModuleKey }) {
 
   return (
     <header className="flex items-center justify-between gap-4">
-      <div className="min-w-0">
-        <h1 className="text-2xl font-extrabold tracking-tight text-balance md:text-3xl">
-          {meta.title}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">{meta.subtitle}</p>
+      <div className="flex min-w-0 items-center gap-3">
+        {/* hamburger — mobile only, opens the sidebar drawer */}
+        <button
+          type="button"
+          onClick={onMenuClick}
+          aria-label="მენიუ"
+          className="nm-btn flex size-11 shrink-0 items-center justify-center rounded-2xl md:hidden"
+        >
+          <Menu className="size-5 text-muted-foreground" />
+        </button>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-extrabold tracking-tight text-balance md:text-3xl">
+            {meta.title}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">{meta.subtitle}</p>
+        </div>
       </div>
 
       <div className="flex items-center gap-3">
