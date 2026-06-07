@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
 export function Modal({
@@ -23,9 +24,12 @@ export function Modal({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
-  if (!open) return null
+  if (!open || typeof document === 'undefined') return null
 
-  return (
+  // Portal to <body> so the overlay escapes any transformed ancestor (e.g. the
+  // animated console cards) — a `position: fixed` element is otherwise positioned
+  // and stacked relative to a transformed parent, letting sibling cards cover it.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
@@ -52,6 +56,7 @@ export function Modal({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
