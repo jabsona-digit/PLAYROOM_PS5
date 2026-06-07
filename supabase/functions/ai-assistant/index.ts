@@ -44,7 +44,7 @@ const READ_TOOLS = new Set([
   'list_expenses',
   'get_revenue_summary',
 ])
-const WRITE_TOOLS = new Set(['start_session', 'end_session', 'create_bar_sale', 'restock_product'])
+const WRITE_TOOLS = new Set(['start_session', 'start_open_session', 'end_session', 'create_bar_sale', 'restock_product'])
 
 const toolDeclarations = [
   { name: 'get_overview', description: 'მიმდინარე მდგომარეობა: აქტიური/თავისუფალი კონსოლები, იწურება.', parameters: { type: 'object', properties: {} } },
@@ -58,7 +58,8 @@ const toolDeclarations = [
   { name: 'list_reservations', description: 'ჯავშნები — კლიენტი, დრო, ხანგრძლივობა, სტატუსი.', parameters: { type: 'object', properties: {} } },
   { name: 'list_expenses', description: 'ბოლო ხარჯები — კატეგორია, თანხა, აღწერა, თარიღი.', parameters: { type: 'object', properties: {} } },
   { name: 'get_revenue_summary', description: 'შემოსავალი მოცემულ პერიოდში (სესიები + ბარი). თარიღები: YYYY-MM-DD.', parameters: { type: 'object', properties: { from: { type: 'string' }, to: { type: 'string' } } } },
-  { name: 'start_session', description: 'ახალი სესია კონსოლზე. წინასწარ მოიძიე console_id და plan_id.', parameters: { type: 'object', properties: { console_id: { type: 'integer' }, plan_id: { type: 'integer' }, duration_min: { type: 'integer' }, customer_name: { type: 'string' }, payment_method: { type: 'string', enum: ['cash', 'card', 'transfer'] }, bank: { type: 'string', enum: ['TBC', 'BOG'] } }, required: ['console_id', 'plan_id', 'duration_min', 'payment_method'] } },
+  { name: 'start_session', description: 'ფიქსირებული სესია კონსოლზე — მითითებული ხანგრძლივობით (duration_min). გამოიყენე როცა მომხმარებელი ასახელებს დროს (მაგ "1 საათი"). წინასწარ მოიძიე console_id და plan_id.', parameters: { type: 'object', properties: { console_id: { type: 'integer' }, plan_id: { type: 'integer' }, duration_min: { type: 'integer' }, customer_name: { type: 'string' }, payment_method: { type: 'string', enum: ['cash', 'card', 'transfer'] }, bank: { type: 'string', enum: ['TBC', 'BOG'] } }, required: ['console_id', 'plan_id', 'duration_min', 'payment_method'] } },
+  { name: 'start_open_session', description: 'მიმდინარე (ღია) სესია — დრო წინ ითვლება, თანხა დასრულებისას ითვლება ნათამაშებ დროზე (5 წთ-მდე დამრგვალებით). გამოიყენე როცა მომხმარებელი არ უთითებს კონკრეტულ ხანგრძლივობას ("ღია", "მიმდინარე", "რამდენსაც ითამაშებს"). ხანგრძლივობა არ სჭირდება. წინასწარ მოიძიე console_id და plan_id.', parameters: { type: 'object', properties: { console_id: { type: 'integer' }, plan_id: { type: 'integer' }, customer_name: { type: 'string' }, payment_method: { type: 'string', enum: ['cash', 'card', 'transfer'] }, bank: { type: 'string', enum: ['TBC', 'BOG'] } }, required: ['console_id', 'plan_id', 'payment_method'] } },
   { name: 'end_session', description: 'აქტიური სესიის დასრულება. session_id list_consoles-დან.', parameters: { type: 'object', properties: { session_id: { type: 'string' }, tip: { type: 'number' } }, required: ['session_id'] } },
   { name: 'create_bar_sale', description: 'ბარის გაყიდვა. items:[{product_id,qty}]. product_id list_bar_products-დან.', parameters: { type: 'object', properties: { items: { type: 'array', items: { type: 'object', properties: { product_id: { type: 'integer' }, qty: { type: 'integer' } }, required: ['product_id', 'qty'] } }, payment_method: { type: 'string', enum: ['cash', 'card', 'transfer'] }, bank: { type: 'string', enum: ['TBC', 'BOG'] }, tip: { type: 'number' }, session_id: { type: 'string' } }, required: ['items', 'payment_method'] } },
   { name: 'restock_product', description: 'არსებული პროდუქტის მარაგის შევსება — ემატება მიმდინარე მარაგს. მხოლოდ უკვე არსებულ პროდუქტზე მუშაობს, ახალს ვერ ქმნის. product_id მოიძიე list_bar_products-დან.', parameters: { type: 'object', properties: { product_id: { type: 'integer' }, add_qty: { type: 'integer' }, product_name: { type: 'string' } }, required: ['product_id', 'add_qty'] } },
@@ -137,6 +138,11 @@ async function runTool(
       if (error) throw error
       return data
     }
+    case 'start_open_session': {
+      const { data, error } = await db.rpc('start_open_session', { p_console_id: args.console_id, p_plan_id: args.plan_id, p_customer_name: args.customer_name ?? null, p_payment_method: args.payment_method, p_bank: args.payment_method === 'cash' ? null : (args.bank ?? null) })
+      if (error) throw error
+      return data
+    }
     case 'end_session': {
       const { error } = await db.rpc('end_session', { p_session_id: args.session_id, p_tip: args.tip ?? 0 })
       if (error) throw error
@@ -177,7 +183,7 @@ async function enrichAction(
       const { data } = await db.from('bar_products').select('name').eq('id', a.product_id).single()
       if (data) a.product_name = data.name
     }
-    if (action.name === 'start_session' && a.console_id && !a.console_name) {
+    if ((action.name === 'start_session' || action.name === 'start_open_session') && a.console_id && !a.console_name) {
       const { data } = await db.from('consoles').select('name').eq('id', a.console_id).single()
       if (data) a.console_name = data.name
     }
@@ -223,7 +229,10 @@ User role: ${role}${isPlatformAdmin ? ' + PLATFORM ADMIN (full cross-tenant acce
 Rules:
 - For data questions, call the relevant read function FIRST, then answer with live data.
 - Before any action, resolve the needed ids via list functions. Never invent an id or data.
-- To START A SESSION: FIRST call list_consoles (resolve the console id by position/name, e.g. "first console" = lowest slot_number) AND list_plans (resolve the plan id by name or price, e.g. "1 hour 5 GEL" = the plan priced 5/hour). Plans and consoles almost always exist — NEVER tell the user that plans/consoles are "not defined" without first calling these functions. Then call start_session with the resolved ids, duration_min and payment_method.
+- To START A SESSION: FIRST call list_consoles (resolve the console id by position/name, e.g. "first console" = lowest slot_number) AND list_plans (resolve the plan id by name or price, e.g. "1 hour 5 GEL" = the plan priced 5/hour). Plans and consoles almost always exist — NEVER tell the user that plans/consoles are "not defined" without first calling these functions. THEN choose the session type:
+  • If the user names a duration (e.g. "1 საათი", "30 წუთი") → call start_session with console_id, plan_id, duration_min, payment_method.
+  • If the user does NOT name a duration and wants pay-as-you-go (e.g. "ღია სესია", "მიმდინარე", "რამდენ ხანსაც ითამაშებს", "open") → call start_open_session with console_id, plan_id, payment_method (NO duration_min). The price is settled when the session ends.
+  If payment method is unstated assume cash.
 - When the user says "add/restock [product] N" (დაამატე/შეავსე) it means restock_product (increase stock of an EXISTING product), NOT creating a new product. ALWAYS call list_bar_products first and pick the closest name match, including partial/transliterated matches (e.g. "კლასიკი"≈"კლასიკური"≈"CLASSIC"). If several products match, ask the user which one. Only if nothing matches at all, say the product does not exist and must be added manually in Inventory first.
 - Be action-oriented: once you have enough info, call the function instead of asking more questions. Actions are auto-confirmed by the UI.`
 }

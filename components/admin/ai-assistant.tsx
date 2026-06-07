@@ -22,6 +22,8 @@ function describeAction(a: PendingAction): string {
   switch (a.name) {
     case 'start_session':
       return `ახალი სესია: ${x.console_name ?? 'კონსოლი #' + x.console_id}, ${x.duration_min} წთ, ${x.payment_method}${x.customer_name ? `, ${x.customer_name}` : ''}`
+    case 'start_open_session':
+      return `მიმდინარე (ღია) სესია: ${x.console_name ?? 'კონსოლი #' + x.console_id}, ${x.payment_method}${x.customer_name ? `, ${x.customer_name}` : ''}`
     case 'end_session':
       return `სესიის დასრულება${x.tip ? ` + ჩაიანი ₾${x.tip}` : ''}`
     case 'create_bar_sale': {
