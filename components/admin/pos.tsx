@@ -258,27 +258,35 @@ export function Pos() {
             <button
               key={p.id}
               onClick={() => addToCart(p)}
-              className="nm-btn flex flex-col gap-3 rounded-3xl p-3 transition-all"
+              className="nm-btn group flex flex-col gap-3 rounded-3xl p-3 transition-all duration-300 hover:-translate-y-2"
             >
-              <div className="nm-inset relative w-full aspect-square overflow-hidden rounded-2xl">
+              <div className="nm-inset relative w-full aspect-square overflow-hidden rounded-2xl p-4 flex items-center justify-center">
                 {p.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.image_url} alt={p.name} className="absolute inset-0 h-full w-full object-cover" />
+                  <img src={p.image_url} alt={p.name} className="h-full w-full object-contain drop-shadow-lg transition-transform duration-300 group-hover:scale-110" />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Coffee className="size-10 text-primary/50" />
-                  </div>
+                  <Coffee className="size-12 text-primary/30 transition-transform duration-300 group-hover:scale-110 group-hover:text-primary/60" />
                 )}
               </div>
-              <div className="pb-1 text-center">
-                <p className="text-sm font-bold leading-tight">{p.name}</p>
-                <p className="mt-1 text-sm font-semibold text-primary">{gel(p.price)}</p>
+              <div className="pb-2 w-full text-center flex flex-col justify-between flex-1">
+                <p className="text-sm font-extrabold leading-tight text-foreground/90 group-hover:text-primary transition-colors line-clamp-2 min-h-[2.5rem] flex items-center justify-center">
+                  {p.name}
+                </p>
+                <div className="mt-2 flex items-center justify-center">
+                  <span className="nm-inset px-3 py-1 rounded-full text-sm font-black text-primary transition-all duration-300 group-hover:shadow-[0_0_12px_rgba(var(--primary),0.3)]">
+                    {gel(p.price)}
+                  </span>
+                </div>
               </div>
             </button>
           ))}
           {displayedProducts.length === 0 && (
-            <div className="col-span-full py-10 text-center text-muted-foreground">
-              პროდუქტები ვერ მოიძებნა
+            <div className="col-span-full py-20 text-center flex flex-col items-center justify-center gap-4 nm-inset rounded-[2rem] border-white/5 mx-2 my-4">
+              <Coffee className="size-16 text-muted-foreground/20" />
+              <div className="space-y-1">
+                <p className="font-extrabold text-foreground/80">პროდუქტები ვერ მოიძებნა</p>
+                <p className="text-sm text-muted-foreground/60">აირჩიეთ სხვა კატეგორია ან შეცვალეთ ძებნის პარამეტრი</p>
+              </div>
             </div>
           )}
         </div>
@@ -344,30 +352,41 @@ export function Pos() {
               </div>
             ) : (
               cart.map((item) => (
-                <div key={item.product.id} className="nm-inset flex items-center justify-between rounded-2xl p-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-bold text-sm">{item.product.name}</p>
-                    <p className="mt-0.5 text-xs text-primary">{gel(item.product.price)}</p>
+                <div key={item.product.id} className="nm-inset group flex items-center justify-between rounded-2xl p-3 transition-colors hover:bg-white/[0.02]">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="nm-raised size-10 shrink-0 rounded-lg p-1.5 flex items-center justify-center overflow-hidden">
+                      {item.product.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.product.image_url} alt="" className="w-full h-full object-contain drop-shadow-sm" />
+                      ) : (
+                        <Coffee className="size-5 text-muted-foreground/30" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate font-bold text-sm text-foreground/90">{item.product.name}</p>
+                      <p className="mt-0.5 text-xs font-black text-primary">{gel(item.product.price)}</p>
+                    </div>
                   </div>
                   <div className="ml-3 flex shrink-0 items-center gap-2">
                     <button
                       onClick={() => updateQty(item.product.id, -1)}
-                      className="nm-btn flex size-8 items-center justify-center rounded-xl"
+                      className="nm-btn flex size-8 items-center justify-center rounded-xl transition-transform hover:scale-105 active:scale-95"
                     >
                       <Minus className="size-3" />
                     </button>
-                    <span className="min-w-[20px] text-center text-sm font-bold tabular-nums">
+                    <span className="min-w-[24px] text-center text-sm font-bold tabular-nums">
                       {item.qty}
                     </span>
                     <button
                       onClick={() => updateQty(item.product.id, 1)}
-                      className="nm-btn flex size-8 items-center justify-center rounded-xl"
+                      className="nm-btn flex size-8 items-center justify-center rounded-xl transition-transform hover:scale-105 active:scale-95"
                     >
                       <Plus className="size-3" />
                     </button>
                     <button
                       onClick={() => updateQty(item.product.id, -item.qty)}
-                      className="ml-1 flex size-8 items-center justify-center rounded-xl text-[var(--status-expired)] hover:bg-neutral-800"
+                      className="ml-1 flex size-8 items-center justify-center rounded-xl text-muted-foreground/50 hover:text-[var(--status-expired)] hover:bg-white/[0.05] transition-colors"
+                      title="ამოშლა"
                     >
                       <X className="size-4" />
                     </button>

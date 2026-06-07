@@ -248,39 +248,30 @@ export function Inventory() {
                   !p.is_active && "opacity-60 grayscale"
                 )}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex items-center gap-3">
-                    <div className="nm-inset hidden size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl sm:flex">
-                      {p.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.image_url} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <PackageSearch className="size-5 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="truncate font-extrabold leading-tight">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {p.barcode ? `ბარკოდი: ${p.barcode}` : `ID: ${p.id}`} • {gel(p.price)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                <div className="relative w-full aspect-[4/3] overflow-hidden rounded-2xl nm-inset p-4 flex items-center justify-center mb-3">
+                  {p.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.image_url} alt="" className="h-full w-full object-contain drop-shadow-md transition-transform duration-300 hover:scale-105" />
+                  ) : (
+                    <PackageSearch className="size-12 text-muted-foreground/30" />
+                  )}
+                  
+                  <div className="absolute top-2 right-2 flex flex-col gap-1.5">
                     {deletingId === p.id ? (
                       <>
-                        <button onClick={() => handleDeleteProduct(p.id)} title="დადასტურება" className="nm-btn rounded-xl p-2 text-[var(--status-expired)]">
+                        <button onClick={() => handleDeleteProduct(p.id)} title="დადასტურება" className="nm-btn rounded-xl p-2 text-[var(--status-expired)] bg-background/50 backdrop-blur-md">
                           <Check className="size-4" />
                         </button>
-                        <button onClick={() => setDeletingId(null)} title="გაუქმება" className="nm-btn rounded-xl p-2 text-muted-foreground">
+                        <button onClick={() => setDeletingId(null)} title="გაუქმება" className="nm-btn rounded-xl p-2 text-muted-foreground bg-background/50 backdrop-blur-md">
                           <X className="size-4" />
                         </button>
                       </>
                     ) : (
                       <>
-                        <button onClick={() => setEditingProduct(p)} title="რედაქტირება" className="nm-btn rounded-xl p-2 text-muted-foreground">
+                        <button onClick={() => setEditingProduct(p)} title="რედაქტირება" className="nm-btn rounded-xl p-2 text-muted-foreground bg-background/50 backdrop-blur-md">
                           <Edit2 className="size-4" />
                         </button>
-                        <button onClick={() => setDeletingId(p.id)} title="წაშლა" className="nm-btn rounded-xl p-2 text-muted-foreground hover:text-[var(--status-expired)]">
+                        <button onClick={() => setDeletingId(p.id)} title="წაშლა" className="nm-btn rounded-xl p-2 text-muted-foreground hover:text-[var(--status-expired)] bg-background/50 backdrop-blur-md">
                           <Trash2 className="size-4" />
                         </button>
                       </>
@@ -288,37 +279,53 @@ export function Inventory() {
                   </div>
                 </div>
 
-                <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
-                  <div className="nm-inset rounded-xl p-3">
-                    <p className="text-[10px] text-muted-foreground uppercase">შესყიდვა</p>
-                    <p className="font-mono font-bold">{gel(cost)}</p>
+                <div className="px-1 flex flex-col gap-2">
+                  <div className="flex justify-between items-start gap-3">
+                    <p className="font-extrabold leading-tight text-foreground/90 line-clamp-2">{p.name}</p>
+                    <div className="nm-inset px-2.5 py-1 rounded-lg text-sm font-black text-primary whitespace-nowrap">
+                      {gel(p.price)}
+                    </div>
                   </div>
-                  <div className="nm-inset rounded-xl p-3">
-                    <p className="text-[10px] text-muted-foreground uppercase">მოგება</p>
-                    <p className="font-mono font-bold text-primary">{gel(profit)}</p>
-                  </div>
-                </div>
+                  <p className="text-xs font-semibold text-muted-foreground">
+                    {p.barcode ? `ბარკოდი: ${p.barcode}` : `ID: ${p.id}`}
+                  </p>
 
-                <div className="mt-1 flex items-center justify-between nm-inset rounded-xl p-3">
-                  <div className="flex items-center gap-2">
-                    <Archive className="size-4 text-muted-foreground" />
-                    <span className="text-sm font-semibold">ნაშთი:</span>
+                  <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
+                    <div className="nm-inset rounded-xl p-3">
+                      <p className="text-[10px] text-muted-foreground uppercase">შესყიდვა</p>
+                      <p className="font-mono font-bold">{gel(cost)}</p>
+                    </div>
+                    <div className="nm-inset rounded-xl p-3">
+                      <p className="text-[10px] text-muted-foreground uppercase">მოგება</p>
+                      <p className="font-mono font-bold text-primary">{gel(profit)}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {lowStock && (
-                      <AlertTriangle className="size-4 text-[var(--status-expired)] animate-pulse" />
-                    )}
-                    <span className={cn("font-mono font-extrabold", lowStock && "text-[var(--status-expired)]")}>
-                      {stock} ცალი
-                    </span>
+
+                  <div className="mt-1 flex items-center justify-between nm-inset rounded-xl p-3">
+                    <div className="flex items-center gap-2">
+                      <Archive className="size-4 text-muted-foreground" />
+                      <span className="text-sm font-semibold">ნაშთი:</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {lowStock && (
+                        <AlertTriangle className="size-4 text-[var(--status-expired)] animate-pulse" />
+                      )}
+                      <span className={cn("font-mono font-extrabold", lowStock && "text-[var(--status-expired)]")}>
+                        {stock} ცალი
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
             )
           })}
           {displayedProducts.length === 0 && (
-            <div className="col-span-full py-20 text-center text-muted-foreground">
-              ამ კატეგორიაში პროდუქტები არ არის
+            <div className="col-span-full py-20 text-center flex flex-col items-center justify-center gap-4 nm-inset rounded-[2rem] border-white/5 mx-2 my-4">
+              <PackageSearch className="size-16 text-muted-foreground/20" />
+              <div className="space-y-1">
+                <p className="font-extrabold text-foreground/80">პროდუქტები ვერ მოიძებნა</p>
+                <p className="text-sm text-muted-foreground/60">ამატეთ ახალი პროდუქტები ბარკოდით ან ხელით</p>
+              </div>
             </div>
           )}
         </div>
