@@ -13,6 +13,9 @@ import { createClient, SupabaseClient } from 'jsr:@supabase/supabase-js@2'
 
 const GEMINI_MODEL = Deno.env.get('GEMINI_MODEL') ?? 'gemini-2.5-flash'
 const GEMINI_KEY = Deno.env.get('GEMINI_API_KEY') ?? ''
+// Fallback chain — if the primary is overloaded (503) or rate-limited (429,
+// per-model on the free tier), the next model serves the request.
+const MODELS = [...new Set([GEMINI_MODEL, 'gemini-2.0-flash', 'gemini-2.5-flash-lite'])]
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -162,36 +165,32 @@ async function runTool(
   }
 }
 
-// Gemini call with retry on transient 429/503 (rate limit / overload).
+// Gemini call with model fallback + retry on transient 429/503.
 async function callGemini(systemPrompt: string, contents: unknown[]) {
-  let lastErr = ''
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents,
-          tools: [{ function_declarations: toolDeclarations }],
-          tool_config: { function_calling_config: { mode: 'AUTO' } },
-        }),
-      },
-    )
-    if (res.ok) return await res.json()
-    lastErr = await res.text()
-    console.error('GEMINI_HTTP', res.status, lastErr)
-    if (res.status === 429 || res.status === 503) {
-      await sleep(700 * (attempt + 1))
-      continue
+  const payload = JSON.stringify({
+    system_instruction: { parts: [{ text: systemPrompt }] },
+    contents,
+    tools: [{ function_declarations: toolDeclarations }],
+    tool_config: { function_calling_config: { mode: 'AUTO' } },
+  })
+  for (const model of MODELS) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload },
+      )
+      if (res.ok) return await res.json()
+      const errTxt = await res.text()
+      console.error('GEMINI_HTTP', model, res.status, errTxt)
+      if (res.status === 429 || res.status === 503) {
+        await sleep(500 * (attempt + 1))
+        continue // retry, then fall through to next model
+      }
+      if (res.status === 404) break // model unavailable → try next model
+      throw new Error(`Gemini ${res.status}: ${errTxt}`)
     }
-    throw new Error(`Gemini ${res.status}: ${lastErr}`)
   }
-  // exhausted retries on overload
-  const overloaded = new Error('OVERLOADED')
-  ;(overloaded as Error & { detail?: string }).detail = lastErr
-  throw overloaded
+  throw new Error('OVERLOADED')
 }
 
 function systemPrompt(role: string, isPlatformAdmin: boolean): string {
