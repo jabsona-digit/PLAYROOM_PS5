@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
-import { formatClock, gel, paymentMethodLabel, statusMeta } from '@/lib/ui'
+import { formatClock, gel, openBillableMinutes, paymentMethodLabel, statusMeta } from '@/lib/ui'
 import type { Bank, ConsoleUnit, PaymentMethod } from '@/lib/types'
 import { Modal } from './modal'
 import { Analytics } from './analytics'
@@ -101,13 +101,18 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
   const meta = statusMeta[unit.status]
   const s = unit.active_session
   const isFree = unit.status === 'free' || !s
+  const isOpen = !!s?.is_open
 
   const clock = now ?? new Date(s?.started_at ?? Date.now()).getTime()
-  const remainingMs = s ? new Date(s.ends_at).getTime() - clock : 0
-  const totalMs = s ? s.duration_min * 60_000 : 0
-  const elapsed = s
+  const remainingMs = s && s.ends_at ? new Date(s.ends_at).getTime() - clock : 0
+  const totalMs = s && s.duration_min ? s.duration_min * 60_000 : 0
+  const elapsed = s && !isOpen
     ? Math.min(100, Math.max(0, (1 - remainingMs / totalMs) * 100))
     : 0
+  // open (pay-as-you-go): count UP from start, live cost rounded up to 5 min
+  const elapsedMs = s ? clock - new Date(s.started_at).getTime() : 0
+  const openMinutes = openBillableMinutes(elapsedMs)
+  const openCost = s ? (openMinutes / 60) * s.price_per_hour : 0
   const isWarning =
     unit.status === 'expired' ||
     unit.status === 'warning_5' ||
@@ -168,6 +173,49 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
             >
               <Play className="size-4" />
               სესიის დაწყება
+            </button>
+          </div>
+        ) : isOpen ? (
+          <div className="mt-5">
+            <div className="flex items-end justify-between">
+              <div>
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span
+                    className="size-1.5 animate-pulse rounded-full"
+                    style={{ background: meta.color }}
+                  />
+                  გასული დრო • მიმდინარე
+                </p>
+                <p
+                  className="font-mono text-3xl font-extrabold tabular-nums"
+                  style={{ color: meta.color }}
+                >
+                  {formatClock(Math.max(0, elapsedMs))}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">მომხმარებელი</p>
+                <p className="font-semibold">{s.customer_name ?? '—'}</p>
+              </div>
+            </div>
+
+            {/* live running cost */}
+            <div className="nm-inset mt-4 flex items-center justify-between rounded-2xl px-4 py-3">
+              <span className="text-xs text-muted-foreground">
+                მიმდინარე თანხა • {gel(s.price_per_hour)}/სთ
+              </span>
+              <span className="font-mono text-xl font-extrabold text-primary">
+                {gel(openCost)}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setEndOpen(true)}
+              className="nm-btn mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-2.5 text-sm font-bold text-[var(--status-expired)]"
+            >
+              <Square className="size-4" />
+              დასრულება და გადახდა
             </button>
           </div>
         ) : (
@@ -261,20 +309,36 @@ function EndSessionModal({
   const { endSession } = usePlayroom()
   const { fiscalEnabled, issueReceipt } = useFiscal()
   const [tip, setTip] = useState(0)
+  const now = useNow()
 
   const s = unit.active_session
   if (!s) return null
 
+  // Open sessions are billed by elapsed time (rounded up to 5 min); the stored
+  // price_total is 0 until close, so compute the live amount here.
+  const elapsedMs = (now ?? Date.now()) - new Date(s.started_at).getTime()
+  const openMinutes = openBillableMinutes(elapsedMs)
+  const base = s.is_open ? (openMinutes / 60) * s.price_per_hour : s.price_total
+
   return (
     <Modal open={open} onClose={onClose} title="სესიის დასრულება">
       <div className="space-y-4">
+        {s.is_open && (
+          <div className="nm-inset flex items-center justify-between rounded-2xl px-4 py-3">
+            <span className="text-sm font-semibold text-muted-foreground">ნათამაშები დრო</span>
+            <span className="font-mono text-sm font-bold">
+              {formatClock(Math.max(0, elapsedMs))} → {openMinutes} წთ
+            </span>
+          </div>
+        )}
+
         <div className="nm-inset flex items-center justify-between rounded-2xl px-4 py-3">
           <span className="text-sm font-semibold text-muted-foreground">ძირითადი თანხა</span>
           <span className="font-mono text-xl font-extrabold text-primary">
-            {gel(s.price_total)}
+            {gel(base)}
           </span>
         </div>
-        
+
         <label className="block">
           <span className="text-sm font-semibold text-muted-foreground">ჩაიანი (₾)</span>
           <input
@@ -288,7 +352,7 @@ function EndSessionModal({
         </label>
 
         <p className="text-sm text-center font-bold">
-          სულ: <span className="text-primary">{gel(s.price_total)}</span>
+          სულ: <span className="text-primary">{gel(base)}</span>
           {tip > 0 && <span className="text-amber-400"> + ჩაიანი {gel(tip)}</span>}
         </p>
 
@@ -297,8 +361,8 @@ function EndSessionModal({
           onClick={async () => {
             if (fiscalEnabled && s) {
               await issueReceipt(
-                [{ name: `${unit.name} — სესია`, qty: 1, unitPrice: s.price_total }],
-                s.price_total,
+                [{ name: `${unit.name} — სესია`, qty: 1, unitPrice: base }],
+                base,
                 paymentMethodLabel[s.payment_method],
               )
             }
@@ -325,9 +389,10 @@ function StartSessionModal({
   onClose: () => void
   consoleId: number
 }) {
-  const { plans, startSession } = usePlayroom()
+  const { plans, startSession, startOpenSession } = usePlayroom()
   const activePlans = plans.filter((p) => p.is_active)
   const [planId, setPlanId] = useState(activePlans[0]?.id ?? 1)
+  const [mode, setMode] = useState<'fixed' | 'open'>('fixed')
   const [duration, setDuration] = useState(60)
   const [name, setName] = useState('')
   const [method, setMethod] = useState<PaymentMethod>('cash')
@@ -367,24 +432,59 @@ function StartSessionModal({
 
         <div>
           <p className="mb-2 text-sm font-semibold text-muted-foreground">
-            ხანგრძლივობა
+            სესიის ტიპი
           </p>
-          <div className="grid grid-cols-4 gap-2">
-            {durations.map((d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => setDuration(d)}
-                className={cn(
-                  'rounded-xl py-2.5 font-mono text-sm font-bold',
-                  d === duration ? 'nm-daylight text-primary' : 'nm-btn',
-                )}
-              >
-                {d}წთ
-              </button>
-            ))}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setMode('fixed')}
+              className={cn(
+                'rounded-xl py-2.5 text-sm font-bold',
+                mode === 'fixed' ? 'nm-daylight text-primary' : 'nm-btn',
+              )}
+            >
+              ფიქსირებული დრო
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('open')}
+              className={cn(
+                'rounded-xl py-2.5 text-sm font-bold',
+                mode === 'open' ? 'nm-daylight text-primary' : 'nm-btn',
+              )}
+            >
+              მიმდინარე (ღია)
+            </button>
           </div>
         </div>
+
+        {mode === 'fixed' ? (
+          <div>
+            <p className="mb-2 text-sm font-semibold text-muted-foreground">
+              ხანგრძლივობა
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {durations.map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDuration(d)}
+                  className={cn(
+                    'rounded-xl py-2.5 font-mono text-sm font-bold',
+                    d === duration ? 'nm-daylight text-primary' : 'nm-btn',
+                  )}
+                >
+                  {d}წთ
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="nm-inset rounded-2xl px-4 py-3 text-xs text-muted-foreground text-pretty">
+            მომხმარებელი გადაიხდის ნათამაშებ დროზე — თანხა დაითვლება დასრულებისას,
+            5 წუთამდე დამრგვალებით ({plan ? gel(plan.price_per_hour) : '—'}/სთ).
+          </div>
+        )}
 
         <div>
           <p className="mb-2 text-sm font-semibold text-muted-foreground">
@@ -445,31 +545,44 @@ function StartSessionModal({
         </div>
 
         <div className="nm-inset flex items-center justify-between rounded-2xl px-4 py-3">
-          <span className="text-sm text-muted-foreground">სულ ღირებულება</span>
+          <span className="text-sm text-muted-foreground">
+            {mode === 'fixed' ? 'სულ ღირებულება' : 'სავარაუდო ფასი'}
+          </span>
           <span className="font-mono text-xl font-extrabold text-primary">
-            {gel(total)}
+            {mode === 'fixed' ? gel(total) : `${plan ? gel(plan.price_per_hour) : '—'}/სთ`}
           </span>
         </div>
 
         <button
           type="button"
           onClick={() => {
-            startSession({
-              console_id: consoleId,
-              pricing_plan_id: planId,
-              duration_min: duration,
-              customer_name: name.trim() || undefined,
-              payment_method: method,
-              bank: method === 'cash' ? null : bank,
-            })
+            if (mode === 'fixed') {
+              startSession({
+                console_id: consoleId,
+                pricing_plan_id: planId,
+                duration_min: duration,
+                customer_name: name.trim() || undefined,
+                payment_method: method,
+                bank: method === 'cash' ? null : bank,
+              })
+            } else {
+              startOpenSession({
+                console_id: consoleId,
+                pricing_plan_id: planId,
+                customer_name: name.trim() || undefined,
+                payment_method: method,
+                bank: method === 'cash' ? null : bank,
+              })
+            }
             setName('')
             setMethod('cash')
+            setMode('fixed')
             onClose()
           }}
           className="nm-btn flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-extrabold text-primary"
         >
           <Play className="size-4" />
-          სესიის დაწყება
+          {mode === 'fixed' ? 'სესიის დაწყება' : 'მიმდინარე სესიის დაწყება'}
         </button>
       </div>
     </Modal>

@@ -119,7 +119,7 @@ export function HistoryModule() {
                 </span>
                 <span className="hidden items-center gap-1 text-sm md:col-span-2 md:flex">
                   <Clock3 className="size-3.5 text-muted-foreground" />
-                  {s.duration_min} წთ
+                  {s.duration_min ?? 0} წთ
                   {extra > 0 ? (
                     <span className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-[color-mix(in_oklch,var(--primary)_16%,transparent)] px-1.5 py-0.5 text-[10px] font-bold text-primary">
                       <Plus className="size-2.5" />
@@ -128,7 +128,7 @@ export function HistoryModule() {
                   ) : null}
                 </span>
                 <span className="hidden font-mono text-sm text-muted-foreground md:col-span-1 md:block">
-                  {s.ended_at ? timeOfDay(s.ended_at) : timeOfDay(s.ends_at)}
+                  {timeOfDay(s.ended_at ?? s.ends_at ?? s.started_at)}
                 </span>
                 <span className="text-right font-mono text-sm font-extrabold text-primary md:col-span-2 flex flex-col items-end gap-2">
                   <span className={cn(isRefunded && 'line-through text-muted-foreground')}>

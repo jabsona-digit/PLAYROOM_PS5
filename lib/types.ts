@@ -33,7 +33,7 @@ export interface AppSettings {
 export interface PricingPlan {
   id: number
   name: string
-  type: 'standard' | 'premium'
+  type: 'standard' | 'pro' | 'premium' | 'custom'
   controllers: number
   price_per_hour: number
   is_active: boolean
@@ -57,15 +57,16 @@ export interface Session {
   pricing_plan_id: number
   customer_name?: string
   started_at: string
-  ends_at: string
+  ends_at: string | null
   ended_at?: string
-  duration_min: number
+  duration_min: number | null
   price_per_hour: number
   price_total: number
   tip_amount: number
   status: SessionStatus
   payment_method: PaymentMethod
   bank?: Bank | null
+  is_open: boolean
   extensions: SessionExtension[]
 }
 

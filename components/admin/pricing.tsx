@@ -1,15 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Gamepad2, Minus, Plus, Tag } from 'lucide-react'
+import { Check, Gamepad2, Minus, Plus, Tag, Trash2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
 import { gel } from '@/lib/ui'
 import type { PricingPlan } from '@/lib/types'
+import { Modal } from './modal'
 
 function PlanCard({ plan }: { plan: PricingPlan }) {
-  const { updatePlanPrice, togglePlanActive } = usePlayroom()
+  const { updatePlanPrice, togglePlanActive, removePlan } = usePlayroom()
   const [draft, setDraft] = useState(plan.price_per_hour)
+  const [confirmDel, setConfirmDel] = useState(false)
   const dirty = draft !== plan.price_per_hour
 
   return (
@@ -28,25 +30,59 @@ function PlanCard({ plan }: { plan: PricingPlan }) {
           </div>
         </div>
 
-        <button
-          type="button"
-          role="switch"
-          aria-checked={plan.is_active}
-          onClick={() => togglePlanActive(plan.id)}
-          className={cn(
-            'relative h-7 w-12 rounded-full transition-colors',
-            plan.is_active ? 'nm-inset' : 'nm-inset',
+        <div className="flex items-center gap-2">
+          {confirmDel ? (
+            <>
+              <button
+                type="button"
+                aria-label="წაშლის დადასტურება"
+                onClick={() => {
+                  removePlan(plan.id)
+                  setConfirmDel(false)
+                }}
+                className="nm-btn flex size-9 items-center justify-center rounded-xl text-[var(--status-expired)]"
+              >
+                <Check className="size-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="გაუქმება"
+                onClick={() => setConfirmDel(false)}
+                className="nm-btn flex size-9 items-center justify-center rounded-xl text-muted-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                aria-label="ტარიფის წაშლა"
+                onClick={() => setConfirmDel(true)}
+                className="nm-btn flex size-9 items-center justify-center rounded-xl text-muted-foreground"
+              >
+                <Trash2 className="size-4" />
+              </button>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={plan.is_active}
+                aria-label="ტარიფის გააქტიურება"
+                onClick={() => togglePlanActive(plan.id)}
+                className="nm-inset relative h-7 w-12 rounded-full transition-colors"
+              >
+                <span
+                  className={cn(
+                    'absolute top-1 size-5 rounded-full transition-all',
+                    plan.is_active
+                      ? 'left-6 bg-primary shadow-[0_0_12px_var(--primary)]'
+                      : 'left-1 bg-muted-foreground',
+                  )}
+                />
+              </button>
+            </>
           )}
-        >
-          <span
-            className={cn(
-              'absolute top-1 size-5 rounded-full transition-all',
-              plan.is_active
-                ? 'left-6 bg-primary shadow-[0_0_12px_var(--primary)]'
-                : 'left-1 bg-muted-foreground',
-            )}
-          />
-        </button>
+        </div>
       </div>
 
       <div className="nm-inset mt-6 flex items-center justify-between rounded-2xl px-3 py-3">
@@ -93,13 +129,133 @@ function PlanCard({ plan }: { plan: PricingPlan }) {
   )
 }
 
+function AddPlanModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { addPlan } = usePlayroom()
+  const [name, setName] = useState('')
+  const [controllers, setControllers] = useState(2)
+  const [price, setPrice] = useState(5)
+
+  const reset = () => {
+    setName('')
+    setControllers(2)
+    setPrice(5)
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="ახალი ტარიფი">
+      <div className="space-y-5">
+        <label className="block">
+          <span className="text-sm font-semibold text-muted-foreground">სახელი</span>
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="მაგ: კუპე Premium"
+            className="nm-inset mt-1.5 w-full rounded-2xl px-4 py-3 text-sm font-semibold outline-none placeholder:text-muted-foreground"
+          />
+        </label>
+
+        <div>
+          <p className="mb-2 text-sm font-semibold text-muted-foreground">ჯოისტიკების რაოდენობა</p>
+          <div className="nm-inset flex items-center justify-between rounded-2xl px-3 py-3">
+            <button
+              type="button"
+              aria-label="შემცირება"
+              onClick={() => setControllers((c) => Math.max(1, c - 1))}
+              className="nm-btn flex size-10 items-center justify-center rounded-xl"
+            >
+              <Minus className="size-4" />
+            </button>
+            <div className="flex items-center gap-2 text-center">
+              <Gamepad2 className="size-5 text-primary" />
+              <span className="font-mono text-2xl font-extrabold text-primary">{controllers}</span>
+            </div>
+            <button
+              type="button"
+              aria-label="გაზრდა"
+              onClick={() => setControllers((c) => Math.min(8, c + 1))}
+              className="nm-btn flex size-10 items-center justify-center rounded-xl"
+            >
+              <Plus className="size-4" />
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-2 text-sm font-semibold text-muted-foreground">ფასი საათში</p>
+          <div className="nm-inset flex items-center justify-between rounded-2xl px-3 py-3">
+            <button
+              type="button"
+              aria-label="ფასის შემცირება"
+              onClick={() => setPrice((p) => Math.max(1, Math.round((p - 0.5) * 2) / 2))}
+              className="nm-btn flex size-10 items-center justify-center rounded-xl"
+            >
+              <Minus className="size-4" />
+            </button>
+            <p className="font-mono text-2xl font-extrabold text-primary">{gel(price)}</p>
+            <button
+              type="button"
+              aria-label="ფასის გაზრდა"
+              onClick={() => setPrice((p) => Math.round((p + 0.5) * 2) / 2)}
+              className="nm-btn flex size-10 items-center justify-center rounded-xl"
+            >
+              <Plus className="size-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              reset()
+              onClose()
+            }}
+            className="nm-btn flex-1 rounded-2xl px-4 py-3 text-sm font-bold text-muted-foreground"
+          >
+            გაუქმება
+          </button>
+          <button
+            type="button"
+            disabled={!name.trim()}
+            onClick={async () => {
+              await addPlan({ name, controllers, price_per_hour: price })
+              reset()
+              onClose()
+            }}
+            className="nm-daylight flex-1 rounded-2xl px-4 py-3 text-sm font-bold text-primary disabled:opacity-50"
+          >
+            დამატება
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 export function Pricing() {
   const { plans } = usePlayroom()
+  const [addOpen, setAddOpen] = useState(false)
+
   return (
-    <div className="grid gap-5 sm:grid-cols-2">
-      {plans.map((p) => (
-        <PlanCard key={p.id} plan={p} />
-      ))}
-    </div>
+    <>
+      <div className="grid gap-5 sm:grid-cols-2">
+        {plans.map((p) => (
+          <PlanCard key={p.id} plan={p} />
+        ))}
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          className="nm-btn flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-3xl text-muted-foreground"
+        >
+          <span className="nm-inset flex size-14 items-center justify-center rounded-2xl">
+            <Plus className="size-6 text-primary" />
+          </span>
+          <span className="text-sm font-bold">ახალი ტარიფის დამატება</span>
+        </button>
+      </div>
+
+      <AddPlanModal open={addOpen} onClose={() => setAddOpen(false)} />
+    </>
   )
 }

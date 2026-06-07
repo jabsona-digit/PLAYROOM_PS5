@@ -74,6 +74,13 @@ export function startOfMonth() {
   return d.getTime()
 }
 
+/** Open (pay-as-you-go) session billing: round elapsed time UP to the nearest
+    5 minutes, minimum 5. Mirrors the `end_session` RPC so the live estimate on
+    the card matches the amount the server actually charges. */
+export function openBillableMinutes(elapsedMs: number) {
+  return Math.max(5, Math.ceil(Math.max(0, elapsedMs) / 1000 / 60 / 5) * 5)
+}
+
 export function formatClock(ms: number) {
   const total = Math.max(0, Math.floor(ms / 1000))
   const h = Math.floor(total / 3600)

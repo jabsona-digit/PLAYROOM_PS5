@@ -106,7 +106,7 @@ export function Cashier() {
     const byBank = { TBC: 0, BOG: 0 }
 
     for (const s of completed) {
-      const ts = new Date(s.ended_at ?? s.ends_at).getTime()
+      const ts = new Date(s.ended_at ?? s.ends_at ?? s.started_at).getTime()
       const amt = s.price_total
       const tip = s.tip_amount
       
@@ -478,7 +478,7 @@ export function Cashier() {
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {s.console_name} • {s.plan_name} •{' '}
-                    {s.ended_at ? timeOfDay(s.ended_at) : timeOfDay(s.ends_at)}
+                    {timeOfDay(s.ended_at ?? s.ends_at ?? s.started_at)}
                   </p>
                 </div>
                 <span className="ml-3 shrink-0 font-mono text-sm font-extrabold text-primary">

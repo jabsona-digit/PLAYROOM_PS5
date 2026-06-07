@@ -66,12 +66,21 @@ interface PlayroomState {
     payment_method: PaymentMethod
     bank?: Bank | null
   }) => void
+  startOpenSession: (params: {
+    console_id: number
+    pricing_plan_id: number
+    customer_name?: string
+    payment_method: PaymentMethod
+    bank?: Bank | null
+  }) => void
   extendSession: (console_id: number, extra_minutes: number) => void
   endSession: (console_id: number, tip?: number) => void
   refreshLive: () => Promise<void>
   tick: () => void
   updatePlanPrice: (id: number, price: number) => void
   togglePlanActive: (id: number) => void
+  addPlan: (params: { name: string; controllers: number; price_per_hour: number }) => Promise<void>
+  removePlan: (id: number) => Promise<void>
   clockToggle: (pin: string) => Promise<{ ok: boolean; message: string }>
 }
 
@@ -97,15 +106,16 @@ function mapSession(r: any): Session {
     pricing_plan_id: r.pricing_plan_id,
     customer_name: r.customer_name ?? undefined,
     started_at: r.started_at,
-    ends_at: r.ends_at,
+    ends_at: r.ends_at ?? null,
     ended_at: r.ended_at ?? undefined,
-    duration_min: r.duration_min,
+    duration_min: r.duration_min ?? null,
     price_per_hour: num(r.price_per_hour),
     price_total: num(r.price_total),
     tip_amount: num(r.tip_amount),
     status: r.status as SessionStatus,
     payment_method: (r.payment_method ?? 'cash') as Session['payment_method'],
     bank: (r.bank ?? null) as Session['bank'],
+    is_open: r.is_open ?? false,
     extensions: (r.session_extensions ?? []).map(mapExtension),
   }
 }
@@ -404,6 +414,23 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
     [pushToast, refetchLive],
   )
 
+  const startOpenSession: PlayroomState['startOpenSession'] = useCallback(
+    async ({ console_id, pricing_plan_id, customer_name, payment_method, bank }) => {
+      const target = consolesRef.current.find((c) => c.id === console_id)
+      const { error } = await supabase.rpc('start_open_session', {
+        p_console_id: console_id,
+        p_plan_id: pricing_plan_id,
+        p_customer_name: customer_name ?? undefined,
+        p_payment_method: payment_method,
+        p_bank: payment_method === 'cash' ? undefined : bank ?? undefined,
+      })
+      if (error) return pushToast('danger', error.message)
+      pushToast('success', `${target?.name ?? 'კონსოლი'} — მიმდინარე სესია დაიწყო`)
+      await refetchLive()
+    },
+    [pushToast, refetchLive],
+  )
+
   const extendSession: PlayroomState['extendSession'] = useCallback(
     async (console_id, extra_minutes) => {
       const sid = consolesRef.current.find((c) => c.id === console_id)?.active_session?.id
@@ -459,6 +486,50 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
     [pushToast, loadPlans],
   )
 
+  const addPlan: PlayroomState['addPlan'] = useCallback(
+    async ({ name, controllers, price_per_hour }) => {
+      const org = orgRef.current
+      if (!org) return
+      const clean = name.trim()
+      if (!clean) return pushToast('danger', 'შეიყვანე ტარიფის სახელი')
+      // map controller count to a tier label; anything else is "custom"
+      const type =
+        controllers === 2 ? 'standard' :
+        controllers === 3 ? 'pro' :
+        controllers === 4 ? 'premium' : 'custom'
+      const { error } = await supabase.from('pricing_plans').insert({
+        org_id: org,
+        name: clean,
+        type,
+        controllers,
+        price_per_hour,
+      })
+      if (error) return pushToast('danger', error.message)
+      await loadPlans()
+      pushToast('success', `ტარიფი „${clean}" დაემატა`)
+    },
+    [pushToast, loadPlans],
+  )
+
+  const removePlan: PlayroomState['removePlan'] = useCallback(
+    async (id) => {
+      // Hard-delete; if past sessions reference it, fall back to deactivating.
+      const { error } = await supabase.from('pricing_plans').delete().eq('id', id)
+      if (error) {
+        const { error: deErr } = await supabase
+          .from('pricing_plans')
+          .update({ is_active: false })
+          .eq('id', id)
+        if (deErr) return pushToast('danger', deErr.message)
+        await loadPlans()
+        return pushToast('info', 'ტარიფზე სესიებია — წაშლის ნაცვლად გაითიშა')
+      }
+      await loadPlans()
+      pushToast('success', 'ტარიფი წაიშალა')
+    },
+    [pushToast, loadPlans],
+  )
+
   const clockToggle: PlayroomState['clockToggle'] = useCallback(
     async (pin) => {
       const venue = venueRef.current
@@ -508,6 +579,8 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
 
     const next = cur.map((c) => {
       if (!c.active_session) return c
+      // open (pay-as-you-go) sessions have no end time — they never expire
+      if (c.active_session.is_open || !c.active_session.ends_at) return c
       const left = (new Date(c.active_session.ends_at).getTime() - now) / 60_000
       let status: ConsoleStatus = 'active'
       if (left <= 0) status = 'expired'
@@ -557,12 +630,15 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
       updateSettings,
       resetSettings,
       startSession,
+      startOpenSession,
       extendSession,
       endSession,
       refreshLive: refetchLive,
       tick,
       updatePlanPrice,
       togglePlanActive,
+      addPlan,
+      removePlan,
       clockToggle,
     }),
     [
@@ -582,12 +658,15 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
       updateSettings,
       resetSettings,
       startSession,
+      startOpenSession,
       extendSession,
       endSession,
       refetchLive,
       tick,
       updatePlanPrice,
       togglePlanActive,
+      addPlan,
+      removePlan,
       clockToggle,
     ],
   )

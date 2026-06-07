@@ -852,10 +852,11 @@ export type Database = {
           created_at: string
           created_by: number | null
           customer_name: string | null
-          duration_min: number
+          duration_min: number | null
           ended_at: string | null
-          ends_at: string
+          ends_at: string | null
           id: string
+          is_open: boolean
           notified_10: boolean
           notified_5: boolean
           org_id: string
@@ -877,10 +878,11 @@ export type Database = {
           created_at?: string
           created_by?: number | null
           customer_name?: string | null
-          duration_min: number
+          duration_min?: number | null
           ended_at?: string | null
-          ends_at: string
+          ends_at?: string | null
           id?: string
+          is_open?: boolean
           notified_10?: boolean
           notified_5?: boolean
           org_id: string
@@ -902,10 +904,11 @@ export type Database = {
           created_at?: string
           created_by?: number | null
           customer_name?: string | null
-          duration_min?: number
+          duration_min?: number | null
           ended_at?: string | null
-          ends_at?: string
+          ends_at?: string | null
           id?: string
+          is_open?: boolean
           notified_10?: boolean
           notified_5?: boolean
           org_id?: string
@@ -1367,6 +1370,48 @@ export type Database = {
         Args: { p_employee_id: number; p_pin: string }
         Returns: undefined
       }
+      start_open_session: {
+        Args: {
+          p_bank?: string
+          p_console_id: number
+          p_created_by?: number
+          p_customer_name?: string
+          p_payment_method?: string
+          p_plan_id: number
+        }
+        Returns: {
+          bank: string | null
+          console_id: number
+          created_at: string
+          created_by: number | null
+          customer_name: string | null
+          duration_min: number | null
+          ended_at: string | null
+          ends_at: string | null
+          id: string
+          is_open: boolean
+          notified_10: boolean
+          notified_5: boolean
+          org_id: string
+          payment_method: string
+          price_per_hour: number
+          price_total: number
+          pricing_plan_id: number
+          refund_amount: number | null
+          refund_reason: string | null
+          refunded_at: string | null
+          started_at: string
+          status: string
+          tip_amount: number
+          venue_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       start_session: {
         Args: {
           p_bank?: string
@@ -1383,10 +1428,11 @@ export type Database = {
           created_at: string
           created_by: number | null
           customer_name: string | null
-          duration_min: number
+          duration_min: number | null
           ended_at: string | null
-          ends_at: string
+          ends_at: string | null
           id: string
+          is_open: boolean
           notified_10: boolean
           notified_5: boolean
           org_id: string
