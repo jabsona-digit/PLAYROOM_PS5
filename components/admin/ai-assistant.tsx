@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Bot, Send, Sparkles, X, Check, Ban, LoaderCircle } from 'lucide-react'
+import { Bot, Send, Sparkles, X, Check, Ban, LoaderCircle, Mic } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase/client'
 import { usePlayroom } from '@/lib/store'
@@ -28,6 +28,8 @@ function describeAction(a: PendingAction): string {
       const items = Array.isArray(x.items) ? x.items.length : 0
       return `ბარის გაყიდვა: ${items} პოზიცია, ${x.payment_method}`
     }
+    case 'restock_product':
+      return `მარაგის შევსება: ${x.product_name ?? 'პროდუქტი #' + x.product_id} +${x.add_qty}`
     default:
       return a.name
   }
@@ -46,7 +48,10 @@ export function AiAssistant() {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState<PendingAction | null>(null)
+  const [listening, setListening] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null)
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -92,6 +97,44 @@ export function AiAssistant() {
     // reflect any data change in the live dashboard
     await refreshLive()
     pushToast('success', 'შესრულდა')
+  }
+
+  // Voice input via the browser's Web Speech API (Georgian).
+  const toggleMic = () => {
+    if (listening) {
+      recognitionRef.current?.stop()
+      return
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SR) {
+      pushToast('danger', 'ამ ბრაუზერს ხმოვანი შეტანა არ აქვს (სცადე Chrome)')
+      return
+    }
+    const rec = new SR()
+    rec.lang = 'ka-GE'
+    rec.interimResults = true
+    rec.continuous = false
+    let finalText = ''
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      let interim = ''
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript
+        if (e.results[i].isFinal) finalText += t
+        else interim += t
+      }
+      setInput(finalText || interim)
+    }
+    rec.onerror = () => setListening(false)
+    rec.onend = () => {
+      setListening(false)
+      const said = finalText.trim()
+      if (said) send(said)
+    }
+    recognitionRef.current = rec
+    setListening(true)
+    rec.start()
   }
 
   return (
@@ -210,10 +253,27 @@ export function AiAssistant() {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="დაწერე შეტყობინება..."
+              placeholder={listening ? 'გისმენ...' : 'დაწერე ან ისაუბრე...'}
               disabled={busy}
               className="nm-inset flex-1 rounded-2xl px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
             />
+            <button
+              type="button"
+              onClick={toggleMic}
+              disabled={busy}
+              aria-label="ხმოვანი შეტანა"
+              className={cn(
+                'nm-btn flex size-11 shrink-0 items-center justify-center rounded-2xl disabled:opacity-40',
+                listening ? 'text-[var(--status-expired)]' : 'text-muted-foreground',
+              )}
+              style={
+                listening
+                  ? { boxShadow: '0 0 0 1px color-mix(in oklch, var(--status-expired) 60%, transparent), 0 0 16px 2px color-mix(in oklch, var(--status-expired) 45%, transparent)' }
+                  : undefined
+              }
+            >
+              <Mic className={cn('size-4', listening && 'animate-pulse')} />
+            </button>
             <button
               type="submit"
               disabled={busy || !input.trim()}

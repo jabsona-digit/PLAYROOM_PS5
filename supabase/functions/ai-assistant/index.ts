@@ -41,7 +41,7 @@ const READ_TOOLS = new Set([
   'list_expenses',
   'get_revenue_summary',
 ])
-const WRITE_TOOLS = new Set(['start_session', 'end_session', 'create_bar_sale'])
+const WRITE_TOOLS = new Set(['start_session', 'end_session', 'create_bar_sale', 'restock_product'])
 
 const toolDeclarations = [
   { name: 'get_overview', description: 'მიმდინარე მდგომარეობა: აქტიური/თავისუფალი კონსოლები, იწურება.', parameters: { type: 'object', properties: {} } },
@@ -58,6 +58,7 @@ const toolDeclarations = [
   { name: 'start_session', description: 'ახალი სესია კონსოლზე. წინასწარ მოიძიე console_id და plan_id.', parameters: { type: 'object', properties: { console_id: { type: 'integer' }, plan_id: { type: 'integer' }, duration_min: { type: 'integer' }, customer_name: { type: 'string' }, payment_method: { type: 'string', enum: ['cash', 'card', 'transfer'] }, bank: { type: 'string', enum: ['TBC', 'BOG'] } }, required: ['console_id', 'plan_id', 'duration_min', 'payment_method'] } },
   { name: 'end_session', description: 'აქტიური სესიის დასრულება. session_id list_consoles-დან.', parameters: { type: 'object', properties: { session_id: { type: 'string' }, tip: { type: 'number' } }, required: ['session_id'] } },
   { name: 'create_bar_sale', description: 'ბარის გაყიდვა. items:[{product_id,qty}]. product_id list_bar_products-დან.', parameters: { type: 'object', properties: { items: { type: 'array', items: { type: 'object', properties: { product_id: { type: 'integer' }, qty: { type: 'integer' } }, required: ['product_id', 'qty'] } }, payment_method: { type: 'string', enum: ['cash', 'card', 'transfer'] }, bank: { type: 'string', enum: ['TBC', 'BOG'] }, tip: { type: 'number' }, session_id: { type: 'string' } }, required: ['items', 'payment_method'] } },
+  { name: 'restock_product', description: 'არსებული პროდუქტის მარაგის შევსება — ემატება მიმდინარე მარაგს. მხოლოდ უკვე არსებულ პროდუქტზე მუშაობს, ახალს ვერ ქმნის. product_id მოიძიე list_bar_products-დან.', parameters: { type: 'object', properties: { product_id: { type: 'integer' }, add_qty: { type: 'integer' }, product_name: { type: 'string' } }, required: ['product_id', 'add_qty'] } },
 ]
 
 async function runTool(
@@ -144,6 +145,18 @@ async function runTool(
       if (error) throw error
       return { sale_id: data }
     }
+    case 'restock_product': {
+      const id = args.product_id
+      const add = Number(args.add_qty)
+      if (!id || !Number.isFinite(add) || add <= 0) return { error: 'invalid args' }
+      // only existing products — single() fails if not found, so we never create new ones
+      const { data: prod, error: e1 } = await db.from('bar_products').select('id, name, stock_quantity').eq('id', id).single()
+      if (e1 || !prod) return { error: 'product_not_found' }
+      const newQty = (prod.stock_quantity ?? 0) + add
+      const { error: e2 } = await db.from('bar_products').update({ stock_quantity: newQty }).eq('id', id)
+      if (e2) throw e2
+      return { name: prod.name, added: add, new_stock: newQty }
+    }
     default:
       return { error: `unknown tool ${name}` }
   }
@@ -199,6 +212,7 @@ ${isPlatformAdmin ? '- პლატფორმა (GOD MODE): ყველა �
 - მონაცემებზე კითხვისას ჯერ გამოიძახე read-ფუნქცია, მერე უპასუხე ცოცხალი მონაცემებით.
 - მოქმედებამდე (სესია/გაყიდვა) აუცილებლად მოიძიე საჭირო id-ები (list_consoles/list_plans/list_bar_products).
 - არასდროს გამოიგონო id ან მონაცემი. გაუგებრობისას ჰკითხე მომხმარებელს.
+- მარაგის შევსება (restock_product) მხოლოდ უკვე არსებულ პროდუქტზე — ჯერ list_bar_products-ით იპოვე პროდუქტი. თუ პროდუქტი არ არსებობს, არ შექმნა — უთხარი მომხმარებელს რომ ჯერ საწყობში უნდა დაამატოს.
 - მოქმედებებს დადასტურება ავტომატურად სჭირდება — შენ უბრალოდ გამოიძახე ფუნქცია.`
 }
 
