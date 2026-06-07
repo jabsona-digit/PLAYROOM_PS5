@@ -34,6 +34,11 @@ const READ_TOOLS = new Set([
   'list_plans',
   'list_bar_products',
   'list_customers',
+  'recent_bar_sales',
+  'recent_sessions',
+  'list_employees',
+  'list_reservations',
+  'list_expenses',
   'get_revenue_summary',
 ])
 const WRITE_TOOLS = new Set(['start_session', 'end_session', 'create_bar_sale'])
@@ -44,6 +49,11 @@ const toolDeclarations = [
   { name: 'list_plans', description: 'აქტიური ტარიფების სია (id, სახელი, ფასი/სთ, ჯოისტიკები).', parameters: { type: 'object', properties: {} } },
   { name: 'list_bar_products', description: 'ბარის პროდუქტების სია (id, სახელი, ფასი, მარაგი).', parameters: { type: 'object', properties: {} } },
   { name: 'list_customers', description: 'კლიენტების სია (სახელი, ტელეფონი, ქულები, ვიზიტები, დახარჯული). ბოლოს დამატებულები პირველ ადგილზე.', parameters: { type: 'object', properties: {} } },
+  { name: 'recent_bar_sales', description: 'ბოლო ბარის გაყიდვები — დრო, თანხა, მეთოდი, ნივთები. პასუხობს "ბოლოს რა გაიყიდა" ტიპის კითხვებზე.', parameters: { type: 'object', properties: {} } },
+  { name: 'recent_sessions', description: 'ბოლო დასრულებული სესიები — კლიენტი, თანხა, ხანგრძლივობა, დრო.', parameters: { type: 'object', properties: {} } },
+  { name: 'list_employees', description: 'თანამშრომლების სია (სახელი, როლი, აქტიურია თუ არა).', parameters: { type: 'object', properties: {} } },
+  { name: 'list_reservations', description: 'ჯავშნები — კლიენტი, დრო, ხანგრძლივობა, სტატუსი.', parameters: { type: 'object', properties: {} } },
+  { name: 'list_expenses', description: 'ბოლო ხარჯები — კატეგორია, თანხა, აღწერა, თარიღი.', parameters: { type: 'object', properties: {} } },
   { name: 'get_revenue_summary', description: 'შემოსავალი მოცემულ პერიოდში (სესიები + ბარი). თარიღები: YYYY-MM-DD.', parameters: { type: 'object', properties: { from: { type: 'string' }, to: { type: 'string' } } } },
   { name: 'start_session', description: 'ახალი სესია კონსოლზე. წინასწარ მოიძიე console_id და plan_id.', parameters: { type: 'object', properties: { console_id: { type: 'integer' }, plan_id: { type: 'integer' }, duration_min: { type: 'integer' }, customer_name: { type: 'string' }, payment_method: { type: 'string', enum: ['cash', 'card', 'transfer'] }, bank: { type: 'string', enum: ['TBC', 'BOG'] } }, required: ['console_id', 'plan_id', 'duration_min', 'payment_method'] } },
   { name: 'end_session', description: 'აქტიური სესიის დასრულება. session_id list_consoles-დან.', parameters: { type: 'object', properties: { session_id: { type: 'string' }, tip: { type: 'number' } }, required: ['session_id'] } },
@@ -81,6 +91,31 @@ async function runTool(
     }
     case 'list_customers': {
       const { data, error } = await db.from('customers').select('name, phone, points, visit_count, total_spent, created_at').is('deleted_at', null).order('created_at', { ascending: false }).limit(30)
+      if (error) throw error
+      return data
+    }
+    case 'recent_bar_sales': {
+      const { data, error } = await db.from('bar_sales').select('created_at, total, tip_amount, payment_method, bank, customer_name, voided_at, bar_sale_items(name, qty, line_total)').order('created_at', { ascending: false }).limit(15)
+      if (error) throw error
+      return data
+    }
+    case 'recent_sessions': {
+      const { data, error } = await db.from('sessions').select('customer_name, price_total, tip_amount, duration_min, started_at, ended_at, status, payment_method, console_id').eq('status', 'completed').order('ended_at', { ascending: false }).limit(15)
+      if (error) throw error
+      return data
+    }
+    case 'list_employees': {
+      const { data, error } = await db.from('employees').select('name, role, is_active').order('name')
+      if (error) throw error
+      return data
+    }
+    case 'list_reservations': {
+      const { data, error } = await db.from('reservations').select('customer_name, customer_phone, start_time, duration_min, status, console_id').order('start_time', { ascending: false }).limit(20)
+      if (error) throw error
+      return data
+    }
+    case 'list_expenses': {
+      const { data, error } = await db.from('expenses').select('category, amount, description, expense_date').order('expense_date', { ascending: false }).limit(20)
       if (error) throw error
       return data
     }
