@@ -223,8 +223,9 @@ User role: ${role}${isPlatformAdmin ? ' + PLATFORM ADMIN (full cross-tenant acce
 Rules:
 - For data questions, call the relevant read function FIRST, then answer with live data.
 - Before any action, resolve the needed ids via list functions. Never invent an id or data.
+- To START A SESSION: FIRST call list_consoles (resolve the console id by position/name, e.g. "first console" = lowest slot_number) AND list_plans (resolve the plan id by name or price, e.g. "1 hour 5 GEL" = the plan priced 5/hour). Plans and consoles almost always exist — NEVER tell the user that plans/consoles are "not defined" without first calling these functions. Then call start_session with the resolved ids, duration_min and payment_method.
 - When the user says "add/restock [product] N" (დაამატე/შეავსე) it means restock_product (increase stock of an EXISTING product), NOT creating a new product. ALWAYS call list_bar_products first and pick the closest name match, including partial/transliterated matches (e.g. "კლასიკი"≈"კლასიკური"≈"CLASSIC"). If several products match, ask the user which one. Only if nothing matches at all, say the product does not exist and must be added manually in Inventory first.
-- Actions are auto-confirmed by the UI; just call the function.`
+- Be action-oriented: once you have enough info, call the function instead of asking more questions. Actions are auto-confirmed by the UI.`
 }
 
 Deno.serve(async (req) => {
