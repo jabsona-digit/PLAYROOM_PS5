@@ -24,6 +24,7 @@ import { PlatformConsole } from './platform'
 import { Billing } from './billing'
 import { Accounting } from './accounting'
 import { Reservations } from './reservations'
+import { AiAssistant } from './ai-assistant'
 import { ToastViewport } from './toast'
 
 /* Single app-wide heartbeat: drives status changes, timer notifications and
@@ -160,6 +161,7 @@ function Workspace({ email }: { email?: string }) {
           </main>
         </div>
       </div>
+      <AiAssistant />
       <ToastViewport />
     </PlayroomProvider>
   )
