@@ -194,13 +194,22 @@ async function enrichAction(
 
 // Gemini call with model fallback + retry on transient 429/503.
 async function callGemini(systemPrompt: string, contents: unknown[]) {
-  const payload = JSON.stringify({
+  const base = {
     system_instruction: { parts: [{ text: systemPrompt }] },
     contents,
     tools: [{ function_declarations: toolDeclarations }],
     tool_config: { function_calling_config: { mode: 'AUTO' } },
-  })
+  }
   for (const model of MODELS) {
+    // Gemini 2.5 models "think" by default and can spend the whole output budget
+    // on hidden thoughts, returning an EMPTY candidate (no text, no functionCall).
+    // Disable thinking for a direct, reliable answer. Older models reject
+    // thinkingConfig, so only attach it for 2.5.* (and a 400 falls to next model).
+    const payload = JSON.stringify(
+      model.includes('2.5')
+        ? { ...base, generationConfig: { thinkingConfig: { thinkingBudget: 0 } } }
+        : base,
+    )
     for (let attempt = 0; attempt < 2; attempt++) {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
@@ -213,7 +222,7 @@ async function callGemini(systemPrompt: string, contents: unknown[]) {
         await sleep(500 * (attempt + 1))
         continue // retry, then fall through to next model
       }
-      if (res.status === 404) break // model unavailable → try next model
+      if (res.status === 404 || res.status === 400) break // model/params unsupported → next model
       throw new Error(`Gemini ${res.status}: ${errTxt}`)
     }
   }
@@ -315,7 +324,11 @@ Deno.serve(async (req) => {
         | undefined
 
       if (!fnCall) {
-        const text = parts.find((p: { text?: string }) => p.text)?.text ?? '...'
+        const text = parts.find((p: { text?: string }) => p.text)?.text
+        if (!text) {
+          console.error('EMPTY_CANDIDATE', JSON.stringify(g?.candidates?.[0]?.finishReason ?? g))
+          return json({ type: 'text', text: 'ვერ მოვამზადე პასუხი 🙏 სცადე ხელახლა ან უფრო კონკრეტულად დაწერე.' })
+        }
         return json({ type: 'text', text })
       }
       if (WRITE_TOOLS.has(fnCall.name)) {
