@@ -26,6 +26,8 @@ import { Accounting } from './accounting'
 import { Reservations } from './reservations'
 import { AiAssistant } from './ai-assistant'
 import { ToastViewport } from './toast'
+import { PinGate } from './pin-gate'
+import { useModuleAccess, firstAllowedModule } from '@/lib/org'
 
 /* Single app-wide heartbeat: drives status changes, timer notifications and
    auto-end regardless of which tab is open. Lives inside the provider. */
@@ -120,8 +122,19 @@ function ImpersonationBar({ onBack }: { onBack: () => void }) {
 }
 
 function Workspace({ email }: { email?: string }) {
+  const { activeEmployee, hasEmployees, activeRole, isPlatformAdmin } = useOrg()
   const [active, setActive] = useState<ModuleKey>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // If the active module isn't allowed for this role, jump to the first one that is
+  // (e.g. an accountant has no dashboard → lands on accounting).
+  const canAccess = useModuleAccess(active)
+  useEffect(() => {
+    if (!canAccess && activeRole && !isPlatformAdmin) {
+      const fallback = firstAllowedModule(activeRole)
+      if (fallback !== active) setActive(fallback)
+    }
+  }, [canAccess, activeRole, active, isPlatformAdmin])
 
   const logout = async () => {
     await supabase.auth.signOut()
@@ -130,6 +143,17 @@ function Workspace({ email }: { email?: string }) {
   const handleSelect = (key: ModuleKey) => {
     setActive(key)
     setSidebarOpen(false)
+  }
+
+  // If there are employees, we MUST be signed in as one.
+  // If no employees, we allow full access (owner).
+  if (hasEmployees && !activeEmployee) {
+    return (
+      <PlayroomProvider>
+        <PinGate />
+        <ToastViewport />
+      </PlayroomProvider>
+    )
   }
 
   return (
@@ -149,7 +173,7 @@ function Workspace({ email }: { email?: string }) {
           <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
             <ImpersonationBar onBack={() => setActive('platform')} />
             <Topbar active={active} onMenuClick={() => setSidebarOpen(true)} />
-            <div className="mt-8">
+            <div className="mt-8 animate-in slide-in-from-bottom-4 duration-500">
               {active === 'dashboard' && <Dashboard />}
               {active === 'pos' && <Pos />}
               {active === 'cashier' && <Cashier />}

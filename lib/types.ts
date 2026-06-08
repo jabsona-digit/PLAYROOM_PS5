@@ -95,7 +95,7 @@ export interface Shift {
   work_date: string
 }
 
-export type OrgRole = 'owner' | 'admin' | 'manager' | 'cashier' | 'operator'
+export type OrgRole = 'owner' | 'admin' | 'manager' | 'accountant' | 'cashier' | 'operator'
 
 export interface Venue {
   id: string

@@ -16,10 +16,11 @@ import {
   CreditCard,
   Calculator,
   CalendarClock,
+  Lock,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useOrg } from '@/lib/org'
+import { useOrg, useModuleAccess } from '@/lib/org'
 import type { ModuleKey } from '@/lib/types'
 
 const NAV: { key: ModuleKey; label: string; icon: LucideIcon }[] = [
@@ -37,6 +38,40 @@ const NAV: { key: ModuleKey; label: string; icon: LucideIcon }[] = [
   { key: 'reservations', label: 'ჯავშნები', icon: CalendarClock },
 ]
 
+function NavButton({ item, active, onSelect }: { 
+  item: { key: ModuleKey; label: string; icon: LucideIcon }; 
+  active: boolean; 
+  onSelect: (key: ModuleKey) => void 
+}) {
+  const hasAccess = useModuleAccess(item.key)
+  if (!hasAccess) return null
+
+  const Icon = item.icon
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(item.key)}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'group flex items-center gap-3 rounded-2xl px-3 py-3.5 text-sm font-semibold outline-none',
+        active ? 'nm-daylight' : 'nm-btn',
+      )}
+    >
+      <Icon
+        className={cn(
+          'size-5 shrink-0 transition-colors',
+          active
+            ? 'text-primary drop-shadow-[0_0_8px_var(--primary)]'
+            : 'text-muted-foreground group-hover:text-foreground',
+        )}
+      />
+      <span className={cn(active ? 'text-primary text-glow' : 'text-foreground')}>
+        {item.label}
+      </span>
+    </button>
+  )
+}
+
 export function Sidebar({
   active,
   onSelect,
@@ -52,8 +87,8 @@ export function Sidebar({
   open: boolean
   onClose: () => void
 }) {
-  const { isPlatformAdmin } = useOrg()
-  const initial = email?.trim()?.[0]?.toUpperCase() ?? 'A'
+  const { isPlatformAdmin, activeEmployee, activeRole, lockTerminal, hasEmployees } = useOrg()
+  const initial = (activeEmployee?.name ?? email ?? 'A').trim()?.[0]?.toUpperCase()
   const nav = isPlatformAdmin
     ? [...NAV, { key: 'platform' as ModuleKey, label: 'პლატფორმა', icon: Crown }]
     : NAV
@@ -73,7 +108,7 @@ export function Sidebar({
       <aside
         className={cn(
           // layout
-          'flex shrink-0 flex-col gap-3 overflow-y-auto px-5 py-6',
+          'flex shrink-0 flex-col gap-3 overflow-y-auto px-5 py-3 md:py-6',
           // mobile: fixed full-height drawer that slides in from the left
           'fixed inset-y-0 left-0 z-40 w-72 transition-transform duration-300 ease-in-out',
           'rounded-r-[2rem]',
@@ -96,33 +131,14 @@ export function Sidebar({
         </div>
 
         <nav className="flex flex-1 flex-col gap-3">
-          {nav.map(({ key, label, icon: Icon }) => {
-            const isActive = active === key
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => onSelect(key)}
-                aria-current={isActive ? 'page' : undefined}
-                className={cn(
-                  'group flex items-center gap-3 rounded-2xl px-3 py-3.5 text-sm font-semibold outline-none',
-                  isActive ? 'nm-daylight' : 'nm-btn',
-                )}
-              >
-                <Icon
-                  className={cn(
-                    'size-5 shrink-0 transition-colors',
-                    isActive
-                      ? 'text-primary drop-shadow-[0_0_8px_var(--primary)]'
-                      : 'text-muted-foreground group-hover:text-foreground',
-                  )}
-                />
-                <span className={cn(isActive ? 'text-primary text-glow' : 'text-foreground')}>
-                  {label}
-                </span>
-              </button>
-            )
-          })}
+          {nav.map((item) => (
+            <NavButton
+              key={item.key}
+              item={item}
+              active={active === item.key}
+              onSelect={onSelect}
+            />
+          ))}
         </nav>
 
         {/* user + logout */}
@@ -136,19 +152,34 @@ export function Sidebar({
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-bold leading-tight">
-                {email ?? 'ადმინი'}
+                {activeEmployee?.name ?? email ?? 'ადმინი'}
               </p>
-              <p className="text-xs text-muted-foreground">შესული</p>
+              <p className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">
+                {activeRole ?? 'შესული'}
+              </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onLogout}
-            className="nm-btn flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-semibold text-muted-foreground"
-          >
-            <LogOut className="size-5 shrink-0" />
-            <span>გასვლა</span>
-          </button>
+          
+          <div className="flex gap-2">
+            {hasEmployees && (
+              <button
+                type="button"
+                onClick={lockTerminal}
+                title="ჩაკეტვა / მომხმარებლის შეცვლა"
+                className="nm-btn flex size-11 items-center justify-center rounded-2xl text-primary"
+              >
+                <Lock className="size-5" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onLogout}
+              className="nm-btn flex flex-1 items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-semibold text-muted-foreground"
+            >
+              <LogOut className="size-5 shrink-0" />
+              <span>გასვლა</span>
+            </button>
+          </div>
         </div>
       </aside>
     </>

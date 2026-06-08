@@ -9,16 +9,23 @@ import {
   useState,
 } from 'react'
 import { supabase } from './supabase/client'
-import type { OrgRole, Venue } from './types'
+import type { ModuleKey, OrgRole, Venue } from './types'
 
 const VENUE_KEY = 'playroom:venue'
 const ORG_KEY = 'playroom:org'
+const EMP_KEY = 'playroom:employee'
 
 export interface OrgSummary {
   id: string
   name: string
   plan: string
   subscription_status: string
+}
+
+export interface ActiveEmployee {
+  id: number
+  name: string
+  role: OrgRole
 }
 
 interface OrgState {
@@ -31,12 +38,50 @@ interface OrgState {
   venues: Venue[] // venues of the current org
   currentOrgId: string | null
   currentVenueId: string | null
-  currentRole: OrgRole | null
+  currentRole: OrgRole | null // role of the AUTH user in the current org
+  activeEmployee: ActiveEmployee | null
+  activeRole: OrgRole | null // role of the PIN-authenticated employee (or currentRole if no employees)
+  hasEmployees: boolean
   impersonating: boolean // platform admin viewing an org they're not a member of
   setCurrentOrg: (orgId: string) => void
   setCurrentVenue: (venueId: string) => void
+  signInWithPin: (pin: string) => Promise<{ ok: boolean; error?: string }>
+  lockTerminal: () => void
   stopImpersonating: () => void
   refresh: () => Promise<void>
+}
+
+const MODULE_ROLES: Record<ModuleKey, OrgRole[]> = {
+  dashboard:    ['owner', 'admin', 'manager', 'cashier', 'operator'],
+  pos:          ['owner', 'admin', 'manager', 'cashier', 'operator'],
+  cashier:      ['owner', 'admin', 'manager', 'accountant', 'cashier'],
+  accounting:   ['owner', 'admin', 'accountant'],
+  history:      ['owner', 'admin', 'manager', 'cashier'],
+  pricing:      ['owner', 'admin'],
+  inventory:    ['owner', 'admin', 'manager'],
+  customers:    ['owner', 'admin', 'manager', 'cashier'],
+  employees:    ['owner', 'admin'],
+  settings:     ['owner', 'admin'],
+  reservations: ['owner', 'admin', 'manager', 'cashier'],
+  billing:      ['owner'],
+  platform:     [], // handled by isPlatformAdmin
+}
+
+export function useModuleAccess(key: ModuleKey): boolean {
+  const { activeRole, isPlatformAdmin } = useOrg()
+  if (isPlatformAdmin) return true
+  if (!activeRole) return false
+  return MODULE_ROLES[key]?.includes(activeRole) ?? false
+}
+
+// Preferred landing order — the first module a role can access. Used to redirect
+// when a role lands on a module it can't see (e.g. accountant has no dashboard).
+const MODULE_ORDER: ModuleKey[] = [
+  'dashboard', 'accounting', 'cashier', 'pos', 'reservations', 'history',
+  'inventory', 'customers', 'pricing', 'employees', 'settings', 'billing',
+]
+export function firstAllowedModule(role: OrgRole): ModuleKey {
+  return MODULE_ORDER.find((m) => MODULE_ROLES[m].includes(role)) ?? 'dashboard'
 }
 
 const Ctx = createContext<OrgState | null>(null)
@@ -49,6 +94,27 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   const [allVenues, setAllVenues] = useState<Venue[]>([])
   const [currentOrgId, setOrgId] = useState<string | null>(null)
   const [currentVenueId, setVenueId] = useState<string | null>(null)
+  
+  const [activeEmployee, setActiveEmployee] = useState<ActiveEmployee | null>(null)
+  const [hasEmployees, setHasEmployees] = useState(false)
+
+  // Load active employee from sessionStorage on mount
+  useEffect(() => {
+    const stored = sessionStorage.getItem(EMP_KEY)
+    if (stored) {
+      try {
+        const { emp, timestamp } = JSON.parse(stored)
+        // Auto-clear after 8 hours
+        if (Date.now() - timestamp < 8 * 3600_000) {
+          setActiveEmployee(emp)
+        } else {
+          sessionStorage.removeItem(EMP_KEY)
+        }
+      } catch (e) {
+        sessionStorage.removeItem(EMP_KEY)
+      }
+    }
+  }, [])
 
   const refresh = useCallback(async () => {
     const { data: auth } = await supabase.auth.getUser()
@@ -77,6 +143,22 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       return valid(prev) ? prev : valid(stored) ? stored : orgList[0]?.id ?? null
     })
   }, [])
+
+  // Employees are ORG-scoped (no venue_id column). PIN gate applies whenever the
+  // current org has at least one active employee.
+  useEffect(() => {
+    if (!currentOrgId) {
+      setHasEmployees(false)
+      return
+    }
+    ;(supabase.from('employees') as any)
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', currentOrgId)
+      .eq('is_active', true)
+      .then(({ count }: { count: number | null }) => {
+        setHasEmployees((count ?? 0) > 0)
+      })
+  }, [currentOrgId])
 
   useEffect(() => {
     let alive = true
@@ -117,6 +199,13 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     () => memberRoles.find((m) => m.org_id === currentOrgId)?.role ?? null,
     [memberRoles, currentOrgId],
   )
+  
+  // If no employees, the AUTH user's role is used. Otherwise, activeEmployee's role.
+  const activeRole = useMemo(() => {
+    if (!hasEmployees) return currentRole
+    return activeEmployee?.role ?? null
+  }, [hasEmployees, activeEmployee, currentRole])
+
   const impersonating = useMemo(
     () => isPlatformAdmin && !!currentOrgId && !memberOrgIds.includes(currentOrgId),
     [isPlatformAdmin, currentOrgId, memberOrgIds],
@@ -134,6 +223,49 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     setOrgId(memberOrgIds[0] ?? null)
   }, [memberOrgIds])
 
+  const signInWithPin = useCallback(async (pin: string) => {
+    if (!currentVenueId) return { ok: false, error: 'venue_not_found' }
+    
+    try {
+      const { data, error } = await (supabase.rpc as any)('identify_by_pin', {
+        p_pin: pin,
+        p_venue_id: currentVenueId
+      })
+
+      if (error) {
+        if (error.message.includes('rate_limit_exceeded')) {
+          return { ok: false, error: 'rate_limit_exceeded' }
+        }
+        return { ok: false, error: 'invalid_pin' }
+      }
+
+      const res = data as { ok: boolean; employee_id: number; employee_name: string; role: string; error?: string } | null
+
+      if (res && res.ok) {
+        const emp = {
+          id: res.employee_id,
+          name: res.employee_name,
+          role: res.role as OrgRole
+        }
+        setActiveEmployee(emp)
+        sessionStorage.setItem(EMP_KEY, JSON.stringify({ emp, timestamp: Date.now() }))
+        return { ok: true }
+      }
+
+      return { ok: false, error: res?.error || 'invalid_pin' }
+    } catch (e: any) {
+      if (e.message?.includes('rate_limit_exceeded')) {
+        return { ok: false, error: 'rate_limit_exceeded' }
+      }
+      return { ok: false, error: 'unknown_error' }
+    }
+  }, [currentVenueId])
+
+  const lockTerminal = useCallback(() => {
+    setActiveEmployee(null)
+    sessionStorage.removeItem(EMP_KEY)
+  }, [])
+
   const value = useMemo<OrgState>(
     () => ({
       loading,
@@ -146,9 +278,14 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       currentOrgId,
       currentVenueId,
       currentRole,
+      activeEmployee,
+      activeRole,
+      hasEmployees,
       impersonating,
       setCurrentOrg: setOrgId,
       setCurrentVenue: setVenueId,
+      signInWithPin,
+      lockTerminal,
       stopImpersonating,
       refresh,
     }),
@@ -162,7 +299,12 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       currentOrgId,
       currentVenueId,
       currentRole,
+      activeEmployee,
+      activeRole,
+      hasEmployees,
       impersonating,
+      signInWithPin,
+      lockTerminal,
       stopImpersonating,
       refresh,
     ],

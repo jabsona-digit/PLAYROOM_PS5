@@ -234,6 +234,17 @@
   }
 }
 
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  50% { transform: translateX(8px); }
+  75% { transform: translateX(-8px); }
+}
+
+@utility animate-shake {
+  animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
 @utility nm-neon-blue {
   background: linear-gradient(145deg, var(--surface-2), var(--surface));
   animation: neon-pulse-blue 3.5s ease-in-out infinite;
