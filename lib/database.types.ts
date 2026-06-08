@@ -353,6 +353,80 @@ export type Database = {
           },
         ]
       }
+      cash_reconciliations: {
+        Row: {
+          actual_cash: number
+          created_at: string
+          discrepancy: number | null
+          expected_cash: number
+          id: string
+          note: string | null
+          org_id: string
+          period_from: string
+          period_to: string
+          reconciled_by: string | null
+          shift_id: string | null
+          venue_id: string
+        }
+        Insert: {
+          actual_cash: number
+          created_at?: string
+          discrepancy?: number | null
+          expected_cash: number
+          id?: string
+          note?: string | null
+          org_id: string
+          period_from: string
+          period_to: string
+          reconciled_by?: string | null
+          shift_id?: string | null
+          venue_id: string
+        }
+        Update: {
+          actual_cash?: number
+          created_at?: string
+          discrepancy?: number | null
+          expected_cash?: number
+          id?: string
+          note?: string | null
+          org_id?: string
+          period_from?: string
+          period_to?: string
+          reconciled_by?: string | null
+          shift_id?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_reconciliations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_reconciliations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_reconciliations_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_reconciliations_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consoles: {
         Row: {
           created_at: string
@@ -523,6 +597,7 @@ export type Database = {
           expense_date: string
           id: string
           org_id: string
+          vat_amount: number
           venue_id: string | null
         }
         Insert: {
@@ -534,6 +609,7 @@ export type Database = {
           expense_date?: string
           id?: string
           org_id: string
+          vat_amount?: number
           venue_id?: string | null
         }
         Update: {
@@ -545,6 +621,7 @@ export type Database = {
           expense_date?: string
           id?: string
           org_id?: string
+          vat_amount?: number
           venue_id?: string | null
         }
         Relationships: [
@@ -564,6 +641,129 @@ export type Database = {
           },
           {
             foreignKeyName: "expenses_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_items: {
+        Row: {
+          description: string
+          id: string
+          invoice_id: string
+          line_total: number
+          quantity: number
+          unit_price: number
+          vat_rate: number
+        }
+        Insert: {
+          description: string
+          id?: string
+          invoice_id: string
+          line_total?: number
+          quantity?: number
+          unit_price?: number
+          vat_rate?: number
+        }
+        Update: {
+          description?: string
+          id?: string
+          invoice_id?: string
+          line_total?: number
+          quantity?: number
+          unit_price?: number
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          client_address: string | null
+          client_email: string | null
+          client_name: string
+          client_tin: string | null
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          id: string
+          invoice_number: string
+          issue_date: string
+          notes: string | null
+          org_id: string
+          paid_at: string | null
+          status: string
+          subtotal: number
+          total: number
+          vat_amount: number
+          venue_id: string | null
+        }
+        Insert: {
+          client_address?: string | null
+          client_email?: string | null
+          client_name: string
+          client_tin?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number: string
+          issue_date?: string
+          notes?: string | null
+          org_id: string
+          paid_at?: string | null
+          status?: string
+          subtotal?: number
+          total?: number
+          vat_amount?: number
+          venue_id?: string | null
+        }
+        Update: {
+          client_address?: string | null
+          client_email?: string | null
+          client_name?: string
+          client_tin?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number?: string
+          issue_date?: string
+          notes?: string | null
+          org_id?: string
+          paid_at?: string | null
+          status?: string
+          subtotal?: number
+          total?: number
+          vat_amount?: number
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
@@ -1050,6 +1250,61 @@ export type Database = {
           },
         ]
       }
+      venue_budgets: {
+        Row: {
+          created_at: string
+          expense_budget: number | null
+          id: string
+          month: string
+          note: string | null
+          org_id: string
+          revenue_target: number | null
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          expense_budget?: number | null
+          id?: string
+          month: string
+          note?: string | null
+          org_id: string
+          revenue_target?: number | null
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          expense_budget?: number | null
+          id?: string
+          month?: string
+          note?: string | null
+          org_id?: string
+          revenue_target?: number | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_budgets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_budgets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_budgets_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venues: {
         Row: {
           created_at: string
@@ -1059,6 +1314,7 @@ export type Database = {
           fiscal_tin: string | null
           id: string
           is_active: boolean
+          is_vat_registered: boolean
           name: string
           org_id: string
         }
@@ -1070,6 +1326,7 @@ export type Database = {
           fiscal_tin?: string | null
           id?: string
           is_active?: boolean
+          is_vat_registered?: boolean
           name: string
           org_id: string
         }
@@ -1081,6 +1338,7 @@ export type Database = {
           fiscal_tin?: string | null
           id?: string
           is_active?: boolean
+          is_vat_registered?: boolean
           name?: string
           org_id?: string
         }
@@ -1103,6 +1361,43 @@ export type Database = {
       }
     }
     Views: {
+      budget_vs_actual: {
+        Row: {
+          actual_expenses: number | null
+          actual_profit: number | null
+          actual_revenue: number | null
+          expense_budget: number | null
+          expense_pct: number | null
+          month: string | null
+          org_id: string | null
+          revenue_pct: number | null
+          revenue_target: number | null
+          venue_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_budgets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_budgets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_budgets_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       console_stats: {
         Row: {
           id: number | null
@@ -1360,6 +1655,10 @@ export type Database = {
         Args: { p_extra_min: number; p_session_id: string }
         Returns: undefined
       }
+      get_vat_summary: {
+        Args: { p_from: string; p_to: string; p_venue_id: string }
+        Returns: Json
+      }
       get_venue_pnl: {
         Args: { p_from: string; p_to: string; p_venue_id: string }
         Returns: Json
@@ -1385,11 +1684,21 @@ export type Database = {
         Returns: undefined
       }
       next_fiscal_receipt_no: { Args: never; Returns: string }
+      next_invoice_number: { Args: { p_org_id: string }; Returns: string }
       process_payroll: {
         Args: {
           p_from: string
           p_org_id: string
           p_to: string
+          p_venue_id: string
+        }
+        Returns: Json
+      }
+      reconcile_shift: {
+        Args: {
+          p_actual_cash: number
+          p_note?: string
+          p_shift_id: string
           p_venue_id: string
         }
         Returns: Json
