@@ -145,9 +145,9 @@ function Workspace({ email }: { email?: string }) {
     setSidebarOpen(false)
   }
 
-  // If there are employees, we MUST be signed in as one.
-  // If no employees, we allow full access (owner).
-  if (hasEmployees && !activeEmployee) {
+  // If the org has employees, the terminal is PIN-locked until either an employee
+  // signs in OR an owner/admin taps "enter as owner" (activeRole becomes non-null).
+  if (hasEmployees && !activeEmployee && !activeRole) {
     return (
       <PlayroomProvider>
         <PinGate />

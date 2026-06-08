@@ -7,8 +7,9 @@ import { useOrg } from '@/lib/org'
 import { usePlayroom } from '@/lib/store'
 
 export function PinGate() {
-  const { signInWithPin, venues, currentVenueId } = useOrg()
+  const { signInWithPin, enterAsOwner, currentRole, venues, currentVenueId } = useOrg()
   const { pushToast } = usePlayroom()
+  const canEnterAsOwner = currentRole === 'owner' || currentRole === 'admin'
   
   const [pin, setPin] = useState('')
   const [loading, setLoading] = useState(false)
@@ -117,6 +118,16 @@ export function PinGate() {
             {loading ? <LoaderCircle className="size-6 animate-spin" /> : <Lock className="size-6" />}
           </button>
         </div>
+
+        {/* Owner/admin can skip the PIN (no lockout). Hands off to staff via Lock. */}
+        {canEnterAsOwner && (
+          <button
+            onClick={enterAsOwner}
+            className="nm-btn rounded-2xl px-5 py-2.5 text-sm font-bold text-muted-foreground transition-transform active:scale-95"
+          >
+            მფლობელად შესვლა (PIN-ის გარეშე)
+          </button>
+        )}
 
         {/* Footer info */}
         <p className="text-xs font-medium text-muted-foreground/40">

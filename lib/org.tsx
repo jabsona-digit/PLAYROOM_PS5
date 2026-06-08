@@ -14,6 +14,7 @@ import type { ModuleKey, OrgRole, Venue } from './types'
 const VENUE_KEY = 'playroom:venue'
 const ORG_KEY = 'playroom:org'
 const EMP_KEY = 'playroom:employee'
+const BYPASS_KEY = 'playroom:owner-bypass'
 
 export interface OrgSummary {
   id: string
@@ -46,6 +47,7 @@ interface OrgState {
   setCurrentOrg: (orgId: string) => void
   setCurrentVenue: (venueId: string) => void
   signInWithPin: (pin: string) => Promise<{ ok: boolean; error?: string }>
+  enterAsOwner: () => void // owner/admin skip the PIN pad (no lockout)
   lockTerminal: () => void
   stopImpersonating: () => void
   refresh: () => Promise<void>
@@ -96,9 +98,10 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   const [currentVenueId, setVenueId] = useState<string | null>(null)
   
   const [activeEmployee, setActiveEmployee] = useState<ActiveEmployee | null>(null)
+  const [bypassPin, setBypassPin] = useState(false) // owner/admin chose to skip the PIN pad
   const [hasEmployees, setHasEmployees] = useState(false)
 
-  // Load active employee from sessionStorage on mount
+  // Load active employee / owner-bypass from sessionStorage on mount
   useEffect(() => {
     const stored = sessionStorage.getItem(EMP_KEY)
     if (stored) {
@@ -114,6 +117,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
         sessionStorage.removeItem(EMP_KEY)
       }
     }
+    if (sessionStorage.getItem(BYPASS_KEY) === '1') setBypassPin(true)
   }, [])
 
   const refresh = useCallback(async () => {
@@ -200,11 +204,14 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     [memberRoles, currentOrgId],
   )
   
-  // If no employees, the AUTH user's role is used. Otherwise, activeEmployee's role.
+  // No employees → the AUTH user's role. Otherwise the PIN-authenticated employee's
+  // role, unless an owner/admin chose to skip the PIN pad (bypass → their own role).
   const activeRole = useMemo(() => {
+    if (activeEmployee) return activeEmployee.role
     if (!hasEmployees) return currentRole
-    return activeEmployee?.role ?? null
-  }, [hasEmployees, activeEmployee, currentRole])
+    if (bypassPin && (currentRole === 'owner' || currentRole === 'admin')) return currentRole
+    return null
+  }, [hasEmployees, activeEmployee, currentRole, bypassPin])
 
   const impersonating = useMemo(
     () => isPlatformAdmin && !!currentOrgId && !memberOrgIds.includes(currentOrgId),
@@ -261,9 +268,16 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     }
   }, [currentVenueId])
 
+  const enterAsOwner = useCallback(() => {
+    setBypassPin(true)
+    sessionStorage.setItem(BYPASS_KEY, '1')
+  }, [])
+
   const lockTerminal = useCallback(() => {
     setActiveEmployee(null)
     sessionStorage.removeItem(EMP_KEY)
+    setBypassPin(false)
+    sessionStorage.removeItem(BYPASS_KEY)
   }, [])
 
   const value = useMemo<OrgState>(
@@ -285,6 +299,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       setCurrentOrg: setOrgId,
       setCurrentVenue: setVenueId,
       signInWithPin,
+      enterAsOwner,
       lockTerminal,
       stopImpersonating,
       refresh,
@@ -304,6 +319,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       hasEmployees,
       impersonating,
       signInWithPin,
+      enterAsOwner,
       lockTerminal,
       stopImpersonating,
       refresh,
