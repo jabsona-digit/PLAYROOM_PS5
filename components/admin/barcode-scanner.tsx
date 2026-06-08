@@ -99,7 +99,7 @@ export default function BarcodeScanner({ open, onClose, onScan }: BarcodeScanner
       }
 
       if (isScanningRef.current) {
-        requestAnimationFrame(decodeLoop);
+        setTimeout(() => requestAnimationFrame(decodeLoop), 100);
       }
     };
 
@@ -117,7 +117,7 @@ export default function BarcodeScanner({ open, onClose, onScan }: BarcodeScanner
     >
       <div className="flex flex-col items-center justify-center p-4">
         {error ? (
-          <div className="flex flex-col items-center justify-center text-destructive h-64">
+          <div className="flex flex-col items-center justify-center text-[var(--status-expired)] h-64">
             <CameraOff className="size-10 mb-4 opacity-50" />
             <p className="text-center">{error}</p>
           </div>
