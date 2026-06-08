@@ -654,7 +654,7 @@ export type Database = {
           id: string
           invoice_id: string
           line_total: number
-          quantity: number
+          qty: number
           unit_price: number
           vat_rate: number
         }
@@ -663,7 +663,7 @@ export type Database = {
           id?: string
           invoice_id: string
           line_total?: number
-          quantity?: number
+          qty?: number
           unit_price?: number
           vat_rate?: number
         }
@@ -672,7 +672,7 @@ export type Database = {
           id?: string
           invoice_id?: string
           line_total?: number
-          quantity?: number
+          qty?: number
           unit_price?: number
           vat_rate?: number
         }
@@ -697,14 +697,14 @@ export type Database = {
           due_date: string | null
           id: string
           invoice_number: string
-          issue_date: string
+          issued_at: string
           notes: string | null
           org_id: string
           paid_at: string | null
           status: string
           subtotal: number
-          total: number
-          vat_amount: number
+          total_amount: number
+          vat_total: number
           venue_id: string | null
         }
         Insert: {
@@ -717,14 +717,14 @@ export type Database = {
           due_date?: string | null
           id?: string
           invoice_number: string
-          issue_date?: string
+          issued_at?: string
           notes?: string | null
           org_id: string
           paid_at?: string | null
           status?: string
           subtotal?: number
-          total?: number
-          vat_amount?: number
+          total_amount?: number
+          vat_total?: number
           venue_id?: string | null
         }
         Update: {
@@ -737,14 +737,14 @@ export type Database = {
           due_date?: string | null
           id?: string
           invoice_number?: string
-          issue_date?: string
+          issued_at?: string
           notes?: string | null
           org_id?: string
           paid_at?: string | null
           status?: string
           subtotal?: number
-          total?: number
-          vat_amount?: number
+          total_amount?: number
+          vat_total?: number
           venue_id?: string | null
         }
         Relationships: [
@@ -1363,7 +1363,7 @@ export type Database = {
     Views: {
       budget_vs_actual: {
         Row: {
-          actual_expenses: number | null
+          actual_expense: number | null
           actual_profit: number | null
           actual_revenue: number | null
           expense_budget: number | null
@@ -1574,6 +1574,7 @@ export type Database = {
           p_category: string
           p_description?: string
           p_expense_date?: string
+          p_vat_amount?: number
           p_venue_id: string
         }
         Returns: string
