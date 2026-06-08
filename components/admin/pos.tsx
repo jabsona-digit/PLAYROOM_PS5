@@ -11,7 +11,9 @@ import type { PaymentMethod, Bank } from '@/lib/types'
 import { printReceipt, printKitchenTicket } from '@/lib/print'
 import { useFiscal } from '@/lib/fiscal'
 import { Modal } from './modal'
-import BarcodeScanner from './barcode-scanner'
+import dynamic from 'next/dynamic'
+
+const BarcodeScanner = dynamic(() => import('./barcode-scanner'), { ssr: false })
 
 // Types (falling back to manual types if lib/database.types.ts is not regenerated)
 interface BarCategory { id: number; name: string; sort_order: number; is_active: boolean }

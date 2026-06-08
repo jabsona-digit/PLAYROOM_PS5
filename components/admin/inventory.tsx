@@ -8,7 +8,9 @@ import { useOrg } from '@/lib/org'
 import { gel } from '@/lib/ui'
 import { supabase } from '@/lib/supabase/client'
 import { Modal } from './modal'
-import BarcodeScanner from './barcode-scanner'
+import dynamic from 'next/dynamic'
+
+const BarcodeScanner = dynamic(() => import('./barcode-scanner'), { ssr: false })
 
 // Temporary generic API calls since backend is pending schema expansion
 interface BarCategory {
