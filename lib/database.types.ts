@@ -611,6 +611,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          identification_code: string | null
           name: string
           plan: string
           slug: string | null
@@ -620,6 +621,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          identification_code?: string | null
           name: string
           plan?: string
           slug?: string | null
@@ -629,6 +631,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          identification_code?: string | null
           name?: string
           plan?: string
           slug?: string | null
@@ -1318,8 +1321,21 @@ export type Database = {
             }
             Returns: string
           }
+      create_employee: {
+        Args: {
+          p_name: string
+          p_org_id: string
+          p_pin: string
+          p_role: string
+        }
+        Returns: Json
+      }
       create_organization: {
-        Args: { p_org_name: string; p_venue_name: string }
+        Args: {
+          p_identification_code?: string
+          p_org_name: string
+          p_venue_name: string
+        }
         Returns: string
       }
       create_reservation: {
