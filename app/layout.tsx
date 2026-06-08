@@ -33,7 +33,18 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-icon.png',
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Playroom',
+  },
 }
+
+export const viewport = {
+  themeColor: '#1c1f27',
+}
+
+import PwaRegister from '@/components/pwa-register'
 
 export default function RootLayout({
   children,
@@ -46,6 +57,7 @@ export default function RootLayout({
       className={`dark ${notoGeorgian.variable} ${geistMono.variable} bg-background`}
     >
       <body className="font-sans antialiased bg-background">
+        <PwaRegister />
         {children}
       </body>
     </html>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ArrowLeftRight, Banknote, CreditCard, Landmark, Plus, Minus, X, Coffee, ShoppingCart, Printer } from 'lucide-react'
+import { ArrowLeftRight, Banknote, CreditCard, Landmark, Plus, Minus, X, Coffee, ShoppingCart, Printer, ScanLine } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
@@ -11,6 +11,7 @@ import type { PaymentMethod, Bank } from '@/lib/types'
 import { printReceipt, printKitchenTicket } from '@/lib/print'
 import { useFiscal } from '@/lib/fiscal'
 import { Modal } from './modal'
+import BarcodeScanner from './barcode-scanner'
 
 // Types (falling back to manual types if lib/database.types.ts is not regenerated)
 interface BarCategory { id: number; name: string; sort_order: number; is_active: boolean }
@@ -49,6 +50,18 @@ export function Pos() {
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null)
   const [voidReason, setVoidReason] = useState('')
   const [isVoiding, setIsVoiding] = useState(false)
+  
+  const [scannerOpen, setScannerOpen] = useState(false)
+
+  const handleScan = (code: string) => {
+    const match = products.find(x => x.barcode === code)
+    if (match) {
+      addToCart(match)
+      pushToast('success', `${match.name} დაემატა`)
+    } else {
+      pushToast('danger', 'პროდუქტი ამ ბარკოდით ვერ მოიძებნა')
+    }
+  }
 
   const handleVoid = async () => {
     if (!selectedSaleId) return
@@ -220,13 +233,23 @@ export function Pos() {
       <div className="flex flex-1 flex-col gap-6">
         {/* Categories & Search */}
         <div className="flex flex-col gap-4">
-          <input
-            type="search"
-            placeholder="🔍 ძებნა სახელუს ან ბარკოდის მიხედვით..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="nm-inset w-full rounded-2xl px-5 py-4 text-sm font-semibold outline-none placeholder:text-muted-foreground"
-          />
+          <div className="flex gap-3 w-full">
+            <input
+              type="search"
+              placeholder="🔍 ძებნა სახელუს ან ბარკოდის მიხედვით..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="nm-inset w-full rounded-2xl px-5 py-4 text-sm font-semibold outline-none placeholder:text-muted-foreground flex-1"
+            />
+            <button
+              onClick={() => setScannerOpen(true)}
+              className="nm-btn flex shrink-0 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-bold text-primary transition-colors hover:text-white"
+              title="კამერით სკანირება"
+            >
+              <ScanLine className="size-5" />
+              <span className="hidden sm:inline">კამერით სკანირება</span>
+            </button>
+          </div>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setActiveCategoryId(null)}
@@ -542,6 +565,12 @@ export function Pos() {
           </button>
         </div>
       </Modal>
+
+      <BarcodeScanner
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onScan={handleScan}
+      />
     </div>
   )
 }

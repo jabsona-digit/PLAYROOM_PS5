@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Edit2, Archive, ListTree, PackageSearch, AlertTriangle, Save, Trash2, Check, X } from 'lucide-react'
+import { Plus, Edit2, Archive, ListTree, PackageSearch, AlertTriangle, Save, Trash2, Check, X, ScanLine } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
 import { gel } from '@/lib/ui'
 import { supabase } from '@/lib/supabase/client'
 import { Modal } from './modal'
+import BarcodeScanner from './barcode-scanner'
 
 // Temporary generic API calls since backend is pending schema expansion
 interface BarCategory {
@@ -46,6 +47,19 @@ export function Inventory() {
   const [searchQuery, setSearchQuery] = useState('')
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [delCatId, setDelCatId] = useState<number | null>(null)
+  const [scannerOpen, setScannerOpen] = useState(false)
+
+  const handleScan = (code: string) => {
+    const match = products.find(x => x.barcode === code)
+    if (match) {
+      setEditingProduct(match)
+      pushToast('info', 'პროდუქტი ნაპოვნია, ჩაირთო რედაქტირების რეჟიმი')
+    } else {
+      setScannedBarcode(code)
+      setProdModalOpen(true)
+      pushToast('info', 'ახალი ბარკოდი დაფიქსირდა, დაამატეთ პროდუქტი')
+    }
+  }
 
   // Hard-delete a product; if it's referenced by past sales the FK blocks it,
   // so fall back to deactivating (hides it from POS, keeps history intact).
@@ -220,8 +234,15 @@ export function Inventory() {
               placeholder="🔍 ძებნა..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="nm-inset flex-1 rounded-2xl px-4 py-2.5 text-sm outline-none placeholder:text-muted-foreground"
+              className="nm-inset flex-1 rounded-2xl px-4 py-2.5 text-sm outline-none placeholder:text-muted-foreground min-w-0"
             />
+            <button
+              onClick={() => setScannerOpen(true)}
+              className="nm-btn flex shrink-0 items-center justify-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-bold text-primary transition-colors hover:text-white"
+              title="კამერით სკანირება"
+            >
+              <ScanLine className="size-4" />
+            </button>
             <button
               onClick={() => { setScannedBarcode(''); setProdModalOpen(true); }}
               className="nm-btn flex shrink-0 items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary"
@@ -341,6 +362,7 @@ export function Inventory() {
         onSaved={fetchAll}
       />
 
+      <BarcodeScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onScan={handleScan} />
     </div>
   )
 }
@@ -412,6 +434,7 @@ function ProductModal({ open, onClose, categories, product, initialBarcode, onSa
   const [stock, setStock] = useState('0')
   const [barcode, setBarcode] = useState('')
   const [imgUrl, setImgUrl] = useState('')
+  const [scannerOpen, setScannerOpen] = useState(false)
   
   useEffect(() => {
     if (open && product) {
@@ -513,12 +536,22 @@ function ProductModal({ open, onClose, categories, product, initialBarcode, onSa
           </label>
           <label className="block">
             <span className="text-xs font-semibold text-muted-foreground">ბარკოდი</span>
-            <input
-              value={barcode}
-              onChange={e => setBarcode(e.target.value)}
-              placeholder="სკანერი ან კოდი"
-              className="nm-inset mt-2 w-full rounded-xl px-4 py-2.5 text-sm outline-none text-primary font-mono"
-            />
+            <div className="flex gap-2 mt-2">
+              <input
+                value={barcode}
+                onChange={e => setBarcode(e.target.value)}
+                placeholder="სკანერი ან კოდი"
+                className="nm-inset w-full rounded-xl px-4 py-2.5 text-sm outline-none text-primary font-mono"
+              />
+              <button
+                type="button"
+                title="კამერით სკანირება"
+                onClick={() => setScannerOpen(true)}
+                className="nm-btn shrink-0 flex items-center justify-center rounded-xl px-3 text-primary transition-colors hover:text-white"
+              >
+                <ScanLine className="size-4" />
+              </button>
+            </div>
           </label>
         </div>
         <label className="block">
@@ -535,6 +568,8 @@ function ProductModal({ open, onClose, categories, product, initialBarcode, onSa
       <button onClick={handleSave} className="nm-daylight mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-primary">
         <Save className="size-4" /> შენახვა
       </button>
+
+      <BarcodeScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onScan={code => setBarcode(code)} />
     </Modal>
   )
 }
