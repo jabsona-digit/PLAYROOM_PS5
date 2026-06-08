@@ -48,9 +48,9 @@ export function Login() {
           <div className="nm-raised-sm flex size-16 items-center justify-center rounded-3xl">
             <Gamepad2 className="size-8 text-primary" />
           </div>
-          <h1 className="mt-5 text-2xl font-extrabold tracking-tight">Playroom</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            PS5 Manager — ადმინ პანელი
+          <h1 className="mt-6 text-3xl font-black tracking-tight">Martelounge</h1>
+          <p className="mt-1 text-sm font-bold text-muted-foreground">
+            Gaming Lounge Management System
           </p>
         </div>
 

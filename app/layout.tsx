@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Playroom Admin — PS5 Manager',
-  description: 'PS5 Playroom-ის ადმინ პანელი — სესიები, კასა, ტარიფები, თანამშრომლები',
+  title: 'Martelounge — Gaming Lounge OS',
+  description: 'Martelounge-ის ადმინ პანელი — სესიები, კასა, ტარიფები, თანამშრომლები',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Playroom',
+    title: 'Martelounge',
   },
 }
 

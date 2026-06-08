@@ -4,9 +4,9 @@ export const dynamic = 'force-static';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Playroom OS',
-    short_name: 'Playroom',
-    description: 'Playroom Admin — PS5 Manager',
+    name: 'Martelounge',
+    short_name: 'Martelounge',
+    description: 'Martelounge-ის ადმინ პანელი — სესიები, კასა, ტარიფები, თანამშრომლები',
     start_url: '/',
     display: 'standalone',
     background_color: '#1c1f27',

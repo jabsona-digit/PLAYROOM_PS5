@@ -130,8 +130,8 @@ export function PinGate() {
         )}
 
         {/* Footer info */}
-        <p className="text-xs font-medium text-muted-foreground/40">
-          Playroom OS &bull; Secure Terminal Access
+        <p className="mt-8 text-xs font-black uppercase tracking-[0.2em] text-muted-foreground/30">
+          Martelounge
         </p>
       </div>
     </div>

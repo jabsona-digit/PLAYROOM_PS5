@@ -82,6 +82,7 @@ interface PlayroomState {
   addPlan: (params: { name: string; controllers: number; price_per_hour: number }) => Promise<void>
   removePlan: (id: number) => Promise<void>
   clockToggle: (pin: string) => Promise<{ ok: boolean; message: string }>
+  refreshStaff: () => Promise<void>
 }
 
 const Ctx = createContext<PlayroomState | null>(null)
@@ -180,7 +181,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
     if (!org) return
     const { data } = await supabase
       .from('employees')
-      .select('id, name, role, is_active')
+      .select('id, name, role, is_active, salary_type, salary_amount')
       .eq('org_id', org)
       .order('id')
     if (data) {
@@ -190,6 +191,8 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
           name: e.name,
           role: e.role as Employee['role'],
           is_active: e.is_active,
+          salary_type: e.salary_type as Employee['salary_type'],
+          salary_amount: Number(e.salary_amount) || 0,
         })),
       )
     }
@@ -568,6 +571,10 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
     [pushToast, loadShifts],
   )
 
+  const refreshStaff: PlayroomState['refreshStaff'] = useCallback(async () => {
+    await loadEmployees()
+  }, [loadEmployees])
+
   // ---- per-second heartbeat: local status, notifications, auto-end ----
   const tick: PlayroomState['tick'] = useCallback(() => {
     const now = Date.now()
@@ -640,6 +647,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
       addPlan,
       removePlan,
       clockToggle,
+      refreshStaff,
     }),
     [
       consoles,
@@ -668,6 +676,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
       addPlan,
       removePlan,
       clockToggle,
+      refreshStaff,
     ],
   )
 

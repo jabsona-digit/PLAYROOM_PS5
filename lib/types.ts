@@ -81,8 +81,19 @@ export interface ConsoleUnit {
 export interface Employee {
   id: number
   name: string
-  role: EmployeeRole
+  role: OrgRole
   is_active: boolean
+  salary_type: 'hourly' | 'monthly' | 'fixed'
+  salary_amount: number
+}
+
+export const ROLE_LABELS: Record<OrgRole, string> = {
+  owner:      'მფლობელი',
+  admin:      'ადმინი',
+  manager:    'მენეჯერი',
+  accountant: 'ბუღალტერი',
+  cashier:    'მოლარე',
+  operator:   'ოპერატორი',
 }
 
 export interface Shift {

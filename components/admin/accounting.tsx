@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CalendarDays, Receipt, Trash2, Plus, FileDown, FileUp } from 'lucide-react'
+import { CalendarDays, Receipt, Trash2, Plus, FileDown, FileUp, LoaderCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useOrg } from '@/lib/org'
 import { usePlayroom } from '@/lib/store'
@@ -17,7 +17,7 @@ function toIsoDate(d: Date) {
 }
 
 export function Accounting() {
-  const { currentVenueId, currentRole } = useOrg()
+  const { currentVenueId, currentOrgId, currentRole } = useOrg()
   const { pushToast } = usePlayroom()
   const canEdit = ['owner', 'admin', 'manager'].includes(currentRole ?? '')
 
@@ -335,6 +335,46 @@ export function Accounting() {
           )}
         </div>
       </div>
+
+      {/* Payroll Section */}
+      {canEdit && (
+        <div className="nm-raised rounded-3xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-extrabold flex items-center gap-2">
+              <Plus className="size-4 text-primary" />
+              ხელფასების დარიცხვა
+            </h3>
+            <span className="text-[10px] uppercase font-black text-muted-foreground/60 tracking-wider">
+              {dateFrom} — {dateTo}
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            მითითებულ პერიოდში ყველა აქტიურ თანამშრომელს დაერიცხება ხელფასი მათი პარამეტრების მიხედვით (საათობრივი/თვიური).
+          </p>
+          <button
+            onClick={async () => {
+              if (!confirm('ნამდვილად გსურთ ხელფასების დარიცხვა? ეს შექმნის რეალურ ხარჯებს ბაზაში.')) return
+              setAdding(true)
+              const { data, error } = await (supabase.rpc as any)('process_payroll', {
+                p_org_id: currentOrgId,
+                p_venue_id: currentVenueId,
+                p_from: dateFrom,
+                p_to: dateTo
+              })
+              setAdding(false)
+              if (error) pushToast('danger', error.message)
+              else {
+                pushToast('success', `ხელფასი დაერიცხა ${data.employees_paid} თანამშრომელს, სულ ${gel(data.total_paid)}`)
+                loadData()
+              }
+            }}
+            disabled={adding}
+            className="nm-daylight flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-black text-primary transition-all hover:scale-[1.01]"
+          >
+            {adding ? <LoaderCircle className="size-5 animate-spin" /> : 'პროცესის გაშვება'}
+          </button>
+        </div>
+      )}
 
       {/* Expenses List */}
       <div className="nm-raised rounded-3xl p-6">

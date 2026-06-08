@@ -125,8 +125,8 @@ export function Sidebar({
             <Gamepad2 className="size-6 text-primary" />
           </div>
           <div>
-            <p className="text-base font-extrabold leading-tight">Playroom</p>
-            <p className="text-xs text-muted-foreground">PS5 Manager</p>
+            <p className="text-base font-extrabold leading-tight">Martelounge</p>
+            <p className="text-xs text-muted-foreground">Gaming OS</p>
           </div>
         </div>
 
