@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CalendarDays, Receipt, Trash2, Plus } from 'lucide-react'
+import { CalendarDays, Receipt, Trash2, Plus, FileDown, FileUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useOrg } from '@/lib/org'
 import { usePlayroom } from '@/lib/store'
 import { supabase } from '@/lib/supabase/client'
 import { gel } from '@/lib/ui'
+import { exportToExcel, downloadTemplate, readExcel } from '@/lib/excel'
 import type { Expense, VenuePnl, MonthlyPnl, ExpenseCategory } from '@/lib/types'
 import { EXPENSE_CATEGORY_LABELS } from '@/lib/types'
 
@@ -106,6 +107,60 @@ export function Accounting() {
     }
   }
 
+  const handleExportReport = () => {
+    if (!pnl) return
+    const reportData = [
+      { 'პარამეტრი': 'სულ შემოსავალი', 'მნიშვნელობა': pnl.total_revenue },
+      { 'პარამეტრი': 'სეს. შემოსავალი', 'მნიშვნელობა': pnl.session_revenue },
+      { 'პარამეტრი': 'ბარის შემოსავალი', 'მნიშვნელობა': pnl.bar_revenue },
+      { 'პარამეტრი': 'დაბრუნებები', 'მნიშვნელობა': pnl.session_refunds },
+      { 'პარამეტრი': 'სულ ხარჯები', 'მნიშვნელობა': pnl.total_expenses },
+      { 'პარამეტრი': 'სუფთა მოგება', 'მნიშვნელობა': pnl.net_profit },
+      { 'პარამეტრი': '', 'მნიშვნელობა': '' },
+      { 'პარამეტრი': 'ხარჯების სია', 'მნიშვნელობა': '' },
+      ...expenses.map(e => ({
+        'პარამეტრი': `${EXPENSE_CATEGORY_LABELS[e.category]}: ${e.description || ''}`,
+        'მნიშვნელობა': e.amount
+      }))
+    ]
+    exportToExcel(reportData, `ფინანსური_რეპორტი_${dateFrom}_${dateTo}`)
+  }
+
+  const handleImportExpenses = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !currentVenueId || !canEdit) return
+
+    try {
+      const data = await readExcel(file)
+      if (!data.length) return pushToast('warning', 'ფაილი ცარიელია')
+
+      const { data: orgData } = await supabase.from('venues').select('org_id').eq('id', currentVenueId).single()
+      if (!orgData) return
+
+      for (const item of data) {
+        const catLabel = String(item['კატეგორია'] || '').trim().split(' / ')[0] // handle template hint
+        const catKey = (Object.keys(EXPENSE_CATEGORY_LABELS) as ExpenseCategory[]).find(
+          k => EXPENSE_CATEGORY_LABELS[k] === catLabel
+        ) || 'other'
+
+        await supabase.rpc('add_expense', {
+          p_venue_id: currentVenueId,
+          p_category: catKey,
+          p_amount: Number(item['თანხა']) || 0,
+          p_description: item['აღწერა'] || undefined,
+          p_expense_date: item['თარიღი'] || toIsoDate(new Date()),
+        })
+      }
+
+      pushToast('success', `${data.length} ხარჯი წარმატებით დაემატა`)
+      loadData()
+    } catch (err: any) {
+      pushToast('danger', 'იმპორტისას მოხდა შეცდომა: ' + err.message)
+    } finally {
+      e.target.value = ''
+    }
+  }
+
   const trendMax = Math.max(10, ...trend.map(t => Math.max(Number(t.session_revenue || 0) + Number(t.bar_revenue || 0), t.total_expenses || 0)))
 
   return (
@@ -117,19 +172,45 @@ export function Accounting() {
           <CalendarDays className="size-5 text-primary" />
           პერიოდი
         </h2>
-        <div className="flex flex-1 max-w-sm gap-2">
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={e => setDateFrom(e.target.value)}
-            className="nm-inset w-full rounded-2xl px-4 py-2.5 text-sm font-bold outline-none text-muted-foreground"
-          />
-          <input
-            type="date"
-            value={dateTo}
-            onChange={e => setDateTo(e.target.value)}
-            className="nm-inset w-full rounded-2xl px-4 py-2.5 text-sm font-bold outline-none text-muted-foreground"
-          />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex gap-2 mr-2">
+            <button
+              onClick={handleExportReport}
+              className="nm-btn flex size-10 items-center justify-center rounded-xl text-primary/70 hover:text-primary transition-colors"
+              title="რეპორტის ექსპორტი"
+            >
+              <FileDown className="size-4" />
+            </button>
+            {canEdit && (
+              <>
+                <button
+                  onClick={() => downloadTemplate('expenses')}
+                  className="nm-btn flex size-10 items-center justify-center rounded-xl text-amber-500/70 hover:text-amber-500 transition-colors"
+                  title="ხარჯების შაბლონი"
+                >
+                  <FileDown className="size-4" />
+                </button>
+                <label className="nm-btn flex size-10 cursor-pointer items-center justify-center rounded-xl text-amber-500/70 hover:text-amber-500 transition-colors">
+                  <FileUp className="size-4" />
+                  <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleImportExpenses} />
+                </label>
+              </>
+            )}
+          </div>
+          <div className="flex flex-1 max-w-sm gap-2">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              className="nm-inset w-full rounded-2xl px-4 py-2.5 text-sm font-bold outline-none text-muted-foreground"
+            />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              className="nm-inset w-full rounded-2xl px-4 py-2.5 text-sm font-bold outline-none text-muted-foreground"
+            />
+          </div>
         </div>
       </div>
 

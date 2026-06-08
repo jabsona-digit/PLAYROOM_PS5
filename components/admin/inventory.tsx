@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Edit2, Archive, ListTree, PackageSearch, AlertTriangle, Save, Trash2, Check, X, ScanLine } from 'lucide-react'
+import { Plus, Edit2, Archive, ListTree, PackageSearch, AlertTriangle, Save, Trash2, Check, X, ScanLine, FileUp, FileDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
+import { downloadTemplate, readExcel } from '@/lib/excel'
 import { gel } from '@/lib/ui'
 import { supabase } from '@/lib/supabase/client'
 import { Modal } from './modal'
@@ -140,6 +141,63 @@ export function Inventory() {
     return () => window.removeEventListener('keydown', handler)
   }, [products, pushToast])
 
+  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !currentOrgId) return
+
+    try {
+      const data = await readExcel(file)
+      if (!data.length) return pushToast('warning', 'ფაილი ცარიელია')
+
+      // 1. Collect and create missing categories
+      const uniqueCats = Array.from(new Set(data.map((item: any) => String(item['კატეგორია'] || '').trim()).filter(Boolean)))
+      const missingCats = uniqueCats.filter(name => !categories.find(c => c.name.toLowerCase() === name.toLowerCase()))
+
+      const createdCats: Record<string, number> = {}
+      
+      if (missingCats.length > 0) {
+        const { data: newCats, error: catError } = await supabase
+          .from('bar_categories')
+          .insert(missingCats.map(name => ({ name, org_id: currentOrgId })))
+          .select()
+        
+        if (catError) throw catError
+        if (newCats) {
+          newCats.forEach(c => { createdCats[c.name.toLowerCase()] = c.id })
+        }
+      }
+
+      // 2. Map products with correct category IDs
+      const toInsert = data.map((item: any) => {
+        const catName = String(item['კატეგორია'] || '').trim().toLowerCase()
+        const existingCat = categories.find(c => c.name.toLowerCase() === catName)
+        const catId = existingCat ? existingCat.id : (createdCats[catName] || null)
+        
+        return {
+          org_id: currentOrgId,
+          name: String(item['დასახელება'] || 'უსახელო'),
+          barcode: String(item['ბარკოდი'] || ''),
+          cost_price: Number(item['შესყიდვის ფასი']) || 0,
+          price: Number(item['გასაყიდი ფასი']) || 0,
+          stock_quantity: Number(item['მარაგი']) || 0,
+          category_id: catId,
+          image_url: item['სურათის URL'] || null,
+          is_active: true
+        }
+      })
+
+      const { error } = await supabase.from('bar_products').insert(toInsert)
+      if (error) throw error
+
+      pushToast('success', `${toInsert.length} პროდუქტი წარმატებით დაემატა`)
+      fetchAll()
+    } catch (err: any) {
+      pushToast('danger', 'იმპორტისას მოხდა შეცდომა: ' + err.message)
+    } finally {
+      e.target.value = ''
+    }
+  }
+
   return (
     <div className="flex w-full flex-col gap-6 lg:flex-row">
       
@@ -230,7 +288,7 @@ export function Inventory() {
               <p className="text-xs text-muted-foreground">მართეთ ფასები და ნაშთები</p>
             </div>
           </div>
-          <div className="flex flex-1 items-center gap-3 sm:max-w-md">
+          <div className="flex flex-1 items-center gap-2 sm:max-w-xl">
             <input
               type="search"
               placeholder="🔍 ძებნა..."
@@ -238,20 +296,37 @@ export function Inventory() {
               onChange={e => setSearchQuery(e.target.value)}
               className="nm-inset flex-1 rounded-2xl px-4 py-2.5 text-sm outline-none placeholder:text-muted-foreground min-w-0"
             />
-            <button
-              onClick={() => setScannerOpen(true)}
-              className="nm-btn flex shrink-0 items-center justify-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-bold text-primary transition-colors hover:text-white"
-              title="კამერით სკანირება"
-            >
-              <ScanLine className="size-4" />
-            </button>
-            <button
-              onClick={() => { setScannedBarcode(''); setProdModalOpen(true); }}
-              className="nm-btn flex shrink-0 items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary"
-            >
-              <Plus className="size-4" />
-              <span className="hidden sm:inline">დამატება</span>
-            </button>
+            
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => downloadTemplate('products', categories.map(c => c.name))}
+                className="nm-btn flex size-10 items-center justify-center rounded-xl text-primary/70 hover:text-primary transition-colors"
+                title="შაბლონის ჩამოტვირთვა"
+              >
+                <FileDown className="size-4" />
+              </button>
+              
+              <label className="nm-btn flex size-10 cursor-pointer items-center justify-center rounded-xl text-primary/70 hover:text-primary transition-colors">
+                <FileUp className="size-4" />
+                <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleExcelImport} />
+              </label>
+
+              <button
+                onClick={() => setScannerOpen(true)}
+                className="nm-btn flex size-10 items-center justify-center rounded-xl text-primary/70 hover:text-primary transition-colors"
+                title="კამერით სკანირება"
+              >
+                <ScanLine className="size-4" />
+              </button>
+
+              <button
+                onClick={() => { setScannedBarcode(''); setProdModalOpen(true); }}
+                className="nm-btn flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-primary"
+              >
+                <Plus className="size-4" />
+                <span className="hidden sm:inline">დამატება</span>
+              </button>
+            </div>
           </div>
         </div>
 
