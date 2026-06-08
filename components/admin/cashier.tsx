@@ -51,7 +51,7 @@ const METHOD_ICON: Record<PaymentMethod, typeof Banknote> = {
 }
 
 export function Cashier() {
-  const { completed, consoles } = usePlayroom()
+  const { completed, consoles, pushToast } = usePlayroom()
   const { currentVenueId } = useOrg()
   const [barSales, setBarSales] = useState<BarSaleRow[]>([])
 
@@ -635,13 +635,35 @@ export function Cashier() {
                 </div>
               )}
               <button
-                onClick={() => {
-                  setCurrentShiftStart(null)
-                  setOpeningCashAmount(0)
-                  setOpeningCash('')
-                  setClosingCash('')
-                  setZReportVisible(false)
-                  setShiftOpen(false)
+                onClick={async () => {
+                   if (!currentVenueId) return
+                   const actual = parseFloat(closingCash) || 0
+                   const { data: res, error } = await (supabase.rpc as any)('reconcile_shift', {
+                     p_venue_id: currentVenueId,
+                     p_shift_id: null, // handle logic on backend if null (active shift)
+                     p_actual_cash: actual,
+                     p_note: ''
+                   }) as { data: any, error: any }
+
+                   if (error) {
+                     pushToast('danger', error.message)
+                     return
+                   }
+
+                   if (res && res.alert) {
+                     pushToast('danger', 'ყურადღება: სალაროში აღინიშნა სხვაობა!')
+                   }
+
+                   setCurrentShiftStart(null)
+                   setOpeningCashAmount(0)
+                   setOpeningCash('')
+                   setClosingCash('')
+                   setZReportVisible(false)
+                   setShiftOpen(false)
+                   
+                   if (res) {
+                     pushToast('info', `ცვლა დაიხურა. სხვაობა: ${gel(res.discrepancy)}`)
+                   }
                 }}
                 className="nm-btn flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-[var(--status-expired)]"
               >

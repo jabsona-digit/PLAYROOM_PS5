@@ -218,15 +218,28 @@ function FiscalSettings() {
           <div>
             <h2 className="text-lg font-extrabold tracking-tight">ფისკალური ჩეკი</h2>
             <p className="text-xs text-muted-foreground">
-              RS.GE — PDF/ამობეჭდვა (Phase B). ფიზიკური სალარო — მოგვიანებით.
+              RS.GE — PDF/ამობეჭდვა (Phase B).
             </p>
           </div>
         </div>
-        <Toggle
-          checked={fiscalSettings.fiscal_enabled}
-          onChange={(v) => saveFiscalSettings({ fiscal_enabled: v })}
-          label="ფისკალური ჩეკი"
-        />
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-muted-foreground">ფისკალური</span>
+            <Toggle
+              checked={fiscalSettings.fiscal_enabled}
+              onChange={(v) => saveFiscalSettings({ fiscal_enabled: v })}
+              label="ფისკალური ჩეკი"
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-muted-foreground mr-1">დღგ-ს გადამხდელი</span>
+            <Toggle
+              checked={fiscalSettings.is_vat_registered}
+              onChange={(v) => saveFiscalSettings({ is_vat_registered: v })}
+              label="დღგ-ს გადამხდელი"
+            />
+          </div>
+        </div>
       </div>
 
       {fiscalSettings.fiscal_enabled && (

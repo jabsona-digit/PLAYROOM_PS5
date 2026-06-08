@@ -18,6 +18,7 @@ import { useOrg } from './org'
 
 export interface FiscalVenueSettings {
   fiscal_enabled: boolean
+  is_vat_registered: boolean
   fiscal_tin: string | null
   fiscal_business_name: string | null
   fiscal_address: string | null
@@ -45,6 +46,7 @@ export function useFiscal() {
   const { currentVenueId } = useOrg()
   const [settings, setSettings] = useState<FiscalVenueSettings>({
     fiscal_enabled: false,
+    is_vat_registered: false,
     fiscal_tin: null,
     fiscal_business_name: null,
     fiscal_address: null,
@@ -53,9 +55,8 @@ export function useFiscal() {
 
   const load = useCallback(async () => {
     if (!currentVenueId) return
-    const { data } = await supabase
-      .from('venues')
-      .select('fiscal_enabled, fiscal_tin, fiscal_business_name, fiscal_address')
+    const { data } = await (supabase.from('venues') as any)
+      .select('fiscal_enabled, is_vat_registered, fiscal_tin, fiscal_business_name, fiscal_address')
       .eq('id', currentVenueId)
       .single()
     if (data) setSettings(data as FiscalVenueSettings)
@@ -66,7 +67,7 @@ export function useFiscal() {
   const save = async (patch: Partial<FiscalVenueSettings>) => {
     if (!currentVenueId) return
     setSaving(true)
-    await supabase.from('venues').update(patch).eq('id', currentVenueId)
+    await (supabase.from('venues') as any).update(patch).eq('id', currentVenueId)
     setSettings((prev) => ({ ...prev, ...patch }))
     setSaving(false)
   }

@@ -113,6 +113,7 @@ export interface Venue {
   org_id: string
   name: string
   is_active: boolean
+  is_vat_registered: boolean
 }
 
 export interface OrgMembership {
@@ -169,10 +170,70 @@ export interface Expense {
   venue_id: string | null
   category: ExpenseCategory
   amount: number
+  vat_amount: number | null
   description: string | null
   expense_date: string
   created_by: string | null
   created_at: string
+}
+
+export interface VatSummary {
+  is_vat_registered: boolean
+  gross_sales: number
+  output_vat: number
+  input_vat: number
+  net_vat_payable: number
+}
+
+export interface ReconciliationResult {
+  ok: boolean
+  expected: number
+  actual: number
+  discrepancy: number
+  alert: boolean
+}
+
+export interface Invoice {
+  id: string
+  org_id: string
+  venue_id: string
+  invoice_number: string
+  client_name: string
+  client_tin: string | null
+  subtotal: number
+  vat_total: number
+  total_amount: number
+  status: 'draft' | 'issued' | 'paid' | 'cancelled'
+  issued_at: string
+  created_at: string
+}
+
+export interface InvoiceItem {
+  id: string
+  invoice_id: string
+  description: string
+  qty: number
+  unit_price: number
+  line_total: number
+}
+
+export interface VenueBudget {
+  id: string
+  venue_id: string
+  month: string // yyyy-mm
+  revenue_target: number
+  expense_budget: number
+}
+
+export interface BudgetVsActual {
+  venue_id: string
+  month: string
+  revenue_target: number | null
+  actual_revenue: number
+  revenue_pct: number | null
+  expense_budget: number | null
+  actual_expense: number
+  expense_pct: number | null
 }
 
 export interface VenuePnl {
