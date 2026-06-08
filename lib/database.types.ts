@@ -471,6 +471,8 @@ export type Database = {
           org_id: string
           pin_hash: string
           role: string
+          salary_amount: number
+          salary_type: string
         }
         Insert: {
           created_at?: string
@@ -480,6 +482,8 @@ export type Database = {
           org_id: string
           pin_hash: string
           role?: string
+          salary_amount?: number
+          salary_type?: string
         }
         Update: {
           created_at?: string
@@ -489,6 +493,8 @@ export type Database = {
           org_id?: string
           pin_hash?: string
           role?: string
+          salary_amount?: number
+          salary_type?: string
         }
         Relationships: [
           {
@@ -1363,6 +1369,15 @@ export type Database = {
         Returns: undefined
       }
       next_fiscal_receipt_no: { Args: never; Returns: string }
+      process_payroll: {
+        Args: {
+          p_from: string
+          p_org_id: string
+          p_to: string
+          p_venue_id: string
+        }
+        Returns: Json
+      }
       refund_session: {
         Args: {
           p_reason?: string
