@@ -61,6 +61,7 @@ export function Accounting() {
 
   // Modal States
   const [budgetModal, setBudgetModal] = useState<{ month: string, rev: string, exp: string } | null>(null)
+  const [newBudgetMonth, setNewBudgetMonth] = useState(toIsoDate(new Date()).slice(0, 7)) // YYYY-MM
   const [invoiceModal, setInvoiceModal] = useState<boolean>(false)
   const [newInvClient, setNewInvClient] = useState('')
   const [newInvTin, setNewInvTin] = useState('')
@@ -177,11 +178,15 @@ export function Accounting() {
   const handleUpdateBudget = async () => {
     if (!budgetModal || !currentVenueId || !isAdmin) return
     setAdding(true)
+    
+    // Ensure month format is YYYY-MM-01 for DB date field
+    const dbMonthStr = budgetModal.month.length === 7 ? `${budgetModal.month}-01` : budgetModal.month
+
     const { error } = await (supabase as any)
       .from('venue_budgets')
       .upsert({
         venue_id: currentVenueId,
-        month: budgetModal.month,
+        month: dbMonthStr,
         revenue_target: parseFloat(budgetModal.rev) || 0,
         expense_budget: parseFloat(budgetModal.exp) || 0
       }, { onConflict: 'venue_id,month' })
@@ -582,6 +587,35 @@ export function Accounting() {
           {/* TAB: BUDGETS */}
           {activeTab === 'budgets' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+               
+               {/* Add / Edit Budget Header */}
+               {isAdmin && (
+                 <div className="nm-raised rounded-3xl p-6 flex flex-col md:flex-row items-center gap-4">
+                   <h3 className="text-lg font-black shrink-0 mr-auto text-slate-800">თვის მართვა</h3>
+                   <div className="flex gap-3 w-full md:w-auto">
+                     <input
+                       type="month"
+                       value={newBudgetMonth}
+                       onChange={(e) => setNewBudgetMonth(e.target.value)}
+                       className="nm-inset flex-1 md:w-48 rounded-xl px-4 py-3 font-bold text-sm outline-none"
+                     />
+                     <button
+                       onClick={() => {
+                         const existing = budgets.find(b => b.month === newBudgetMonth || b.month.startsWith(newBudgetMonth))
+                         setBudgetModal({
+                           month: newBudgetMonth,
+                           rev: existing?.revenue_target?.toString() || '',
+                           exp: existing?.expense_budget?.toString() || ''
+                         })
+                       }}
+                       className="nm-btn px-6 rounded-xl text-primary font-bold text-sm whitespace-nowrap"
+                     >
+                       ბიუჯეტის მითითება
+                     </button>
+                   </div>
+                 </div>
+               )}
+
                <div className="grid gap-6 md:grid-cols-2">
                   {budgets.map(b => (
                     <div key={b.month} className="nm-raised rounded-3xl p-6 relative overflow-hidden group">
@@ -589,7 +623,10 @@ export function Accounting() {
                         <h4 className="text-xl font-black text-slate-800">{b.month}</h4>
                         {isAdmin && (
                           <button 
-                            onClick={() => setBudgetModal({ month: b.month, rev: b.revenue_target?.toString() || '', exp: b.expense_budget?.toString() || '' })}
+                            onClick={() => {
+                              const viewMonth = b.month.slice(0, 7) // convert Back to YYYY-MM if it's longer
+                              setBudgetModal({ month: viewMonth, rev: b.revenue_target?.toString() || '', exp: b.expense_budget?.toString() || '' })
+                            }}
                             className="nm-btn p-2 rounded-xl text-primary opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             განახლება
@@ -639,10 +676,12 @@ export function Accounting() {
                       </div>
                     </div>
                   ))}
+                  
                   {budgets.length === 0 && (
                     <div className="py-20 text-center nm-inset rounded-3xl col-span-full">
                        <Target className="size-12 text-slate-300 mx-auto mb-4" />
-                       <p className="text-slate-500 font-bold">ბიუჯეტები არ მოიძებნა</p>
+                       <p className="text-slate-500 font-bold mb-2">ბიუჯეტები არ მოიძებნა</p>
+                       <p className="text-xs text-muted-foreground">გამოიყენეთ ზედა პანელი ბიუჯეტის შესაქმნელად.</p>
                     </div>
                   )}
                </div>
