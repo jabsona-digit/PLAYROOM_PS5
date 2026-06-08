@@ -1342,6 +1342,7 @@ export type Database = {
         Args: { p_from: string; p_to: string; p_venue_id: string }
         Returns: Json
       }
+      is_org_accountant: { Args: { p_org: string }; Returns: boolean }
       is_org_admin: { Args: { p_org: string }; Returns: boolean }
       is_org_member: { Args: { p_org: string }; Returns: boolean }
       is_org_member_raw: { Args: { p_org: string }; Returns: boolean }
