@@ -35,6 +35,57 @@ interface BarProduct {
   image_url?: string
 }
 
+async function optimizeImage(file: File): Promise<File> {
+  if (file.type === 'image/gif') return file
+
+  return new Promise((resolve) => {
+    const img = new Image()
+    const objectUrl = URL.createObjectURL(file)
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl)
+
+      let { width, height } = img
+      const MAX_SIZE = 1200
+
+      if (width > MAX_SIZE || height > MAX_SIZE) {
+        if (width > height) {
+          height = Math.round((height * MAX_SIZE) / width)
+          width = MAX_SIZE
+        } else {
+          width = Math.round((width * MAX_SIZE) / height)
+          height = MAX_SIZE
+        }
+      }
+
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return resolve(file)
+
+      ctx.drawImage(img, 0, 0, width, height)
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return resolve(file)
+          resolve(new File([blob], 'photo.webp', { type: 'image/webp' }))
+        },
+        'image/webp',
+        0.82
+      )
+    }
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      resolve(file)
+    }
+
+    img.src = objectUrl
+  })
+}
+
 export function Inventory() {
   const { currentOrgId } = useOrg()
   const { pushToast } = usePlayroom()
@@ -552,8 +603,10 @@ function ProductModal({ open, onClose, categories, product, initialBarcode, onSa
 
       if (!token) throw new Error('unauthorized')
 
+      const optimized = await optimizeImage(file)
+
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', optimized)
       fd.append('folder', 'products')
 
       const res = await fetch('/api/upload', {
