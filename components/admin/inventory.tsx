@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Edit2, Archive, ListTree, PackageSearch, AlertTriangle, Save, Trash2, Check, X, ScanLine, FileUp, FileDown } from 'lucide-react'
+import { Plus, Edit2, Archive, ListTree, PackageSearch, AlertTriangle, Save, Trash2, Check, X, ScanLine, FileUp, FileDown, ImagePlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
@@ -512,6 +512,7 @@ function ProductModal({ open, onClose, categories, product, initialBarcode, onSa
   const [barcode, setBarcode] = useState('')
   const [imgUrl, setImgUrl] = useState('')
   const [scannerOpen, setScannerOpen] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   
   useEffect(() => {
     if (open && product) {
@@ -532,6 +533,57 @@ function ProductModal({ open, onClose, categories, product, initialBarcode, onSa
       setImgUrl('')
     }
   }, [open, product, initialBarcode])
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+      return pushToast('danger', 'მხოლოდ jpg/png/webp/gif ფორმატებია დაშვებული')
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      return pushToast('danger', 'ფაილის ზომა არ უნდა აღემატებოდეს 5MB-ს')
+    }
+
+    try {
+      setIsUploading(true)
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      if (!token) throw new Error('unauthorized')
+
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('folder', 'products')
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + token,
+        },
+        body: fd,
+      })
+
+      const data = await res.json()
+      if (!data.ok) {
+        throw new Error(data.error || 'upload_failed')
+      }
+
+      setImgUrl(data.url)
+      pushToast('success', 'ფოტო წარმატებით აიტვირთა')
+    } catch (err: any) {
+      const msgs: Record<string, string> = {
+        unauthorized: 'ავტორიზაცია ვერ მოხერხდა',
+        no_file: 'ფაილი ვერ მოიძებნა',
+        unsupported_type: 'მხოლოდ jpg/png/webp/gif ფორმატებია დაშვებული',
+        file_too_large: 'ფაილის ზომა არ უნდა აღემატებოდეს 5MB-ს',
+      }
+      pushToast('danger', msgs[err.message] || 'ატვირთვა ვერ მოხერხდა')
+    } finally {
+      setIsUploading(false)
+      e.target.value = ''
+    }
+  }
 
   const handleSave = async () => {
     if (!name.trim()) return pushToast('danger', 'დასახელება სავალდებულოა')
@@ -631,15 +683,45 @@ function ProductModal({ open, onClose, categories, product, initialBarcode, onSa
             </div>
           </label>
         </div>
-        <label className="block">
+        <div className="space-y-2">
           <span className="text-xs font-semibold text-muted-foreground">სურათის URL (ფოტო)</span>
-          <input
-            value={imgUrl}
-            onChange={e => setImgUrl(e.target.value)}
-            placeholder="https://..."
-            className="nm-inset mt-2 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
-          />
-        </label>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-4">
+              {imgUrl && (
+                <div className="relative size-16 shrink-0 rounded-2xl nm-inset p-1.5 overflow-hidden flex items-center justify-center bg-background">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imgUrl} alt="Preview" className="h-full w-full object-contain rounded-xl drop-shadow-sm" />
+                </div>
+              )}
+              
+              <label className={cn(
+                "nm-btn flex flex-1 items-center justify-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold cursor-pointer transition-colors max-w-[200px]",
+                isUploading ? "opacity-60 cursor-not-allowed" : "hover:text-primary text-foreground/80"
+              )}>
+                {isUploading ? (
+                  <div className="size-4 shrink-0 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <ImagePlus className="size-4 shrink-0" />
+                )}
+                {isUploading ? 'იტვირთება...' : 'ფოტოს ატვირთვა'}
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  disabled={isUploading}
+                />
+              </label>
+            </div>
+
+            <input
+              value={imgUrl}
+              onChange={e => setImgUrl(e.target.value)}
+              placeholder="ან შეიყვანეთ URL: https://..."
+              className="nm-inset w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+            />
+          </div>
+        </div>
 
       </div>
       <button onClick={handleSave} className="nm-daylight mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-primary">
