@@ -5,7 +5,7 @@ import { Eye, LoaderCircle, Lock } from 'lucide-react'
 import type { Session as AuthSession } from '@supabase/supabase-js'
 import type { ModuleKey } from '@/lib/types'
 import { PlayroomProvider, usePlayroom } from '@/lib/store'
-import { OrgProvider, useOrg } from '@/lib/org'
+import { OrgProvider, useOrg, useModuleAccess, firstAllowedModule } from '@/lib/org'
 import { supabase } from '@/lib/supabase/client'
 import { Sidebar } from './sidebar'
 import { Topbar } from './topbar'
@@ -27,7 +27,6 @@ import { Reservations } from './reservations'
 import { AiAssistant } from './ai-assistant'
 import { ToastViewport } from './toast'
 import { PinGate } from './pin-gate'
-import { useModuleAccess, firstAllowedModule } from '@/lib/org'
 
 /* Single app-wide heartbeat: drives status changes, timer notifications and
    auto-end regardless of which tab is open. Lives inside the provider. */
