@@ -114,7 +114,7 @@ export function Pos() {
       ])
       if (cats) {
         setCategories(cats as any)
-        if (cats.length > 0) setActiveCategoryId(cats[0].id)
+        // default to "ყველა" (all) — don't auto-select the first category
       }
       if (prods) setProducts(prods as any)
       
