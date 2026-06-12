@@ -2527,9 +2527,7 @@ export type Database = {
         Args: { p_date: string; p_slug: string }
         Returns: {
           busy: Json
-          console_id: number
-          console_name: string
-          slot_number: number
+          capacity: number
         }[]
       }
       get_venue_pnl: {
