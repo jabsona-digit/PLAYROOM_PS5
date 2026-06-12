@@ -77,7 +77,7 @@ export function OnlineBookings() {
 
   const patch = async (id: string, patch: Record<string, unknown>, msg: string) => {
     setBusyId(id)
-    const { error } = await supabase.from('marketplace_bookings').update(patch).eq('id', id)
+    const { error } = await (supabase.from('marketplace_bookings') as any).update(patch).eq('id', id)
     setBusyId(null)
     if (error) return pushToast('danger', error.message)
     pushToast('success', msg)
