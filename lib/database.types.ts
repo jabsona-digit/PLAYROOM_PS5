@@ -70,6 +70,13 @@ export type Database = {
             foreignKeyName: "audit_logs_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "venues"
             referencedColumns: ["id"]
           },
@@ -348,6 +355,13 @@ export type Database = {
             foreignKeyName: "bar_sales_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_sales_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "venues"
             referencedColumns: ["id"]
           },
@@ -422,6 +436,13 @@ export type Database = {
             foreignKeyName: "cash_reconciliations_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_reconciliations_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "venues"
             referencedColumns: ["id"]
           },
@@ -471,6 +492,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consoles_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
             referencedColumns: ["id"]
           },
           {
@@ -643,6 +671,13 @@ export type Database = {
             foreignKeyName: "expenses_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "venues"
             referencedColumns: ["id"]
           },
@@ -764,6 +799,261 @@ export type Database = {
           },
           {
             foreignKeyName: "invoices_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_bookings: {
+        Row: {
+          commission_amount: number
+          console_id: number | null
+          controllers: number
+          created_at: string
+          customer_id: string | null
+          customer_name: string
+          customer_phone: string
+          deposit_amount: number
+          duration_min: number
+          id: string
+          notes: string | null
+          org_id: string
+          paid_at: string | null
+          party_size: number | null
+          payment_method: string
+          payment_ref: string | null
+          payment_status: string
+          pricing_plan_id: number | null
+          reservation_id: string | null
+          start_time: string
+          status: string
+          total_amount: number
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          commission_amount?: number
+          console_id?: number | null
+          controllers?: number
+          created_at?: string
+          customer_id?: string | null
+          customer_name: string
+          customer_phone: string
+          deposit_amount?: number
+          duration_min: number
+          id?: string
+          notes?: string | null
+          org_id: string
+          paid_at?: string | null
+          party_size?: number | null
+          payment_method?: string
+          payment_ref?: string | null
+          payment_status?: string
+          pricing_plan_id?: number | null
+          reservation_id?: string | null
+          start_time: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          commission_amount?: number
+          console_id?: number | null
+          controllers?: number
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string
+          customer_phone?: string
+          deposit_amount?: number
+          duration_min?: number
+          id?: string
+          notes?: string | null
+          org_id?: string
+          paid_at?: string | null
+          party_size?: number | null
+          payment_method?: string
+          payment_ref?: string | null
+          payment_status?: string
+          pricing_plan_id?: number | null
+          reservation_id?: string | null
+          start_time?: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_bookings_console_id_fkey"
+            columns: ["console_id"]
+            isOneToOne: false
+            referencedRelation: "console_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_bookings_console_id_fkey"
+            columns: ["console_id"]
+            isOneToOne: false
+            referencedRelation: "consoles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_bookings_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_bookings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_bookings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_bookings_pricing_plan_id_fkey"
+            columns: ["pricing_plan_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_bookings_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_bookings_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_bookings_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_customers: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id: string
+          phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      marketplace_reviews: {
+        Row: {
+          booking_id: string | null
+          comment: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          org_id: string
+          rating: number
+          reply: string | null
+          venue_id: string
+        }
+        Insert: {
+          booking_id?: string | null
+          comment?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          org_id: string
+          rating: number
+          reply?: string | null
+          venue_id: string
+        }
+        Update: {
+          booking_id?: string | null
+          comment?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          org_id?: string
+          rating?: number
+          reply?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_reviews_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_reviews_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_reviews_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_reviews_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_reviews_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
@@ -993,6 +1283,13 @@ export type Database = {
             foreignKeyName: "reservations_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "venues"
             referencedColumns: ["id"]
           },
@@ -1180,6 +1477,13 @@ export type Database = {
             foreignKeyName: "sessions_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "venues"
             referencedColumns: ["id"]
           },
@@ -1245,6 +1549,13 @@ export type Database = {
             foreignKeyName: "shifts_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "venues"
             referencedColumns: ["id"]
           },
@@ -1300,6 +1611,13 @@ export type Database = {
             foreignKeyName: "venue_budgets_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_budgets_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "venues"
             referencedColumns: ["id"]
           },
@@ -1307,40 +1625,82 @@ export type Database = {
       }
       venues: {
         Row: {
+          address: string | null
+          amenities: Json
+          avg_rating: number
+          city: string | null
+          cover_image_url: string | null
           created_at: string
+          description: string | null
           fiscal_address: string | null
           fiscal_business_name: string | null
           fiscal_enabled: boolean
           fiscal_tin: string | null
+          gallery: Json
           id: string
           is_active: boolean
+          is_published: boolean
           is_vat_registered: boolean
+          lat: number | null
+          lng: number | null
           name: string
+          opening_hours: Json | null
           org_id: string
+          public_phone: string | null
+          review_count: number
+          slug: string | null
         }
         Insert: {
+          address?: string | null
+          amenities?: Json
+          avg_rating?: number
+          city?: string | null
+          cover_image_url?: string | null
           created_at?: string
+          description?: string | null
           fiscal_address?: string | null
           fiscal_business_name?: string | null
           fiscal_enabled?: boolean
           fiscal_tin?: string | null
+          gallery?: Json
           id?: string
           is_active?: boolean
+          is_published?: boolean
           is_vat_registered?: boolean
+          lat?: number | null
+          lng?: number | null
           name: string
+          opening_hours?: Json | null
           org_id: string
+          public_phone?: string | null
+          review_count?: number
+          slug?: string | null
         }
         Update: {
+          address?: string | null
+          amenities?: Json
+          avg_rating?: number
+          city?: string | null
+          cover_image_url?: string | null
           created_at?: string
+          description?: string | null
           fiscal_address?: string | null
           fiscal_business_name?: string | null
           fiscal_enabled?: boolean
           fiscal_tin?: string | null
+          gallery?: Json
           id?: string
           is_active?: boolean
+          is_published?: boolean
           is_vat_registered?: boolean
+          lat?: number | null
+          lng?: number | null
           name?: string
+          opening_hours?: Json | null
           org_id?: string
+          public_phone?: string | null
+          review_count?: number
+          slug?: string | null
         }
         Relationships: [
           {
@@ -1387,6 +1747,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_budgets_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
             referencedColumns: ["id"]
           },
           {
@@ -1477,6 +1844,90 @@ export type Database = {
           total_revenue?: never
           trial_ends_at?: string | null
           venue_count?: never
+        }
+        Relationships: []
+      }
+      public_reviews: {
+        Row: {
+          author: string | null
+          comment: string | null
+          created_at: string | null
+          id: string | null
+          rating: number | null
+          reply: string | null
+          venue_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_reviews_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_reviews_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_venues: {
+        Row: {
+          address: string | null
+          amenities: Json | null
+          avg_rating: number | null
+          city: string | null
+          cover_image_url: string | null
+          description: string | null
+          gallery: Json | null
+          id: string | null
+          lat: number | null
+          lng: number | null
+          name: string | null
+          opening_hours: Json | null
+          price_from: number | null
+          public_phone: string | null
+          review_count: number | null
+          slug: string | null
+        }
+        Insert: {
+          address?: string | null
+          amenities?: Json | null
+          avg_rating?: number | null
+          city?: string | null
+          cover_image_url?: string | null
+          description?: string | null
+          gallery?: Json | null
+          id?: string | null
+          lat?: number | null
+          lng?: number | null
+          name?: string | null
+          opening_hours?: Json | null
+          price_from?: never
+          public_phone?: string | null
+          review_count?: number | null
+          slug?: string | null
+        }
+        Update: {
+          address?: string | null
+          amenities?: Json | null
+          avg_rating?: number | null
+          city?: string | null
+          cover_image_url?: string | null
+          description?: string | null
+          gallery?: Json | null
+          id?: string | null
+          lat?: number | null
+          lng?: number | null
+          name?: string | null
+          opening_hours?: Json | null
+          price_from?: never
+          public_phone?: string | null
+          review_count?: number | null
+          slug?: string | null
         }
         Relationships: []
       }
@@ -1626,6 +2077,22 @@ export type Database = {
         }
         Returns: Json
       }
+      create_marketplace_booking: {
+        Args: {
+          p_console_id?: number
+          p_controllers?: number
+          p_customer_name: string
+          p_customer_phone: string
+          p_duration_min: number
+          p_notes?: string
+          p_party_size?: number
+          p_payment_method?: string
+          p_pricing_plan_id?: number
+          p_slug: string
+          p_start: string
+        }
+        Returns: string
+      }
       create_organization: {
         Args: {
           p_identification_code?: string
@@ -1659,6 +2126,15 @@ export type Database = {
       get_vat_summary: {
         Args: { p_from: string; p_to: string; p_venue_id: string }
         Returns: Json
+      }
+      get_venue_availability: {
+        Args: { p_date: string; p_slug: string }
+        Returns: {
+          busy: Json
+          console_id: number
+          console_name: string
+          slot_number: number
+        }[]
       }
       get_venue_pnl: {
         Args: { p_from: string; p_to: string; p_venue_id: string }
@@ -1712,10 +2188,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      reply_to_review: {
+        Args: { p_id: string; p_reply: string }
+        Returns: undefined
+      }
       set_employee_pin: {
         Args: { p_employee_id: number; p_pin: string }
         Returns: undefined
       }
+      slugify: { Args: { p: string }; Returns: string }
       start_open_session: {
         Args: {
           p_bank?: string
@@ -1800,6 +2281,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      submit_review: {
+        Args: { p_booking_id: string; p_comment?: string; p_rating: number }
+        Returns: string
       }
       void_bar_sale: {
         Args: { p_reason?: string; p_sale_id: string }
