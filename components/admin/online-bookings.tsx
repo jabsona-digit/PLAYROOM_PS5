@@ -114,13 +114,13 @@ function ScanResult({
         </div>
       </div>
       <div className="flex gap-2">
-        {booking.status === 'pending' ? (
+        {booking.status === 'pending' || booking.status === 'confirmed' ? (
           <button
             disabled={busy}
             onClick={() => onConfirm(booking.id)}
             className="nm-daylight flex-1 rounded-xl px-4 py-2.5 text-sm font-bold text-primary"
           >
-            დადასტურება (check-in)
+            check-in (კონსოლის გათავისუფლება)
           </button>
         ) : dead ? (
           <div className="flex-1 rounded-xl px-4 py-2.5 text-center text-sm font-bold text-[var(--status-expired)]">
@@ -180,6 +180,9 @@ export function OnlineBookings() {
   const noShow = (id: string) => patch(id, { status: 'no_show' }, 'მონიშნულია — არ მოვიდა')
   const markPaid = (id: string) =>
     patch(id, { payment_status: 'paid', paid_at: new Date().toISOString() }, 'გადახდა დაფიქსირდა')
+  // check-in: marks arrival + frees the capacity hold so their session can start
+  const checkIn = (id: string) =>
+    patch(id, { status: 'confirmed', checked_in_at: new Date().toISOString() }, 'check-in — კონსოლი გათავისუფლდა')
 
   // Scan a customer's QR pass (MLB:<id>) → verify it's a real booking of this org.
   const handleScan = async (code: string) => {
@@ -396,7 +399,7 @@ export function OnlineBookings() {
             busy={busyId === scanned.id}
             onClose={() => setScanned(null)}
             onConfirm={(id) => {
-              confirm(id)
+              checkIn(id)
               setScanned(null)
             }}
           />

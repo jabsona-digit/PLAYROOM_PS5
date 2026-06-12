@@ -18,8 +18,13 @@ import { usePlayroom } from '@/lib/store'
 import { useFiscal } from '@/lib/fiscal'
 import { statusMeta } from '@/lib/ui'
 import type { ConsoleUnit } from '@/lib/types'
+import { supabase } from '@/lib/supabase/client'
 import { Modal } from './modal'
 import { MarketplaceSettings } from './marketplace-settings'
+
+// Bookable resource types — a coupe/VIP is a separate capacity pool (0039).
+const CTYPES = ['standard', 'coupe', 'vip']
+const CTYPE_LABEL: Record<string, string> = { standard: 'PS5', coupe: 'კუპე', vip: 'VIP' }
 
 function Toggle({
   checked,
@@ -85,11 +90,21 @@ function NumberField({
 }
 
 function ConsoleRow({ unit }: { unit: ConsoleUnit }) {
-  const { renameConsole, removeConsole } = usePlayroom()
+  const { renameConsole, removeConsole, refreshLive } = usePlayroom()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(unit.name)
+  const [ctype, setCtype] = useState<string>((unit as { console_type?: string }).console_type ?? 'standard')
   const meta = statusMeta[unit.status]
   const busy = !!unit.active_session
+
+  const cycleType = async () => {
+    const next = CTYPES[(CTYPES.indexOf(ctype) + 1) % CTYPES.length]
+    setCtype(next)
+    await (supabase.from('consoles') as unknown as {
+      update: (v: Record<string, unknown>) => { eq: (c: string, id: number) => Promise<unknown> }
+    }).update({ console_type: next }).eq('id', unit.id)
+    refreshLive?.()
+  }
 
   return (
     <div className="nm-raised-sm flex items-center gap-3 rounded-2xl p-3">
@@ -153,6 +168,17 @@ function ConsoleRow({ unit }: { unit: ConsoleUnit }) {
         </>
       ) : (
         <>
+          <button
+            type="button"
+            onClick={cycleType}
+            title="ტიპის შეცვლა (PS5 / კუპე / VIP)"
+            className={cn(
+              'nm-btn rounded-xl px-2.5 py-1.5 text-xs font-bold',
+              ctype === 'standard' ? 'text-muted-foreground' : 'text-primary',
+            )}
+          >
+            {CTYPE_LABEL[ctype] ?? ctype}
+          </button>
           <button
             type="button"
             aria-label="სახელის შეცვლა"
