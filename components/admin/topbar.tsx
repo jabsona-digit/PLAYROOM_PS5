@@ -2,8 +2,10 @@
 
 import { Bell, Menu, Search, Settings } from 'lucide-react'
 import { usePlayroom } from '@/lib/store'
+import { cn } from '@/lib/utils'
 import type { ModuleKey } from '@/lib/types'
 import { VenueSwitcher } from './venue-switcher'
+import { useBookingAlerts } from './booking-alerts'
 
 const TITLES: Record<ModuleKey, { title: string; subtitle: string }> = {
   dashboard: { title: 'მთავარი', subtitle: 'ყველა კონსოლი ერთ ეკრანზე' },
@@ -22,9 +24,18 @@ const TITLES: Record<ModuleKey, { title: string; subtitle: string }> = {
   online_bookings: { title: 'ონლაინ ჯავშნები', subtitle: 'martelounge.ge-დან შემოსული ჯავშნები' },
 }
 
-export function Topbar({ active, onMenuClick }: { active: ModuleKey; onMenuClick?: () => void }) {
+export function Topbar({
+  active,
+  onMenuClick,
+  onBellClick,
+}: {
+  active: ModuleKey
+  onMenuClick?: () => void
+  onBellClick?: () => void
+}) {
   const meta = TITLES[active] ?? { title: '', subtitle: '' }
   const { consoles, pushToast } = usePlayroom()
+  const { pendingCount } = useBookingAlerts()
 
   const expiring = consoles.filter(
     (c) => c.status === 'warning_5' || c.status === 'expired',
@@ -74,11 +85,21 @@ export function Topbar({ active, onMenuClick }: { active: ModuleKey; onMenuClick
         <button
           type="button"
           aria-label="შეტყობინებები"
-          onClick={ringBell}
+          onClick={() => (pendingCount > 0 ? onBellClick?.() : ringBell())}
+          title={pendingCount > 0 ? `${pendingCount} ახალი ონლაინ ჯავშანი` : undefined}
           className="nm-btn relative flex size-11 items-center justify-center rounded-2xl"
         >
-          <Bell className="size-5 text-muted-foreground" />
-          {expiring.length > 0 ? (
+          <Bell
+            className={cn(
+              'size-5',
+              pendingCount > 0 ? 'text-primary' : 'text-muted-foreground',
+            )}
+          />
+          {pendingCount > 0 ? (
+            <span className="absolute -right-1 -top-1 flex min-w-[18px] animate-pulse items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-[var(--primary-foreground)] shadow-[0_0_10px_var(--primary)]">
+              {pendingCount}
+            </span>
+          ) : expiring.length > 0 ? (
             <span className="absolute -right-1 -top-1 flex min-w-[18px] items-center justify-center rounded-full bg-[var(--status-expired)] px-1 text-[10px] font-bold text-white">
               {expiring.length}
             </span>

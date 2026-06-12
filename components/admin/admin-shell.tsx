@@ -25,6 +25,7 @@ import { Billing } from './billing'
 import { Accounting } from './accounting'
 import { Reservations } from './reservations'
 import { OnlineBookings } from './online-bookings'
+import { BookingAlertsProvider } from './booking-alerts'
 import { AiAssistant } from './ai-assistant'
 import { ToastViewport } from './toast'
 import { PinGate } from './pin-gate'
@@ -159,6 +160,7 @@ function Workspace({ email }: { email?: string }) {
   return (
     <PlayroomProvider>
       <Heartbeat />
+      <BookingAlertsProvider>
       <div className="flex min-h-screen w-full bg-background p-3 md:p-5">
         <div className="nm-raised flex w-full overflow-hidden rounded-[2rem]">
           <Sidebar
@@ -172,7 +174,11 @@ function Workspace({ email }: { email?: string }) {
 
           <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
             <ImpersonationBar onBack={() => setActive('platform')} />
-            <Topbar active={active} onMenuClick={() => setSidebarOpen(true)} />
+            <Topbar
+              active={active}
+              onMenuClick={() => setSidebarOpen(true)}
+              onBellClick={() => handleSelect('online_bookings')}
+            />
             <div className="mt-8 animate-in slide-in-from-bottom-4 duration-500">
               {active === 'dashboard' && <Dashboard />}
               {active === 'pos' && <Pos />}
@@ -196,6 +202,7 @@ function Workspace({ email }: { email?: string }) {
       </div>
       <AiAssistant />
       <ToastViewport />
+      </BookingAlertsProvider>
     </PlayroomProvider>
   )
 }

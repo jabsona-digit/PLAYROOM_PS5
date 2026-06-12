@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import {
   Globe,
   Phone,
@@ -12,12 +13,18 @@ import {
   CircleSlash,
   CreditCard,
   Gamepad2,
+  ScanLine,
+  BadgeCheck,
+  XCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useOrg } from '@/lib/org'
 import { usePlayroom } from '@/lib/store'
 import { supabase } from '@/lib/supabase/client'
 import { gel } from '@/lib/ui'
+import { Modal } from './modal'
+
+const BarcodeScanner = dynamic(() => import('./barcode-scanner'), { ssr: false })
 
 interface Booking {
   id: string
@@ -54,12 +61,95 @@ const PAY_METHOD: Record<string, string> = {
 
 type Filter = 'pending' | 'confirmed' | 'all'
 
+function Row({ k, v, bold }: { k: string; v: string; bold?: boolean }) {
+  return (
+    <div className="flex justify-between gap-3">
+      <span className="text-muted-foreground">{k}</span>
+      <span className={cn('text-right', bold && 'font-bold')}>{v}</span>
+    </div>
+  )
+}
+
+// Verification card shown after scanning a customer's QR pass.
+function ScanResult({
+  booking,
+  busy,
+  onConfirm,
+  onClose,
+}: {
+  booking: Booking
+  busy: boolean
+  onConfirm: (id: string) => void
+  onClose: () => void
+}) {
+  const d = new Date(booking.start_time)
+  const date = d.toLocaleDateString('ka-GE', { day: '2-digit', month: 'short', year: 'numeric' })
+  const time = d.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })
+  const meta = STATUS_META[booking.status] ?? { label: booking.status, color: 'var(--muted-foreground)' }
+  const paid = booking.payment_status === 'paid'
+  const dead = booking.status === 'cancelled' || booking.status === 'no_show'
+
+  return (
+    <div className="flex flex-col gap-4 p-1">
+      <div className="flex flex-col items-center gap-1 text-center">
+        <BadgeCheck className="size-12 text-[var(--status-free)]" />
+        <p className="text-lg font-extrabold">ნამდვილი ჯავშანია</p>
+      </div>
+      <div className="nm-inset space-y-2 rounded-2xl p-4 text-sm">
+        <Row k="კლიენტი" v={booking.customer_name} bold />
+        <Row k="ტელეფონი" v={booking.customer_phone} />
+        {booking.venues?.name ? <Row k="კლუბი" v={booking.venues.name} /> : null}
+        <Row k="დრო" v={`${date} · ${time}`} />
+        <Row k="ხანგრძლივობა" v={`${booking.duration_min} წთ`} />
+        {booking.console_id ? <Row k="კონსოლი" v={`#${booking.console_id}`} /> : null}
+        <div className="flex justify-between gap-3">
+          <span className="text-muted-foreground">სტატუსი</span>
+          <span className="font-bold" style={{ color: meta.color }}>{meta.label}</span>
+        </div>
+        <div className="flex justify-between gap-3">
+          <span className="text-muted-foreground">თანხა</span>
+          <span className="font-bold text-primary">
+            {gel(booking.total_amount)} · {paid ? 'გადახდილი' : 'გადაუხდელი'}
+          </span>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        {booking.status === 'pending' ? (
+          <button
+            disabled={busy}
+            onClick={() => onConfirm(booking.id)}
+            className="nm-daylight flex-1 rounded-xl px-4 py-2.5 text-sm font-bold text-primary"
+          >
+            დადასტურება (check-in)
+          </button>
+        ) : dead ? (
+          <div className="flex-1 rounded-xl px-4 py-2.5 text-center text-sm font-bold text-[var(--status-expired)]">
+            ⚠️ {meta.label}
+          </div>
+        ) : (
+          <div className="flex-1 rounded-xl px-4 py-2.5 text-center text-sm font-bold text-[var(--status-free)]">
+            ✅ {meta.label}
+          </div>
+        )}
+        <button
+          onClick={onClose}
+          className="nm-btn rounded-xl px-4 py-2.5 text-sm font-bold text-muted-foreground"
+        >
+          დახურვა
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function OnlineBookings() {
   const { currentOrgId } = useOrg()
   const { pushToast } = usePlayroom()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [filter, setFilter] = useState<Filter>('pending')
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [scannerOpen, setScannerOpen] = useState(false)
+  const [scanned, setScanned] = useState<Booking | 'notfound' | null>(null)
 
   const fetchBookings = useCallback(async () => {
     if (!currentOrgId) return
@@ -90,6 +180,24 @@ export function OnlineBookings() {
   const noShow = (id: string) => patch(id, { status: 'no_show' }, 'მონიშნულია — არ მოვიდა')
   const markPaid = (id: string) =>
     patch(id, { payment_status: 'paid', paid_at: new Date().toISOString() }, 'გადახდა დაფიქსირდა')
+
+  // Scan a customer's QR pass (MLB:<id>) → verify it's a real booking of this org.
+  const handleScan = async (code: string) => {
+    setScannerOpen(false)
+    const raw = code.trim()
+    const id = raw.startsWith('MLB:') ? raw.slice(4) : raw
+    let found = bookings.find((b) => b.id === id) ?? null
+    if (!found) {
+      // booking may be newer than the loaded list — look it up directly (RLS-scoped)
+      const { data } = await supabase
+        .from('marketplace_bookings')
+        .select('*, venues(name)')
+        .eq('id', id)
+        .maybeSingle()
+      found = (data as unknown as Booking) ?? null
+    }
+    setScanned(found ?? 'notfound')
+  }
 
   const pendingCount = bookings.filter((b) => b.status === 'pending').length
 
@@ -126,7 +234,13 @@ export function OnlineBookings() {
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setScannerOpen(true)}
+              className="nm-btn flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold text-primary"
+            >
+              <ScanLine className="size-4" /> სკანირება
+            </button>
             {FILTERS.map((f) => (
               <button
                 key={f.key}
@@ -258,6 +372,36 @@ export function OnlineBookings() {
           </div>
         )}
       </section>
+
+      <BarcodeScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onScan={handleScan} />
+
+      <Modal open={scanned !== null} onClose={() => setScanned(null)} title="ჯავშნის შემოწმება">
+        {scanned === 'notfound' ? (
+          <div className="flex flex-col items-center gap-3 p-4 text-center">
+            <XCircle className="size-12 text-[var(--status-expired)]" />
+            <p className="text-lg font-extrabold">ვერ მოიძებნა</p>
+            <p className="text-sm text-muted-foreground">
+              არასწორი QR კოდი ან სხვა კლუბის ჯავშანი.
+            </p>
+            <button
+              onClick={() => setScanned(null)}
+              className="nm-btn mt-1 rounded-xl px-6 py-2 text-sm font-bold text-muted-foreground"
+            >
+              დახურვა
+            </button>
+          </div>
+        ) : scanned ? (
+          <ScanResult
+            booking={scanned}
+            busy={busyId === scanned.id}
+            onClose={() => setScanned(null)}
+            onConfirm={(id) => {
+              confirm(id)
+              setScanned(null)
+            }}
+          />
+        ) : null}
+      </Modal>
     </div>
   )
 }
