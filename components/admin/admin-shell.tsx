@@ -25,6 +25,7 @@ import { Billing } from './billing'
 import { Accounting } from './accounting'
 import { Reservations } from './reservations'
 import { OnlineBookings } from './online-bookings'
+import { Tournaments } from './tournaments'
 import { BookingAlertsProvider } from './booking-alerts'
 import { AiAssistant } from './ai-assistant'
 import { ToastViewport } from './toast'
@@ -193,6 +194,7 @@ function Workspace({ email }: { email?: string }) {
               {active === 'accounting' && <Accounting />}
               {active === 'reservations' && <Reservations />}
               {active === 'online_bookings' && <OnlineBookings />}
+              {active === 'tournaments' && <Tournaments />}
               {active === 'platform' && (
                 <PlatformConsole onViewAs={() => setActive('dashboard')} />
               )}

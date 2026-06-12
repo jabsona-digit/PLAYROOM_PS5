@@ -66,6 +66,7 @@ const MODULE_ROLES: Record<ModuleKey, OrgRole[]> = {
   settings:     ['owner', 'admin'],
   reservations: ['owner', 'admin', 'manager', 'cashier'],
   online_bookings: ['owner', 'admin', 'manager', 'cashier'],
+  tournaments:  ['owner', 'admin', 'manager'],
   billing:      ['owner'],
   platform:     [], // handled by isPlatformAdmin
 }
@@ -80,7 +81,7 @@ export function useModuleAccess(key: ModuleKey): boolean {
 // Preferred landing order — the first module a role can access. Used to redirect
 // when a role lands on a module it can't see (e.g. accountant has no dashboard).
 const MODULE_ORDER: ModuleKey[] = [
-  'dashboard', 'accounting', 'cashier', 'pos', 'reservations', 'online_bookings', 'history',
+  'dashboard', 'accounting', 'cashier', 'pos', 'reservations', 'online_bookings', 'tournaments', 'history',
   'inventory', 'customers', 'pricing', 'employees', 'settings', 'billing',
 ]
 export function firstAllowedModule(role: OrgRole): ModuleKey {
