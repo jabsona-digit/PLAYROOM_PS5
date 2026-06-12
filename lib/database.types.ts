@@ -471,6 +471,7 @@ export type Database = {
       }
       consoles: {
         Row: {
+          console_type: string
           created_at: string
           deleted_at: string | null
           id: number
@@ -481,6 +482,7 @@ export type Database = {
           venue_id: string
         }
         Insert: {
+          console_type?: string
           created_at?: string
           deleted_at?: string | null
           id?: number
@@ -491,6 +493,7 @@ export type Database = {
           venue_id: string
         }
         Update: {
+          console_type?: string
           created_at?: string
           deleted_at?: string | null
           id?: number
@@ -857,8 +860,10 @@ export type Database = {
       }
       marketplace_bookings: {
         Row: {
+          checked_in_at: string | null
           commission_amount: number
           console_id: number | null
+          console_type: string
           controllers: number
           created_at: string
           customer_id: string | null
@@ -883,8 +888,10 @@ export type Database = {
           venue_id: string
         }
         Insert: {
+          checked_in_at?: string | null
           commission_amount?: number
           console_id?: number | null
+          console_type?: string
           controllers?: number
           created_at?: string
           customer_id?: string | null
@@ -909,8 +916,10 @@ export type Database = {
           venue_id: string
         }
         Update: {
+          checked_in_at?: string | null
           commission_amount?: number
           console_id?: number | null
+          console_type?: string
           controllers?: number
           created_at?: string
           customer_id?: string | null
@@ -2475,7 +2484,7 @@ export type Database = {
       }
       create_marketplace_booking: {
         Args: {
-          p_console_id?: number
+          p_console_type?: string
           p_controllers?: number
           p_customer_name: string
           p_customer_phone: string
@@ -2528,6 +2537,7 @@ export type Database = {
         Returns: {
           busy: Json
           capacity: number
+          console_type: string
         }[]
       }
       get_venue_pnl: {
