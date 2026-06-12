@@ -1652,6 +1652,267 @@ export type Database = {
           },
         ]
       }
+      tournament_matches: {
+        Row: {
+          console_id: number | null
+          created_at: string
+          id: string
+          next_match_id: string | null
+          next_slot: number | null
+          org_id: string
+          p1_id: string | null
+          p2_id: string | null
+          position: number
+          round: number
+          score1: number | null
+          score2: number | null
+          status: string
+          tournament_id: string
+          winner_id: string | null
+        }
+        Insert: {
+          console_id?: number | null
+          created_at?: string
+          id?: string
+          next_match_id?: string | null
+          next_slot?: number | null
+          org_id: string
+          p1_id?: string | null
+          p2_id?: string | null
+          position: number
+          round: number
+          score1?: number | null
+          score2?: number | null
+          status?: string
+          tournament_id: string
+          winner_id?: string | null
+        }
+        Update: {
+          console_id?: number | null
+          created_at?: string
+          id?: string
+          next_match_id?: string | null
+          next_slot?: number | null
+          org_id?: string
+          p1_id?: string | null
+          p2_id?: string | null
+          position?: number
+          round?: number
+          score1?: number | null
+          score2?: number | null
+          status?: string
+          tournament_id?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_matches_console_id_fkey"
+            columns: ["console_id"]
+            isOneToOne: false
+            referencedRelation: "console_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_matches_console_id_fkey"
+            columns: ["console_id"]
+            isOneToOne: false
+            referencedRelation: "consoles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_matches_next_match_id_fkey"
+            columns: ["next_match_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_matches_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_matches_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_matches_p1_id_fkey"
+            columns: ["p1_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_matches_p2_id_fkey"
+            columns: ["p2_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_matches_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_matches_winner_id_fkey"
+            columns: ["winner_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_participants: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          org_id: string
+          phone: string | null
+          tournament_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          org_id: string
+          phone?: string | null
+          tournament_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          org_id?: string
+          phone?: string | null
+          tournament_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_participants_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_participants_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_participants_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournaments: {
+        Row: {
+          bracket_size: number | null
+          created_at: string
+          entry_fee: number
+          format: string
+          game: string | null
+          id: string
+          max_participants: number | null
+          name: string
+          org_id: string
+          prize_pool: number
+          starts_at: string | null
+          status: string
+          venue_id: string
+          winner_participant_id: string | null
+        }
+        Insert: {
+          bracket_size?: number | null
+          created_at?: string
+          entry_fee?: number
+          format?: string
+          game?: string | null
+          id?: string
+          max_participants?: number | null
+          name: string
+          org_id: string
+          prize_pool?: number
+          starts_at?: string | null
+          status?: string
+          venue_id: string
+          winner_participant_id?: string | null
+        }
+        Update: {
+          bracket_size?: number | null
+          created_at?: string
+          entry_fee?: number
+          format?: string
+          game?: string | null
+          id?: string
+          max_participants?: number | null
+          name?: string
+          org_id?: string
+          prize_pool?: number
+          starts_at?: string | null
+          status?: string
+          venue_id?: string
+          winner_participant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournaments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournaments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournaments_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "tournaments_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournaments_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournaments_winner_fkey"
+            columns: ["winner_participant_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venue_budgets: {
         Row: {
           created_at: string
@@ -2150,6 +2411,10 @@ export type Database = {
       }
     }
     Functions: {
+      _advance_winner: {
+        Args: { p_match: string; p_winner: string }
+        Returns: undefined
+      }
       add_expense: {
         Args: {
           p_amount: number
@@ -2323,6 +2588,11 @@ export type Database = {
         Args: { p_id: string; p_reply: string }
         Returns: undefined
       }
+      report_match: {
+        Args: { p_match: string; p_score1: number; p_score2: number }
+        Returns: undefined
+      }
+      seed_tournament: { Args: { p_tournament: string }; Returns: undefined }
       set_employee_pin: {
         Args: { p_employee_id: number; p_pin: string }
         Returns: undefined
