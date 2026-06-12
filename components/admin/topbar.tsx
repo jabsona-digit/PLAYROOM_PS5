@@ -19,10 +19,11 @@ const TITLES: Record<ModuleKey, { title: string; subtitle: string }> = {
   billing: { title: 'გამოწერა', subtitle: 'პლანი, გამოყენება და ანგარიშსწორება' },
   accounting: { title: 'ბუღალტერია', subtitle: 'ფინანსური რეპორტები' },
   reservations: { title: 'ჯავშნები', subtitle: 'კონსოლების წინასწარი დაჯავშნა' },
+  online_bookings: { title: 'ონლაინ ჯავშნები', subtitle: 'martelounge.ge-დან შემოსული ჯავშნები' },
 }
 
 export function Topbar({ active, onMenuClick }: { active: ModuleKey; onMenuClick?: () => void }) {
-  const meta = TITLES[active]
+  const meta = TITLES[active] ?? { title: '', subtitle: '' }
   const { consoles, pushToast } = usePlayroom()
 
   const expiring = consoles.filter(
