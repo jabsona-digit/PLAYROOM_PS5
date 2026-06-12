@@ -20,6 +20,7 @@ export type ModuleKey =
   | 'billing'
   | 'accounting'
   | 'reservations'
+  | 'online_bookings'
 
 export interface AppSettings {
   venue_name: string

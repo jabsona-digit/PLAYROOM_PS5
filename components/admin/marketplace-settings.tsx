@@ -17,7 +17,7 @@ import { usePlayroom } from '@/lib/store'
 import { supabase } from '@/lib/supabase/client'
 import { uploadImage, UPLOAD_ERRORS, slugify } from '@/lib/upload'
 
-const SITE = 'https://martelounge.ge'
+const SITE = 'https://play.martelounge.ge'
 
 interface VenuePublic {
   name: string
@@ -205,7 +205,7 @@ export function MarketplaceSettings() {
           </div>
           <div>
             <h2 className="text-lg font-extrabold tracking-tight">Marketplace პროფილი</h2>
-            <p className="text-xs text-muted-foreground">საჯარო გვერდი martelounge.ge-ზე</p>
+            <p className="text-xs text-muted-foreground">საჯარო გვერდი play.martelounge.ge-ზე</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -231,7 +231,7 @@ export function MarketplaceSettings() {
         <label className="block sm:col-span-2">
           <span className="text-sm text-muted-foreground">მისამართი (slug)</span>
           <div className="nm-inset mt-2 flex items-center rounded-xl px-3">
-            <span className="text-xs text-muted-foreground shrink-0">martelounge.ge/</span>
+            <span className="text-xs text-muted-foreground shrink-0">play.martelounge.ge/</span>
             <input
               value={form.slug}
               onChange={(e) => set('slug', e.target.value)}

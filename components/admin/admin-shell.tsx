@@ -24,6 +24,7 @@ import { PlatformConsole } from './platform'
 import { Billing } from './billing'
 import { Accounting } from './accounting'
 import { Reservations } from './reservations'
+import { OnlineBookings } from './online-bookings'
 import { AiAssistant } from './ai-assistant'
 import { ToastViewport } from './toast'
 import { PinGate } from './pin-gate'
@@ -185,6 +186,7 @@ function Workspace({ email }: { email?: string }) {
               {active === 'billing' && <Billing />}
               {active === 'accounting' && <Accounting />}
               {active === 'reservations' && <Reservations />}
+              {active === 'online_bookings' && <OnlineBookings />}
               {active === 'platform' && (
                 <PlatformConsole onViewAs={() => setActive('dashboard')} />
               )}

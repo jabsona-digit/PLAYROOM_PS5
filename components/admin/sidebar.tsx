@@ -16,6 +16,7 @@ import {
   CreditCard,
   Calculator,
   CalendarClock,
+  Globe,
   Lock,
   type LucideIcon,
 } from 'lucide-react'
@@ -36,6 +37,7 @@ const NAV: { key: ModuleKey; label: string; icon: LucideIcon }[] = [
   { key: 'billing', label: 'გამოწერა', icon: CreditCard },
   { key: 'accounting', label: 'ბუღალტერია', icon: Calculator },
   { key: 'reservations', label: 'ჯავშნები', icon: CalendarClock },
+  { key: 'online_bookings', label: 'ონლაინ ჯავშნები', icon: Globe },
 ]
 
 function NavButton({ item, active, onSelect }: { 
