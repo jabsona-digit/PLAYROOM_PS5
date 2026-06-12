@@ -70,6 +70,13 @@ export type Database = {
             foreignKeyName: "audit_logs_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "audit_logs_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "public_venues"
             referencedColumns: ["id"]
           },
@@ -355,6 +362,13 @@ export type Database = {
             foreignKeyName: "bar_sales_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "bar_sales_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "public_venues"
             referencedColumns: ["id"]
           },
@@ -436,6 +450,13 @@ export type Database = {
             foreignKeyName: "cash_reconciliations_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "cash_reconciliations_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "public_venues"
             referencedColumns: ["id"]
           },
@@ -493,6 +514,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "platform_org_overview"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consoles_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
           },
           {
             foreignKeyName: "consoles_venue_id_fkey"
@@ -671,6 +699,13 @@ export type Database = {
             foreignKeyName: "expenses_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "expenses_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "public_venues"
             referencedColumns: ["id"]
           },
@@ -796,6 +831,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "platform_org_overview"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
           },
           {
             foreignKeyName: "invoices_venue_id_fkey"
@@ -936,11 +978,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "marketplace_bookings_pricing_plan_id_fkey"
+            columns: ["pricing_plan_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["plan_id"]
+          },
+          {
             foreignKeyName: "marketplace_bookings_reservation_id_fkey"
             columns: ["reservation_id"]
             isOneToOne: false
             referencedRelation: "reservations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_bookings_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
           },
           {
             foreignKeyName: "marketplace_bookings_venue_id_fkey"
@@ -1044,6 +1100,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "platform_org_overview"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_reviews_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
           },
           {
             foreignKeyName: "marketplace_reviews_venue_id_fkey"
@@ -1283,6 +1346,13 @@ export type Database = {
             foreignKeyName: "reservations_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "reservations_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "public_venues"
             referencedColumns: ["id"]
           },
@@ -1474,6 +1544,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sessions_pricing_plan_id_fkey"
+            columns: ["pricing_plan_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "sessions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
             foreignKeyName: "sessions_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
@@ -1549,6 +1633,13 @@ export type Database = {
             foreignKeyName: "shifts_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "shifts_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "public_venues"
             referencedColumns: ["id"]
           },
@@ -1606,6 +1697,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "platform_org_overview"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_budgets_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
           },
           {
             foreignKeyName: "venue_budgets_venue_id_fkey"
@@ -1753,6 +1851,13 @@ export type Database = {
             foreignKeyName: "venue_budgets_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "venue_budgets_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "public_venues"
             referencedColumns: ["id"]
           },
@@ -1862,6 +1967,13 @@ export type Database = {
             foreignKeyName: "marketplace_reviews_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "marketplace_reviews_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "public_venues"
             referencedColumns: ["id"]
           },
@@ -1873,6 +1985,18 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      public_venue_plans: {
+        Row: {
+          controllers: number | null
+          name: string | null
+          plan_id: number | null
+          price_per_hour: number | null
+          type: string | null
+          venue_id: string | null
+          venue_slug: string | null
+        }
+        Relationships: []
       }
       public_venues: {
         Row: {
@@ -2014,6 +2138,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "pricing_plans"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_pricing_plan_id_fkey"
+            columns: ["pricing_plan_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["plan_id"]
           },
         ]
       }
