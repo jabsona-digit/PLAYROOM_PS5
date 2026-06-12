@@ -19,6 +19,7 @@ import { useFiscal } from '@/lib/fiscal'
 import { statusMeta } from '@/lib/ui'
 import type { ConsoleUnit } from '@/lib/types'
 import { Modal } from './modal'
+import { MarketplaceSettings } from './marketplace-settings'
 
 function Toggle({
   checked,
@@ -482,6 +483,8 @@ export function Settings() {
       </section>
 
       <FiscalSettings />
+
+      <MarketplaceSettings />
 
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="ახალი კონსოლი">
         <div className="space-y-5">
