@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { Hero } from './hero'
+import { DigitalPass } from './digital-pass'
 
 function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -257,6 +258,22 @@ export function Landing() {
           <a href="/app" className="nm-glow mt-8 inline-flex items-center gap-2 rounded-2xl px-8 py-4 text-lg font-bold">
             დაიწyე უფასოდ <ArrowRight className="size-5" />
           </a>
+        </Reveal>
+      </section>
+
+      {/* digital pass / QR check-in showcase */}
+      <section id="pass" className="mx-auto max-w-6xl px-5 py-16">
+        <Reveal>
+          <h2 className="text-center text-3xl font-extrabold tracking-tight">ციფრული პასი & QR check-in</h2>
+          <p className="mt-2 text-center text-muted-foreground">
+            ონლაინ ჯავშანი → კლიენტი მოდის QR-ით → ერთი სკანი და შემოსულია.
+          </p>
+        </Reveal>
+        <Reveal delay={120}>
+          <div className="mt-10">
+            <DigitalPass />
+          </div>
+          <p className="text-center text-xs text-muted-foreground">კურსორი მიიტანე — ბარათი გადაბრუნდება</p>
         </Reveal>
       </section>
 

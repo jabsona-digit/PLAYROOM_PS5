@@ -370,3 +370,71 @@
   font-family: ui-monospace, "Geist Mono", SFMono-Regular, monospace;
   font-size: 14px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
 }
+
+/* ── Holographic Digital Pass (landing showcase) — adapted from a Uiverse design ── */
+.mlpass-stage { display: flex; justify-content: center; padding: 10px 0 36px; perspective: 1500px; }
+.mlpass-float { transform-style: preserve-3d; animation: mlpass-float 4s ease-in-out infinite; }
+@keyframes mlpass-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+.mlpass-flip { position: relative; cursor: pointer; transition: transform 0.7s cubic-bezier(0.25, 1, 0.5, 1); transform-style: preserve-3d; }
+.mlpass-flip:hover { transform: rotateY(180deg); }
+.mlpass-front, .mlpass-back { backface-visibility: hidden; -webkit-backface-visibility: hidden; transform-style: preserve-3d; }
+.mlpass-back { position: absolute; inset: 0; transform: rotateY(180deg); }
+@media (prefers-reduced-motion: reduce) { .mlpass-float { animation: none; } }
+
+.mlpass-body {
+  position: relative; width: 320px; overflow: hidden; color: #0b0e14;
+  border-radius: 12px 12px 0 0;
+  background: linear-gradient(to bottom, #ffffff, #dcfffd);
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.7);
+}
+.mlpass-body::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; border-radius: 12px 12px 0 0;
+  mask-image: linear-gradient(white 55%, transparent 100%);
+  background:
+    radial-gradient(at 30% -5%, #90f1f1, #d3ccf0, rgba(255, 255, 255, 0) 25%),
+    radial-gradient(at 30% 40%, #aad1f0, rgba(255, 255, 255, 0) 20%),
+    radial-gradient(at 50% 70%, #c4f2e5, rgba(255, 255, 255, 0) 30%),
+    radial-gradient(at 70% 0%, #d3ccf0, rgba(255, 255, 255, 0) 20%),
+    linear-gradient(75deg, #90f1f1 5%, rgba(255, 255, 255, 0), #aad1f0, rgba(255, 255, 255, 0), #e9d0ed, rgba(255, 255, 255, 0), #d3ccf0, rgba(255, 255, 255, 0), #c4f2e5 90%);
+}
+.mlpass-body::after {
+  content: ""; position: absolute; bottom: -16px; left: 0; height: 16px; width: 100%; pointer-events: none;
+  background:
+    linear-gradient(-135deg, #dcfffd 50%, transparent 50%) 0 50%,
+    linear-gradient(-45deg, #dcfffd 50%, transparent 50%) 0 50%;
+  background-repeat: repeat-x; background-size: 16px 16px;
+}
+.mlpass-header {
+  position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between;
+  height: 54px; padding: 0 16px; border-bottom: 1px dashed rgba(0, 0, 0, 0.35); text-align: left;
+}
+.mlpass-header::before, .mlpass-header::after {
+  content: ""; position: absolute; bottom: -7px; width: 13px; height: 13px; border-radius: 50%;
+  background: var(--background); z-index: 2;
+}
+.mlpass-header::before { left: -8px; }
+.mlpass-header::after { right: -8px; }
+.mlpass-name { display: flex; gap: 4px; align-items: center; font-weight: 300; font-size: 1em; letter-spacing: -1px; }
+.mlpass-name b { font-weight: 800; }
+.mlpass-time { display: flex; font-weight: 700; letter-spacing: -0.5px; }
+.mlpass-time .mlpass-slash { padding: 0 1px; color: rgba(0, 0, 0, 0.4); }
+.mlpass-barcode {
+  display: inline-block; height: 28px; width: 0;
+  box-shadow: 1px 0 0 1px, 5px 0 0 1px, 10px 0 0 1px, 11px 0 0 1px, 15px 0 0 1px, 18px 0 0 1px, 22px 0 0 1px, 23px 0 0 1px, 26px 0 0 1px, 30px 0 0 1px, 35px 0 0 1px, 37px 0 0 1px, 41px 0 0 1px, 44px 0 0 1px, 47px 0 0 1px, 51px 0 0 1px;
+}
+.mlpass-contents { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; min-height: 168px; padding: 20px; }
+.mlpass-event { display: flex; flex-direction: column; z-index: 1; font-weight: 600; margin-top: -8px; }
+.mlpass-event-main { font-size: 2.4rem; font-weight: 400; line-height: 1; }
+.mlpass-event-main b { font-weight: 800; margin-right: 2px; }
+.mlpass-event-sub { font-size: 12px; letter-spacing: 0.4em; margin-left: 4px; color: #2f4c8b85; }
+.mlpass-number { position: absolute; left: 16px; bottom: -2px; font-size: 1.8em; font-weight: 800; color: #b5ddff; }
+.mlpass-qr img, .mlpass-qr svg { display: block; height: 62px; width: 62px; }
+.mlpass-qr-lg img, .mlpass-qr-lg svg { height: 150px; width: 150px; }
+.mlpass-front .mlpass-qr { position: absolute; right: 8px; bottom: 4px; }
+.mlpass-reflex { position: absolute; inset: 0; z-index: 5; overflow: hidden; pointer-events: none; }
+.mlpass-reflex::before {
+  content: ""; position: absolute; width: 280px; top: -10%; bottom: -10%; left: -140%;
+  background: linear-gradient(to right, rgba(221, 249, 255, 0.35) 10%, rgba(221, 245, 255, 0.65) 60%, rgba(221, 255, 254, 0.35) 90%);
+  transform: translateX(0) skew(-30deg); transition: transform 0.8s ease;
+}
+.mlpass-flip:hover .mlpass-reflex::before { transform: translateX(320%) skew(-30deg); }
