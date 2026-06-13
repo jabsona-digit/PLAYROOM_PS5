@@ -1133,6 +1133,60 @@ export type Database = {
           },
         ]
       }
+      org_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          org_id: string
+          role: string
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          org_id: string
+          role: string
+          token: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          org_id?: string
+          role?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_invites_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_invites_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_members: {
         Row: {
           created_at: string
@@ -2568,6 +2622,7 @@ export type Database = {
         Args: { p_match: string; p_winner: string }
         Returns: undefined
       }
+      accept_invite: { Args: { p_token: string }; Returns: Json }
       add_expense: {
         Args: {
           p_amount: number
@@ -2625,6 +2680,10 @@ export type Database = {
           p_pin: string
           p_role: string
         }
+        Returns: Json
+      }
+      create_invite: {
+        Args: { p_email: string; p_org: string; p_role: string }
         Returns: Json
       }
       create_marketplace_booking: {
@@ -2698,6 +2757,15 @@ export type Database = {
       is_org_member: { Args: { p_org: string }; Returns: boolean }
       is_org_member_raw: { Args: { p_org: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
+      list_org_members: {
+        Args: { p_org: string }
+        Returns: {
+          email: string
+          joined_at: string
+          role: string
+          user_id: string
+        }[]
+      }
       log_audit: {
         Args: {
           p_action: string
@@ -2774,6 +2842,7 @@ export type Database = {
         Args: { p_match: string; p_score1: number; p_score2: number }
         Returns: undefined
       }
+      revoke_invite: { Args: { p_invite_id: string }; Returns: undefined }
       seed_tournament: { Args: { p_tournament: string }; Returns: undefined }
       set_employee_pin: {
         Args: { p_employee_id: number; p_pin: string }

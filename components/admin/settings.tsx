@@ -21,6 +21,7 @@ import type { ConsoleUnit } from '@/lib/types'
 import { supabase } from '@/lib/supabase/client'
 import { Modal } from './modal'
 import { MarketplaceSettings } from './marketplace-settings'
+import { TeamSettings } from './team-settings'
 
 // Bookable resource types — a coupe/VIP is a separate capacity pool (0039).
 const CTYPES = ['standard', 'coupe', 'vip']
@@ -507,6 +508,8 @@ export function Settings() {
           ) : null}
         </div>
       </section>
+
+      <TeamSettings />
 
       <FiscalSettings />
 

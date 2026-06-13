@@ -207,11 +207,18 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     [memberRoles, currentOrgId],
   )
   
-  // No employees → the AUTH user's role. Otherwise the PIN-authenticated employee's
-  // role, unless an owner/admin chose to skip the PIN pad (bypass → their own role).
+  // Resolve the effective role driving module access:
+  //  • a PIN-authenticated employee → that employee's role;
+  //  • no employees at all → the auth user's own role;
+  //  • a NON-admin member logged in with their OWN account (operator/cashier/
+  //    accountant/manager) → their own role directly. They signed in as
+  //    themselves, so the shared-terminal PIN gate must not block them;
+  //  • otherwise (owner/admin on a shared terminal) → null until they enter a
+  //    PIN or tap "enter as owner" (bypassPin).
   const activeRole = useMemo(() => {
     if (activeEmployee) return activeEmployee.role
     if (!hasEmployees) return currentRole
+    if (currentRole && currentRole !== 'owner' && currentRole !== 'admin') return currentRole
     if (bypassPin && (currentRole === 'owner' || currentRole === 'admin')) return currentRole
     return null
   }, [hasEmployees, activeEmployee, currentRole, bypassPin])

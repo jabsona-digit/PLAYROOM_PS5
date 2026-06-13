@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Eye, LoaderCircle, Lock } from 'lucide-react'
 import type { Session as AuthSession } from '@supabase/supabase-js'
 import type { ModuleKey } from '@/lib/types'
@@ -211,10 +211,60 @@ function Workspace({ email }: { email?: string }) {
   )
 }
 
-/* Inside OrgProvider: decide between loading / onboarding / the workspace. */
+const INVITE_ERRORS: Record<string, string> = {
+  email_mismatch: 'მოწვევა სხვა ელფოსტაზეა გამოწერილი — გადი და შედი იმ ელფოსტით, რომელზეც მოგიწვიეს.',
+  expired: 'მოწვევის ვადა გავიდა. სთხოვე მფლობელს ახალი მოწვევა.',
+  already_used: 'ეს მოწვევა უკვე გამოყენებულია.',
+  invalid: 'მოწვევა ვერ მოიძებნა.',
+  unauthorized: 'ავტორიზაცია საჭიროა.',
+}
+
+/* Inside OrgProvider: claim a pending invite, then decide loading / onboarding /
+   the workspace. A freshly-invited user has no org yet, so the claim must run
+   BEFORE the onboarding decision (otherwise they'd land on the create-org flow). */
 function OrgGate({ email }: { email?: string }) {
-  const { loading, needsOnboarding, suspended } = useOrg()
-  if (loading) return <Splash />
+  const { loading, needsOnboarding, suspended, refresh, setCurrentOrg } = useOrg()
+  const [claiming, setClaiming] = useState(false)
+  const [claimError, setClaimError] = useState<string | null>(null)
+  const claimedRef = useRef(false)
+
+  useEffect(() => {
+    if (loading || claimedRef.current) return
+    const token = localStorage.getItem('playroom:pending-invite')
+    if (!token) return
+    claimedRef.current = true
+    setClaiming(true)
+    ;(async () => {
+      const { data, error } = await supabase.rpc('accept_invite', { p_token: token })
+      localStorage.removeItem('playroom:pending-invite')
+      const res = data as { ok?: boolean; org_id?: string; error?: string } | null
+      if (res?.ok && res.org_id) {
+        await refresh()
+        setCurrentOrg(res.org_id)
+      } else {
+        setClaimError(INVITE_ERRORS[res?.error ?? ''] ?? error?.message ?? 'მოწვევა ვერ მიიღო')
+      }
+      setClaiming(false)
+    })()
+  }, [loading, refresh, setCurrentOrg])
+
+  if (loading || claiming) return <Splash />
+  if (claimError) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background p-6">
+        <div className="nm-raised w-full max-w-sm rounded-3xl p-8 text-center">
+          <p className="text-base font-extrabold">მოწვევა</p>
+          <p className="mt-3 text-sm text-muted-foreground text-pretty">{claimError}</p>
+          <button
+            onClick={() => setClaimError(null)}
+            className="nm-btn mt-6 w-full rounded-2xl py-3 text-sm font-bold text-primary"
+          >
+            გაგრძელება
+          </button>
+        </div>
+      </div>
+    )
+  }
   if (needsOnboarding) return <Onboarding />
   if (suspended) return <Suspended email={email} />
   return <Workspace email={email} />
@@ -225,6 +275,20 @@ export function AdminShell() {
   const [checking, setChecking] = useState(true)
 
   useEffect(() => {
+    // Capture an invite token from the URL (?invite=…) so it survives the
+    // login/signup round-trip; OrgGate claims it once there's a session.
+    try {
+      const url = new URL(window.location.href)
+      const token = url.searchParams.get('invite')
+      if (token) {
+        localStorage.setItem('playroom:pending-invite', token)
+        url.searchParams.delete('invite')
+        window.history.replaceState({}, '', url.toString())
+      }
+    } catch {
+      /* ignore */
+    }
+
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setChecking(false)
