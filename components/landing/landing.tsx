@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import dynamic from 'next/dynamic'
 import {
   Gamepad2,
   Coffee,
@@ -16,39 +15,7 @@ import {
   QrCode,
   CalendarClock,
 } from 'lucide-react'
-
-const Gamepad3D = dynamic(() => import('./gamepad-3d'), {
-  ssr: false,
-  loading: () => null,
-})
-const RobotMascot = dynamic(() => import('./robot-mascot'), {
-  ssr: false,
-  loading: () => null,
-})
-
-function useTypewriter(text: string, speed = 45, startDelay = 400) {
-  const [displayed, setDisplayed] = useState('')
-  const [done, setDone] = useState(false)
-  useEffect(() => {
-    let i = 0
-    let interval: ReturnType<typeof setInterval>
-    const start = setTimeout(() => {
-      interval = setInterval(() => {
-        i++
-        setDisplayed(text.slice(0, i))
-        if (i >= text.length) {
-          clearInterval(interval)
-          setDone(true)
-        }
-      }, speed)
-    }, startDelay)
-    return () => {
-      clearTimeout(start)
-      clearInterval(interval)
-    }
-  }, [text, speed, startDelay])
-  return { displayed, done }
-}
+import { Hero } from './hero'
 
 function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -99,7 +66,6 @@ const PLANS = [
 ]
 
 export function Landing() {
-  const hero = useTypewriter('მართე შენი PlayStation კლუბი — ერთ სისტემაში')
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
       {/* animated aurora background */}
@@ -108,9 +74,6 @@ export function Landing() {
         <div className="aurora aurora-2" />
         <div className="aurora aurora-3" />
       </div>
-
-      {/* scroll-following neon robot mascot */}
-      <RobotMascot />
 
       {/* nav */}
       <header className="sticky top-0 z-40 backdrop-blur-md">
@@ -129,43 +92,8 @@ export function Landing() {
         </div>
       </header>
 
-      {/* hero */}
-      <section className="mx-auto grid max-w-6xl items-center gap-6 px-5 pb-10 pt-8 lg:grid-cols-2 lg:pt-16">
-        <div className="animate-in-up">
-          <span className="nm-raised-sm inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold text-primary">
-            <Sparkles className="size-3.5" /> Gaming Lounge OS
-          </span>
-          <h1 className="mt-5 min-h-[3.2em] text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:min-h-[2.4em] lg:text-6xl">
-            {hero.done ? (
-              <>
-                მართე შენი <span className="text-primary text-glow">PlayStation</span> კლუბი — ერთ სისტემაში
-              </>
-            ) : (
-              <>
-                {hero.displayed}
-                <span className="ml-0.5 inline-block h-[0.9em] w-[3px] animate-blink bg-primary align-middle" />
-              </>
-            )}
-          </h1>
-          <p className="mt-5 max-w-lg text-lg text-muted-foreground">
-            სესიები, ბარი, კასა, ბუღალტერია, თანამშრომლები, ტურნირები და{' '}
-            <span className="text-foreground">ონლაინ ჯავშნები</span> — Excel-ის გარეშე.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <a href="/app" className="nm-glow flex items-center gap-2 rounded-xl px-6 py-3 font-bold">
-              დაიწყე უფასოდ <ArrowRight className="size-4" />
-            </a>
-            <a href="#features" className="nm-btn rounded-xl px-6 py-3 font-semibold text-muted-foreground">
-              გაიგე მეტი
-            </a>
-          </div>
-        </div>
-
-        {/* 3D neon gamepad */}
-        <div className="relative h-[340px] w-full sm:h-[440px] lg:h-[520px]">
-          <Gamepad3D />
-        </div>
-      </section>
+      {/* hero — interactive Digital Twin */}
+      <Hero />
 
       {/* features */}
       <section id="features" className="mx-auto max-w-6xl px-5 py-16">
