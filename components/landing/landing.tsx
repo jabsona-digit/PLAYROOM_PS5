@@ -76,10 +76,39 @@ const PLANS = [
 ]
 
 export function Landing() {
+  const auroraRef = useRef<HTMLDivElement>(null)
+
+  // Subtle parallax: the aurora layer drifts with scroll + pointer (the blobs keep
+  // their float animation inside — we transform the parent so it doesn't clash).
+  useEffect(() => {
+    const el = auroraRef.current
+    if (!el) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    let mx = 0, my = 0, raf = 0
+    const apply = () => {
+      raf = 0
+      const sy = Math.min(window.scrollY * 0.12, 200) // bounded scroll parallax
+      el.style.transform = `translate3d(${mx}px, ${sy + my}px, 0)`
+    }
+    const schedule = () => { if (!raf) raf = requestAnimationFrame(apply) }
+    const onMove = (e: PointerEvent) => {
+      mx = (e.clientX / window.innerWidth - 0.5) * 28
+      my = (e.clientY / window.innerHeight - 0.5) * 28
+      schedule()
+    }
+    window.addEventListener('scroll', schedule, { passive: true })
+    window.addEventListener('pointermove', onMove, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', schedule)
+      window.removeEventListener('pointermove', onMove)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [])
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
-      {/* animated aurora background */}
-      <div className="pointer-events-none fixed inset-0 -z-10">
+      {/* animated aurora background (parallax on scroll + pointer) */}
+      <div ref={auroraRef} className="pointer-events-none fixed inset-0 -z-10 will-change-transform">
         <div className="aurora aurora-1" />
         <div className="aurora aurora-2" />
         <div className="aurora aurora-3" />
