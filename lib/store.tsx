@@ -117,6 +117,7 @@ function mapSession(r: any): Session {
     payment_method: (r.payment_method ?? 'cash') as Session['payment_method'],
     bank: (r.bank ?? null) as Session['bank'],
     is_open: r.is_open ?? false,
+    created_by_user: r.created_by_user ?? null,
     extensions: (r.session_extensions ?? []).map(mapExtension),
   }
 }
@@ -181,7 +182,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
     if (!org) return
     const { data } = await supabase
       .from('employees')
-      .select('id, name, role, is_active, salary_type, salary_amount')
+      .select('id, name, role, is_active, salary_type, salary_amount, user_id')
       .eq('org_id', org)
       .order('id')
     if (data) {

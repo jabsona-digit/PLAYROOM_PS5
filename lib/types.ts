@@ -70,6 +70,7 @@ export interface Session {
   payment_method: PaymentMethod
   bank?: Bank | null
   is_open: boolean
+  created_by_user?: string | null // auth user (operator) who created the session
   extensions: SessionExtension[]
 }
 
@@ -88,6 +89,7 @@ export interface Employee {
   is_active: boolean
   salary_type: 'hourly' | 'monthly' | 'fixed'
   salary_amount: number
+  user_id?: string | null // linked login (org_members) — for shift/attribution mapping
 }
 
 export const ROLE_LABELS: Record<OrgRole, string> = {

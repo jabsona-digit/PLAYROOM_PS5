@@ -12,7 +12,12 @@ import { gel, paymentMethodLabel, timeOfDay } from '@/lib/ui'
 type Filter = 'all' | 'standard' | 'premium'
 
 export function HistoryModule() {
-  const { completed, pushToast } = usePlayroom()
+  const { completed, employees, pushToast } = usePlayroom()
+  // map a session's created_by_user (auth uid) → operator name via the linked employee
+  const opName = useMemo(
+    () => new Map(employees.filter((e) => e.user_id).map((e) => [e.user_id as string, e.name])),
+    [employees],
+  )
   const { currentRole } = useOrg()
   const canVoidRefund = ['owner', 'admin', 'manager'].includes(currentRole ?? '')
 
@@ -106,6 +111,7 @@ export function HistoryModule() {
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
                     {paymentMethodLabel[s.payment_method]}
                     {s.bank ? ` • ${s.bank}` : ''}
+                    {s.created_by_user && opName.get(s.created_by_user) ? ` • 👤 ${opName.get(s.created_by_user)}` : ''}
                   </p>
                   <p className="text-xs text-muted-foreground md:hidden">
                     {s.console_name} • {s.plan_name}
