@@ -14,13 +14,13 @@ const word = {
 
 type Phase = 'idle' | 'cardIn' | 'tap' | 'success' | 'receipt' | 'hold' | 'reset'
 const STEPS: { phase: Phase; dur: number }[] = [
-  { phase: 'idle', dur: 1000 },
-  { phase: 'cardIn', dur: 1000 },
-  { phase: 'tap', dur: 650 },
-  { phase: 'success', dur: 850 },
+  { phase: 'idle', dur: 1100 },
+  { phase: 'cardIn', dur: 1700 }, // glide in, then linger before the tap
+  { phase: 'tap', dur: 850 },
+  { phase: 'success', dur: 1150 }, // let the exit float up gracefully
   { phase: 'receipt', dur: 1200 },
-  { phase: 'hold', dur: 1900 },
-  { phase: 'reset', dur: 800 },
+  { phase: 'hold', dur: 2000 },
+  { phase: 'reset', dur: 900 },
 ]
 
 function useSessionTimer() {
@@ -304,7 +304,7 @@ export function Hero() {
           <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ transformStyle: 'preserve-3d' }}>
             <motion.div
               animate={{ ...BANK[phase], z: 70 }}
-              transition={{ type: 'spring', stiffness: 130, damping: 16 }}
+              transition={{ type: 'spring', stiffness: 70, damping: 19, mass: 0.7 }}
             >
               {/* 380×240 card scaled to ~176×111 to fit the payment animation */}
               <div style={{ width: 176, height: 111 }}>
