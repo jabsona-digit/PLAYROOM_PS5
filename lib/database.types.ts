@@ -1248,6 +1248,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payroll_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_runs_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "payroll_runs_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "payroll_runs_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
