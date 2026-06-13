@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { motion, useMotionValue, useSpring, useTransform, useMotionTemplate } from 'motion/react'
-import { Cpu, Wifi, CreditCard } from 'lucide-react'
+import { CreditCard } from 'lucide-react'
 
 const HEADLINE = ['მართე', 'შენი', 'გეიმინგ', 'ბარი', 'ავტოპილოტზე.']
 
@@ -70,6 +70,58 @@ const BANK: Record<Phase, { opacity: number; x: number; y: number; scale: number
   receipt: { opacity: 0, x: 130, y: -10, scale: 0.85 },
   hold: { opacity: 0, x: 130, y: -10, scale: 0.85 },
   reset: { opacity: 0, x: 130, y: -10, scale: 0.85 },
+}
+
+// Premium obsidian payment card (adapted from a Uiverse design) — used as the
+// tap-to-pay card in the hero sequence. Branded for Martelounge / TBC · BOG.
+function BankCard3D() {
+  return (
+    <div className="ml-card">
+      <div className="ml-card-face">
+        <div className="ml-card-sheen" />
+        <div className="ml-card-front">
+          <div className="ml-card-row ml-card-row-top">
+            <svg width="46" viewBox="0 0 100 70" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
+              <rect x="4" y="4" width="92" height="62" rx="14" fill="#E8E8E8" stroke="#D1D1D1" strokeWidth="6" />
+              <rect x="30" y="30" width="40" height="10" rx="5" fill="#4A4A4A" />
+              <path d="M 96 35 C 75 35 65 45 65 66 L 82 66 C 89.7 66 96 59.7 96 52 Z" fill="#F27800" />
+            </svg>
+            <svg className="ml-nfc" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ transform: 'rotate(90deg)' }}>
+              <path d="M12 2v20M17 5c2.5 3 2.5 11 0 14M21 2c4 4 4 16 0 20M7 5c-2.5 3-2.5 11 0 14M3 2c-4 4-4 16 0 20" />
+            </svg>
+          </div>
+
+          <div className="ml-card-row">
+            <div className="ml-chip">
+              <div className="ml-chip-line" />
+              <div className="ml-chip-line" />
+              <div className="ml-chip-line" />
+              <div className="ml-chip-main" />
+            </div>
+            <div className="ml-card-type">TBC · BOG</div>
+          </div>
+
+          <div className="ml-card-numbers ml-embossed">
+            <span>••••</span>
+            <span>••••</span>
+            <span>••••</span>
+            <span>4242</span>
+          </div>
+
+          <div className="ml-card-row">
+            <div>
+              <div className="ml-label">CARDHOLDER</div>
+              <div className="ml-value ml-embossed">MARTELOUNGE</div>
+            </div>
+            <div>
+              <div className="ml-label">VALID THRU</div>
+              <div className="ml-value ml-embossed">12/30</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function Hero() {
@@ -248,20 +300,17 @@ export function Hero() {
             />
           )}
 
-          {/* bank card — centered wrapper, animated child */}
+          {/* bank card — centered wrapper, animated child (premium obsidian card) */}
           <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ transformStyle: 'preserve-3d' }}>
             <motion.div
-              className="flex h-24 w-40 flex-col justify-between rounded-2xl border border-white/20 bg-gradient-to-br from-white/15 to-white/5 p-3 backdrop-blur-md"
               animate={{ ...BANK[phase], z: 70 }}
               transition={{ type: 'spring', stiffness: 130, damping: 16 }}
             >
-              <div className="flex items-center justify-between">
-                <Cpu className="size-6 text-amber-300/90" />
-                <Wifi className="size-4 rotate-90 text-white/70" />
-              </div>
-              <div>
-                <p className="font-mono text-xs tracking-widest text-white/90">•••• 4242</p>
-                <p className="text-[9px] font-semibold text-white/60">TBC · BOG</p>
+              {/* 380×240 card scaled to ~176×111 to fit the payment animation */}
+              <div style={{ width: 176, height: 111 }}>
+                <div style={{ transform: 'scale(0.463)', transformOrigin: 'top left' }}>
+                  <BankCard3D />
+                </div>
               </div>
             </motion.div>
           </div>
