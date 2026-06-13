@@ -124,7 +124,7 @@ function ImpersonationBar({ onBack }: { onBack: () => void }) {
 }
 
 function Workspace({ email }: { email?: string }) {
-  const { activeEmployee, hasEmployees, activeRole, isPlatformAdmin } = useOrg()
+  const { activeEmployee, hasEmployees, activeRole, isPlatformAdmin, impersonating } = useOrg()
   const [active, setActive] = useState<ModuleKey>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -149,7 +149,9 @@ function Workspace({ email }: { email?: string }) {
 
   // If the org has employees, the terminal is PIN-locked until either an employee
   // signs in OR an owner/admin taps "enter as owner" (activeRole becomes non-null).
-  if (hasEmployees && !activeEmployee && !activeRole) {
+  // A platform admin viewing a tenant via God Mode ("view as") is NOT a member and
+  // has no employee PIN there — never lock them out of their own God Mode.
+  if (hasEmployees && !activeEmployee && !activeRole && !impersonating) {
     return (
       <PlayroomProvider>
         <PinGate />
