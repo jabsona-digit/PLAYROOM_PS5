@@ -384,6 +384,90 @@ export type Database = {
           },
         ]
       }
+      cash_drawers: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          closing_cash: number | null
+          difference: number | null
+          expected_cash: number | null
+          id: string
+          note: string | null
+          opened_at: string
+          opened_by: string | null
+          opening_cash: number
+          org_id: string
+          status: string
+          venue_id: string
+        }
+        Insert: {
+          closed_at?: string | null
+          closed_by?: string | null
+          closing_cash?: number | null
+          difference?: number | null
+          expected_cash?: number | null
+          id?: string
+          note?: string | null
+          opened_at?: string
+          opened_by?: string | null
+          opening_cash?: number
+          org_id: string
+          status?: string
+          venue_id: string
+        }
+        Update: {
+          closed_at?: string | null
+          closed_by?: string | null
+          closing_cash?: number | null
+          difference?: number | null
+          expected_cash?: number | null
+          id?: string
+          note?: string | null
+          opened_at?: string
+          opened_by?: string | null
+          opening_cash?: number
+          org_id?: string
+          status?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_drawers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_drawers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_drawers_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "cash_drawers_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_drawers_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cash_reconciliations: {
         Row: {
           actual_cash: number
@@ -2648,8 +2732,25 @@ export type Database = {
         Args: { p_reason?: string; p_reservation_id: string }
         Returns: undefined
       }
+      cash_expected: {
+        Args: {
+          p_from: string
+          p_opening: number
+          p_to: string
+          p_venue_id: string
+        }
+        Returns: number
+      }
+      cash_opener_name: {
+        Args: { p_org: string; p_uid: string }
+        Returns: string
+      }
       clock_toggle: {
         Args: { p_pin: string; p_venue_id: string }
+        Returns: Json
+      }
+      close_cash_drawer: {
+        Args: { p_closing_cash: number; p_note?: string; p_venue_id: string }
         Returns: Json
       }
       confirm_reservation: {
@@ -2742,6 +2843,7 @@ export type Database = {
         Args: { p_extra_min: number; p_session_id: string }
         Returns: undefined
       }
+      get_open_drawer: { Args: { p_venue_id: string }; Returns: Json }
       get_vat_summary: {
         Args: { p_from: string; p_to: string; p_venue_id: string }
         Returns: Json
@@ -2817,6 +2919,10 @@ export type Database = {
       }
       next_fiscal_receipt_no: { Args: never; Returns: string }
       next_invoice_number: { Args: { p_org_id: string }; Returns: string }
+      open_cash_drawer: {
+        Args: { p_opening_cash?: number; p_venue_id: string }
+        Returns: Json
+      }
       plan_monthly_price: { Args: { p_plan: string }; Returns: number }
       process_payroll: {
         Args: {

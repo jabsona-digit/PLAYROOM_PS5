@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import {
   ArrowLeftRight,
   Banknote,
@@ -59,9 +59,42 @@ export function Cashier() {
   const [shiftModalMode, setShiftModalMode] = useState<'open' | 'close'>('open')
   const [openingCash, setOpeningCash] = useState('')
   const [closingCash, setClosingCash] = useState('')
-  const [currentShiftStart, setCurrentShiftStart] = useState<Date | null>(null)
-  const [openingCashAmount, setOpeningCashAmount] = useState(0)
   const [zReportVisible, setZReportVisible] = useState(false)
+
+  // Shared, DB-backed cash drawer for this venue — ONE open at a time, visible to
+  // every operator (migration 0054). Replaces the old per-device local shift state,
+  // so two cashiers can't each open a drawer and double-count the same venue cash.
+  const [drawer, setDrawer] = useState<{
+    id: string; opened_at: string; opening_cash: number; opened_by: string; expected_cash: number
+  } | null>(null)
+
+  const loadDrawer = useCallback(async () => {
+    if (!currentVenueId) return
+    const { data } = await supabase.rpc('get_open_drawer', { p_venue_id: currentVenueId })
+    const r = data as {
+      open?: boolean; id?: string; opened_at?: string; opening_cash?: number; opened_by?: string; expected_cash?: number
+    } | null
+    setDrawer(
+      r?.open && r.id && r.opened_at
+        ? {
+            id: r.id,
+            opened_at: r.opened_at,
+            opening_cash: Number(r.opening_cash) || 0,
+            opened_by: r.opened_by ?? '',
+            expected_cash: Number(r.expected_cash) || 0,
+          }
+        : null,
+    )
+  }, [currentVenueId])
+
+  useEffect(() => {
+    loadDrawer()
+  }, [loadDrawer])
+
+  // Derived shift view from the shared drawer (DB is the source of truth).
+  const currentShiftStart = drawer ? new Date(drawer.opened_at) : null
+  const openingCashAmount = drawer?.opening_cash ?? 0
+  const expectedCash = drawer?.expected_cash ?? 0 // opening float + cash collected since open
 
   useEffect(() => {
     if (!currentVenueId) return
@@ -267,8 +300,8 @@ export function Cashier() {
             </p>
             <p className="text-xs text-muted-foreground">
               {currentShiftStart
-                ? `დაიწყო: ${currentShiftStart.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })} • სალაროში: ${gel(openingCashAmount)}`
-                : 'დღის სამუშაო ჯერ არ დაწყებულა'}
+                ? `დაიწყო: ${currentShiftStart.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })}${drawer?.opened_by ? ` • ${drawer.opened_by}` : ''} • ხურდა: ${gel(openingCashAmount)}`
+                : 'ცვლა ჯერ არ გახსნილა'}
             </p>
           </div>
         </div>
@@ -284,14 +317,14 @@ export function Cashier() {
           ) : (
             <>
               <button
-                onClick={() => setZReportVisible(v => !v)}
+                onClick={() => { loadDrawer(); setZReportVisible(v => !v) }}
                 className="nm-btn flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold text-muted-foreground"
               >
                 <Receipt className="size-4" />
                 Z-Report
               </button>
               <button
-                onClick={() => { setShiftModalMode('close'); setShiftOpen(true) }}
+                onClick={() => { loadDrawer(); setShiftModalMode('close'); setShiftOpen(true) }}
                 className="nm-btn flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold text-[var(--status-expired)]"
               >
                 <StopCircle className="size-4" />
@@ -328,8 +361,8 @@ export function Cashier() {
             </div>
           </div>
           <div className="nm-inset flex items-center justify-between rounded-2xl px-5 py-4">
-            <span className="text-sm font-semibold">სალაროში მოსალოდნელია (გახსნა + ნაღდი):</span>
-            <span className="font-mono text-lg font-extrabold text-primary">{gel(openingCashAmount + data.byMethod.cash + barData.byMethod.cash)}</span>
+            <span className="text-sm font-semibold">სალაროში მოსალოდნელია (ხურდა + ნაღდი ცვლის გახსნიდან):</span>
+            <span className="font-mono text-lg font-extrabold text-primary">{gel(expectedCash)}</span>
           </div>
         </div>
       )}
@@ -582,9 +615,19 @@ export function Cashier() {
                 />
               </label>
               <button
-                onClick={() => {
-                  setCurrentShiftStart(new Date())
-                  setOpeningCashAmount(parseFloat(openingCash) || 0)
+                onClick={async () => {
+                  if (!currentVenueId) return
+                  const { data, error } = await supabase.rpc('open_cash_drawer', {
+                    p_venue_id: currentVenueId,
+                    p_opening_cash: parseFloat(openingCash) || 0,
+                  })
+                  if (error) return pushToast('danger', error.message)
+                  const res = data as { ok?: boolean; error?: string } | null
+                  if (res?.error === 'already_open') {
+                    pushToast('info', 'ცვლა უკვე გახსნილია ამ ფილიალზე')
+                  }
+                  await loadDrawer()
+                  setOpeningCash('')
                   setShiftOpen(false)
                   setZReportVisible(false)
                 }}
@@ -598,8 +641,8 @@ export function Cashier() {
             <>
               <div className="nm-inset space-y-3 rounded-2xl p-4 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">ნაღდი გაყიდვები:</span>
-                  <span className="font-mono font-bold">{gel(data.byMethod.cash + barData.byMethod.cash)}</span>
+                  <span className="text-muted-foreground">ნაღდი გაყიდვები (ცვლის გახსნიდან):</span>
+                  <span className="font-mono font-bold">{gel(expectedCash - openingCashAmount)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">საწყისი ხურდა:</span>
@@ -607,7 +650,7 @@ export function Cashier() {
                 </div>
                 <div className="flex justify-between border-t border-white/10 pt-3">
                   <span className="font-semibold">სალაროში მოსალოდნელი:</span>
-                  <span className="font-mono font-extrabold text-primary">{gel(openingCashAmount + data.byMethod.cash + barData.byMethod.cash)}</span>
+                  <span className="font-mono font-extrabold text-primary">{gel(expectedCash)}</span>
                 </div>
               </div>
               <label className="block">
@@ -622,14 +665,14 @@ export function Cashier() {
               </label>
               {closingCash && (
                 <div className={`nm-inset flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold ${
-                  Math.abs(parseFloat(closingCash) - (openingCashAmount + data.byMethod.cash + barData.byMethod.cash)) < 0.01
+                  Math.abs(parseFloat(closingCash) - expectedCash) < 0.01
                     ? 'text-green-400' : 'text-[var(--status-expired)]'
                 }`}>
-                  {Math.abs(parseFloat(closingCash) - (openingCashAmount + data.byMethod.cash + barData.byMethod.cash)) < 0.01 ? (
+                  {Math.abs(parseFloat(closingCash) - expectedCash) < 0.01 ? (
                     <><CheckCircle2 className="size-4" /> სალარო ზუსტია!</>
                   ) : (
                     <><AlertCircle className="size-4" />
-                      სხვაობა: {gel(parseFloat(closingCash) - (openingCashAmount + data.byMethod.cash + barData.byMethod.cash))}
+                      სხვაობა: {gel(parseFloat(closingCash) - expectedCash)}
                     </>
                   )}
                 </div>
@@ -638,34 +681,27 @@ export function Cashier() {
                 onClick={async () => {
                    if (!currentVenueId) return
                    const actual = parseFloat(closingCash) || 0
-                   const { data, error } = await supabase.rpc('reconcile_shift', {
+                   const { data, error } = await supabase.rpc('close_cash_drawer', {
                      p_venue_id: currentVenueId,
-                     // DB param is uuid-nullable (null → reconcile the active shift); the
-                     // generated type can't express that, so cast the sentinel null.
-                     p_shift_id: null as unknown as string,
-                     p_actual_cash: actual,
-                     p_note: ''
+                     p_closing_cash: actual,
+                     p_note: '',
                    })
-                   const res = data as { alert?: boolean; discrepancy?: number } | null
-
-                   if (error) {
-                     pushToast('danger', error.message)
-                     return
-                   }
-
-                   if (res && res.alert) {
+                   if (error) return pushToast('danger', error.message)
+                   const res = data as { ok?: boolean; error?: string; difference?: number; alert?: boolean } | null
+                   if (res?.error === 'no_open_drawer') {
+                     pushToast('info', 'ცვლა უკვე დახურულია')
+                   } else if (res?.alert) {
                      pushToast('danger', 'ყურადღება: სალაროში აღინიშნა სხვაობა!')
                    }
 
-                   setCurrentShiftStart(null)
-                   setOpeningCashAmount(0)
+                   await loadDrawer()
                    setOpeningCash('')
                    setClosingCash('')
                    setZReportVisible(false)
                    setShiftOpen(false)
-                   
-                   if (res) {
-                     pushToast('info', `ცვლა დაიხურა. სხვაობა: ${gel(res.discrepancy ?? 0)}`)
+
+                   if (res?.ok) {
+                     pushToast('info', `ცვლა დაიხურა. სხვაობა: ${gel(res.difference ?? 0)}`)
                    }
                 }}
                 className="nm-btn flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-[var(--status-expired)]"
