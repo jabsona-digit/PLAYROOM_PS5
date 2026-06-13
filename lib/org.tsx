@@ -157,11 +157,12 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       setHasEmployees(false)
       return
     }
-    ;(supabase.from('employees') as any)
+    supabase
+      .from('employees')
       .select('id', { count: 'exact', head: true })
       .eq('org_id', currentOrgId)
       .eq('is_active', true)
-      .then(({ count }: { count: number | null }) => {
+      .then(({ count }) => {
         setHasEmployees((count ?? 0) > 0)
       })
   }, [currentOrgId])
@@ -236,7 +237,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     if (!currentVenueId) return { ok: false, error: 'venue_not_found' }
     
     try {
-      const { data, error } = await (supabase.rpc as any)('identify_by_pin', {
+      const { data, error } = await supabase.rpc('identify_by_pin', {
         p_pin: pin,
         p_venue_id: currentVenueId
       })

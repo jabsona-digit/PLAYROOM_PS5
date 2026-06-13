@@ -1205,6 +1205,57 @@ export type Database = {
         }
         Relationships: []
       }
+      payroll_runs: {
+        Row: {
+          created_at: string
+          employees_paid: number
+          id: string
+          org_id: string
+          period_from: string
+          period_to: string
+          run_by: string | null
+          total_paid: number
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          employees_paid?: number
+          id?: string
+          org_id: string
+          period_from: string
+          period_to: string
+          run_by?: string | null
+          total_paid?: number
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          employees_paid?: number
+          id?: string
+          org_id?: string
+          period_from?: string
+          period_to?: string
+          run_by?: string | null
+          total_paid?: number
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_runs_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_admins: {
         Row: {
           created_at: string

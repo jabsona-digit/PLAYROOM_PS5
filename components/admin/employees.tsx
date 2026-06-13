@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Delete, LogIn, ShieldCheck, User, Plus, MoreVertical, X, Key, Trash2, Edit2, LoaderCircle } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Delete, LogIn, ShieldCheck, User, Plus, MoreVertical, X, Key, Trash2, Edit2, LoaderCircle, Wallet, CalendarClock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
 import { useOrg, useModuleAccess } from '@/lib/org'
@@ -157,15 +157,22 @@ function EmployeeModal({
 
         // Update PIN if provided
         if (pin.length >= 4) {
-          const { data: pinRes, error: pinError } = await (supabase.rpc as any)('set_employee_pin', {
+          const { error: pinError } = await supabase.rpc('set_employee_pin', {
             p_employee_id: employee.id,
             p_pin: pin
           })
-          if (pinError) throw pinError
+          if (pinError) {
+            if (pinError.message.includes('pin_taken')) {
+              pushToast('danger', 'ეს PIN უკვე გამოყენებულია')
+              setLoading(false)
+              return
+            }
+            throw pinError
+          }
         }
       } else {
         // Create new
-        const { data, error } = await (supabase.rpc as any)('create_employee', {
+        const { data, error } = await supabase.rpc('create_employee', {
           p_org_id: currentOrgId,
           p_name: name,
           p_role: role,
@@ -182,14 +189,15 @@ function EmployeeModal({
         }
 
         // Set salary
-        if (data?.ok) {
+        const created = data as { ok?: boolean; employee_id?: number } | null
+        if (created?.ok && created.employee_id) {
           await supabase
             .from('employees')
             .update({
               salary_type: salaryType,
               salary_amount: Number(salaryAmount) || 0
             })
-            .eq('id', data.employee_id)
+            .eq('id', created.employee_id)
         }
       }
 
@@ -257,7 +265,7 @@ function EmployeeModal({
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">ანაზღაურება</span>
               <select
                 value={salaryType}
-                onChange={e => setSalaryType(e.target.value as any)}
+                onChange={e => setSalaryType(e.target.value as 'hourly' | 'monthly' | 'fixed')}
                 className="nm-inset mt-1.5 w-full rounded-2xl px-4 py-3 text-sm font-bold outline-none bg-transparent appearance-none"
               >
                 <option value="hourly" className="bg-background">საათობრივი</option>
@@ -285,6 +293,120 @@ function EmployeeModal({
           </button>
         </form>
       </div>
+    </div>
+  )
+}
+
+interface PayrollRun {
+  id: string
+  period_from: string
+  period_to: string
+  total_paid: number
+  employees_paid: number
+}
+
+function PayrollPanel() {
+  const { currentOrgId, currentVenueId } = useOrg()
+  const { pushToast } = usePlayroom()
+  const [month, setMonth] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })
+  const [busy, setBusy] = useState(false)
+  const [runs, setRuns] = useState<PayrollRun[]>([])
+
+  const loadRuns = useCallback(async () => {
+    if (!currentVenueId) return
+    const { data } = await supabase
+      .from('payroll_runs')
+      .select('id, period_from, period_to, total_paid, employees_paid')
+      .eq('venue_id', currentVenueId)
+      .order('period_from', { ascending: false })
+      .limit(6)
+    if (data) setRuns(data as PayrollRun[])
+  }, [currentVenueId])
+
+  useEffect(() => {
+    loadRuns()
+  }, [loadRuns])
+
+  const run = async () => {
+    if (!currentOrgId || !currentVenueId || busy) return
+    const [y, m] = month.split('-').map(Number)
+    const from = `${month}-01`
+    const to = `${month}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`
+    if (!confirm(`დაირიცხოს ხელფასები ${month}-ის პერიოდისთვის? თანხა ჩაიწერება ბუღალტერიაში ხარჯად.`)) return
+    setBusy(true)
+    const { data, error } = await supabase.rpc('process_payroll', {
+      p_org_id: currentOrgId,
+      p_venue_id: currentVenueId,
+      p_from: from,
+      p_to: to,
+    })
+    setBusy(false)
+    if (error) {
+      if (error.message.includes('payroll_already_run')) {
+        pushToast('danger', `${month}-ის ხელფასი უკვე დარიცხულია`)
+      } else if (error.message.includes('rate_limit')) {
+        pushToast('danger', 'ბევრი მცდელობა — დაელოდე წუთს')
+      } else {
+        pushToast('danger', error.message)
+      }
+      return
+    }
+    const res = data as { total_paid?: number; employees_paid?: number } | null
+    pushToast('success', `ხელფასი დაირიცხა: ${gel(res?.total_paid ?? 0)} • ${res?.employees_paid ?? 0} თანამშრომელი`)
+    loadRuns()
+  }
+
+  return (
+    <div className="nm-raised rounded-3xl p-6">
+      <div className="flex items-center gap-3">
+        <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
+          <Wallet className="size-5 text-primary" />
+        </div>
+        <div>
+          <p className="font-extrabold">ხელფასების დარიცხვა</p>
+          <p className="text-xs text-muted-foreground">საათობრივი ცვლების მიხედვით + თვიური/ფიქს.</p>
+        </div>
+      </div>
+
+      <div className="mt-5 flex items-end gap-3">
+        <label className="flex-1">
+          <span className="text-xs font-semibold text-muted-foreground">პერიოდი (თვე)</span>
+          <input
+            type="month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            className="nm-inset mt-1.5 w-full rounded-2xl px-4 py-2.5 text-sm font-bold outline-none"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={run}
+          disabled={busy}
+          className="nm-daylight flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-bold text-primary"
+        >
+          {busy ? <LoaderCircle className="size-4 animate-spin" /> : <Wallet className="size-4" />}
+          დარიცხვა
+        </button>
+      </div>
+
+      {runs.length > 0 && (
+        <div className="mt-5 space-y-2">
+          <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">ბოლო დარიცხვები</p>
+          {runs.map((r) => (
+            <div key={r.id} className="nm-inset flex items-center justify-between rounded-2xl px-4 py-2.5">
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                <CalendarClock className="size-3.5 text-muted-foreground" />
+                {r.period_from.slice(0, 7)}
+              </span>
+              <span className="text-xs text-muted-foreground">{r.employees_paid} თანამშრ.</span>
+              <span className="font-mono text-sm font-bold text-primary">{gel(r.total_paid)}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -318,8 +440,9 @@ export function Employees() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-5">
-      <div className="lg:col-span-2">
+      <div className="lg:col-span-2 space-y-6">
         <PinPad />
+        {canManage && <PayrollPanel />}
       </div>
 
       <div className="space-y-6 lg:col-span-3">

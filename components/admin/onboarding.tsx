@@ -48,9 +48,10 @@ export function Onboarding() {
   }
 
   const finish = async () => {
+    if (!currentOrgId) return
     setLoading(true)
     for (const e of employees) {
-      await (supabase.rpc as any)('create_employee', {
+      await supabase.rpc('create_employee', {
         p_org_id: currentOrgId,
         p_name: e.name,
         p_role: e.role,
