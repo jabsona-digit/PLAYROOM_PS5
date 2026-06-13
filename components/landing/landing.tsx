@@ -66,7 +66,7 @@ const STEPS = [
 const CONTACTS = [
   { icon: Phone, t: 'დარეკე', v: '+995 500 05-75-27', href: 'tel:+995500057527', from: '#34d399', to: '#10b981' },
   { icon: MessageCircle, t: 'WhatsApp', v: 'მოგვწერე ახლავე', href: 'https://wa.me/995500057527', from: '#22d3ee', to: '#3b82f6' },
-  { icon: Mail, t: 'ელფოსტა', v: 'info@martelounge.ge', href: 'mailto:info@martelounge.ge', from: '#c084fc', to: '#ec4899' },
+  { icon: Mail, t: 'ელფოსტა', v: 'martecompanygeo@gmail.com', href: 'mailto:martecompanygeo@gmail.com', from: '#c084fc', to: '#ec4899' },
 ]
 
 const PLANS = [
