@@ -1172,6 +1172,7 @@ export type Database = {
       organizations: {
         Row: {
           created_at: string
+          current_period_end: string | null
           id: string
           identification_code: string | null
           name: string
@@ -1182,6 +1183,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          current_period_end?: string | null
           id?: string
           identification_code?: string | null
           name: string
@@ -1192,6 +1194,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          current_period_end?: string | null
           id?: string
           identification_code?: string | null
           name?: string
@@ -1216,6 +1219,63 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      platform_payments: {
+        Row: {
+          amount: number
+          id: string
+          method: string
+          months: number
+          note: string | null
+          org_id: string
+          paid_at: string
+          period_end: string
+          period_start: string
+          plan: string | null
+          recorded_by: string | null
+        }
+        Insert: {
+          amount?: number
+          id?: string
+          method?: string
+          months?: number
+          note?: string | null
+          org_id: string
+          paid_at?: string
+          period_end: string
+          period_start: string
+          plan?: string | null
+          recorded_by?: string | null
+        }
+        Update: {
+          amount?: number
+          id?: string
+          method?: string
+          months?: number
+          note?: string | null
+          org_id?: string
+          paid_at?: string
+          period_end?: string
+          period_start?: string
+          plan?: string | null
+          recorded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_payments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_payments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pricing_plans: {
         Row: {
@@ -2189,33 +2249,45 @@ export type Database = {
       platform_org_overview: {
         Row: {
           created_at: string | null
+          current_period_end: string | null
           id: string | null
+          last_payment_at: string | null
           member_count: number | null
+          monthly_amount: number | null
           name: string | null
           plan: string | null
           subscription_status: string | null
+          total_paid: number | null
           total_revenue: number | null
           trial_ends_at: string | null
           venue_count: number | null
         }
         Insert: {
           created_at?: string | null
+          current_period_end?: string | null
           id?: string | null
+          last_payment_at?: never
           member_count?: never
+          monthly_amount?: never
           name?: string | null
           plan?: string | null
           subscription_status?: string | null
+          total_paid?: never
           total_revenue?: never
           trial_ends_at?: string | null
           venue_count?: never
         }
         Update: {
           created_at?: string | null
+          current_period_end?: string | null
           id?: string | null
+          last_payment_at?: never
           member_count?: never
+          monthly_amount?: never
           name?: string | null
           plan?: string | null
           subscription_status?: string | null
+          total_paid?: never
           total_revenue?: never
           trial_ends_at?: string | null
           venue_count?: never
@@ -2564,8 +2636,19 @@ export type Database = {
         }
         Returns: undefined
       }
+      mark_tenant_paid: {
+        Args: {
+          p_amount?: number
+          p_method?: string
+          p_months?: number
+          p_note?: string
+          p_org: string
+        }
+        Returns: Database["public"]["Tables"]["platform_payments"]["Row"]
+      }
       next_fiscal_receipt_no: { Args: never; Returns: string }
       next_invoice_number: { Args: { p_org_id: string }; Returns: string }
+      plan_monthly_price: { Args: { p_plan: string }; Returns: number }
       process_payroll: {
         Args: {
           p_from: string
