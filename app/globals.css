@@ -317,3 +317,7 @@
   .aurora { animation: none; }
   .reveal { opacity: 1; transform: none; transition: none; }
 }
+
+/* typewriter cursor */
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.animate-blink { animation: blink 1s step-end infinite; }

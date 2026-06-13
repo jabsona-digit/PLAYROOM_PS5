@@ -88,6 +88,13 @@ function Gamepad() {
         <boxGeometry args={[0.55, 0.05, 0.05]} />
         <meshStandardMaterial color={CYAN} emissive={CYAN} emissiveIntensity={3.5} toneMapped={false} />
       </mesh>
+
+      {/* shoulder / trigger bumps */}
+      {[-1, 1].map((s) => (
+        <RoundedBox key={s} args={[0.5, 0.16, 0.3]} radius={0.07} smoothness={4} position={[s * 0.72, 0.22, -0.6]} rotation={[-0.5, 0, 0]}>
+          <meshStandardMaterial color="#262b36" metalness={0.7} roughness={0.3} emissive={CYAN} emissiveIntensity={0.35} />
+        </RoundedBox>
+      ))}
     </group>
   )
 }
