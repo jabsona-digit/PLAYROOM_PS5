@@ -264,6 +264,15 @@ Deno.serve(async (req) => {
   const { data: auth, error: authErr } = await db.auth.getUser(token)
   if (authErr || !auth?.user) return json({ error: 'unauthorized' }, 401)
 
+  // Per-user cost guard — ~20 AI requests/min (runs as the caller via their JWT).
+  const { error: rlErr } = await db.rpc('ai_rate_limit', { p_limit: 20 })
+  if (rlErr) {
+    if ((rlErr.message ?? '').includes('rate_limit_exceeded')) {
+      return json({ type: 'error', text: 'ძალიან ბევრი მოთხოვნა 🙏 დაელოდე ერთ წუთს და სცადე ხელახ.' }, 200)
+    }
+    console.error('RATE_LIMIT_ERROR', rlErr.message) // don't block on unexpected errors
+  }
+
   let role = 'guest'
   let isPlatformAdmin = false
   let venueId: string | null = null
