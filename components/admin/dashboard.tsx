@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useCountUp, use3dTilt } from '@/lib/hooks'
 import {
   Activity,
+  AlertTriangle,
   ArrowLeftRight,
   Banknote,
   CircleDot,
@@ -639,8 +640,41 @@ export function Dashboard() {
     return { active, free, liveRevenue, expiring }
   }, [consoles])
 
+  // Sessions open way too long (≥ 8h) — likely "forgot to end". Warn before the
+  // 24h auto-abandon (migration 0055) silently zeroes them out.
+  const staleOpen = useMemo(() => {
+    if (now === null) return [] as { name: string; hours: number }[]
+    const EIGHT_H = 8 * 3600_000
+    return consoles
+      .filter((c) => c.active_session && now - new Date(c.active_session.started_at).getTime() > EIGHT_H)
+      .map((c) => ({
+        name: c.name,
+        hours: Math.floor((now - new Date(c.active_session!.started_at).getTime()) / 3600_000),
+      }))
+  }, [consoles, now])
+
   return (
     <div className="space-y-6">
+      {staleOpen.length > 0 && (
+        <div
+          className="flex items-start gap-3 rounded-2xl px-4 py-3"
+          style={{
+            background: 'color-mix(in oklch, var(--status-warning5) 12%, transparent)',
+            boxShadow: 'inset 0 0 0 1px color-mix(in oklch, var(--status-warning5) 35%, transparent)',
+          }}
+        >
+          <AlertTriangle className="mt-0.5 size-5 shrink-0" style={{ color: 'var(--status-warning5)' }} />
+          <div className="text-sm">
+            <p className="font-bold" style={{ color: 'var(--status-warning5)' }}>
+              დიდი ხანია ღია სესია — დახურვა ხომ არ დაგავიწყდათ?
+            </p>
+            <p className="mt-0.5 text-muted-foreground">
+              {staleOpen.map((s) => `${s.name} (${s.hours}სთ)`).join(' · ')}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div style={{ animation: 'slide-in-up 0.4s ease-out 0s both' }}>
           <StatCard icon={Activity} label="აქტიური სესია" value={String(stats.active)} countup={stats.active} hint={`${consoles.length} კონსოლიდან`} />
