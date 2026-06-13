@@ -18,6 +18,7 @@ import {
   CalendarClock,
   Globe,
   Trophy,
+  BookOpen,
   Lock,
   type LucideIcon,
 } from 'lucide-react'
@@ -40,6 +41,7 @@ const NAV: { key: ModuleKey; label: string; icon: LucideIcon }[] = [
   { key: 'reservations', label: 'ჯავშნები', icon: CalendarClock },
   { key: 'online_bookings', label: 'ონლაინ ჯავშნები', icon: Globe },
   { key: 'tournaments', label: 'ტურნირები', icon: Trophy },
+  { key: 'guide', label: 'სახელმძღვანელო', icon: BookOpen },
 ]
 
 function NavButton({ item, active, onSelect }: { 

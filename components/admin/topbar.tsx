@@ -23,6 +23,7 @@ const TITLES: Record<ModuleKey, { title: string; subtitle: string }> = {
   reservations: { title: 'ჯავშნები', subtitle: 'კონსოლების წინასწარი დაჯავშნა' },
   online_bookings: { title: 'ონლაინ ჯავშნები', subtitle: 'martelounge.ge-დან შემოსული ჯავშნები' },
   tournaments: { title: 'ტურნირები', subtitle: 'PS5 ტურნირები — ბადე, მატჩები, გამარჯვებული' },
+  guide: { title: 'სახელმძღვანელო', subtitle: 'სრული გზამკვლევი — ყველა მოდული და პროცესი' },
 }
 
 export function Topbar({
