@@ -14,6 +14,9 @@ import {
   Check,
   QrCode,
   CalendarClock,
+  Phone,
+  MessageCircle,
+  Mail,
 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { Hero } from './hero'
@@ -60,6 +63,12 @@ const STEPS = [
   { n: '3', t: 'მართე & გაყიდე online', d: 'ადგილზე მართე, ონლაინ ჯავშნები მიიღე — ერთ სისტემაში.' },
 ]
 
+const CONTACTS = [
+  { icon: Phone, t: 'დარეკე', v: '+995 500 05-75-27', href: 'tel:+995500057527', from: '#34d399', to: '#10b981' },
+  { icon: MessageCircle, t: 'WhatsApp', v: 'მოგვწერე ახლავე', href: 'https://wa.me/995500057527', from: '#22d3ee', to: '#3b82f6' },
+  { icon: Mail, t: 'ელფოსტა', v: 'info@martelounge.ge', href: 'mailto:info@martelounge.ge', from: '#c084fc', to: '#ec4899' },
+]
+
 const PLANS = [
   { name: 'Trial', price: '₾0', sub: '14 დღე', feats: ['1 ფილიალი', '4 კონსოლი', 'ძირითადი მოდულები'], cta: 'უფასო ცდა', highlight: false },
   { name: 'Pro', price: '₾45', sub: '/ თვე', feats: ['3 ფილიალი', 'ბარი + საწყობი', 'ბუღალტერია + ტურნირები', 'ონლაინ ჯავშნები'], cta: 'დაიწყე', highlight: true },
@@ -83,6 +92,9 @@ export function Landing() {
             MARTE<span className="text-primary">LOUNGE</span>
           </span>
           <div className="flex items-center gap-2">
+            <a href="#contact" className="hidden px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-primary sm:block">
+              კონტაქტი
+            </a>
             <a href="/app" className="px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-primary">
               შესვლა
             </a>
@@ -219,11 +231,51 @@ export function Landing() {
         </Reveal>
       </section>
 
+      {/* contact */}
+      <section id="contact" className="mx-auto max-w-6xl px-5 py-16">
+        <Reveal>
+          <h2 className="text-center text-3xl font-extrabold tracking-tight">დაგვიკავშირდი</h2>
+          <p className="mt-2 text-center text-muted-foreground">
+            გაქვს კითხვა ან მზად ხარ დასაწყებად? ჩვენ აქ ვართ.
+          </p>
+        </Reveal>
+        <div className="mx-auto mt-10 grid max-w-4xl grid-cols-1 gap-4 sm:grid-cols-3">
+          {CONTACTS.map((c, i) => (
+            <Reveal key={c.t} delay={i * 80}>
+              <motion.a
+                href={c.href}
+                target={c.href.startsWith('http') ? '_blank' : undefined}
+                rel="noreferrer"
+                whileHover={{ y: -6 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+                className="group relative flex h-full flex-col items-center gap-3 overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br from-[var(--surface-2)] to-[var(--surface)] p-6 text-center"
+              >
+                <div
+                  className="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-50"
+                  style={{ background: c.from }}
+                />
+                <div
+                  className="relative flex size-12 items-center justify-center rounded-2xl"
+                  style={{ background: `linear-gradient(135deg, ${c.from}, ${c.to})`, boxShadow: `0 8px 26px ${c.from}55` }}
+                >
+                  <c.icon className="size-6 text-white drop-shadow" />
+                </div>
+                <h3 className="relative font-bold">{c.t}</h3>
+                <p className="relative text-sm text-muted-foreground">{c.v}</p>
+              </motion.a>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 py-8 text-sm text-muted-foreground sm:flex-row">
           <span className="font-bold text-foreground">MARTELOUNGE</span>
           <span>© {new Date().getFullYear()} · PlayStation კლუბების ოპერაციული სისტემა</span>
-          <a href="/app" className="text-primary">შესვლა →</a>
+          <div className="flex items-center gap-4">
+            <a href="tel:+995500057527" className="transition-colors hover:text-primary">+995 500 05-75-27</a>
+            <a href="/app" className="text-primary">შესვლა →</a>
+          </div>
         </div>
       </footer>
     </div>
