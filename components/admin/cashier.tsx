@@ -638,12 +638,15 @@ export function Cashier() {
                 onClick={async () => {
                    if (!currentVenueId) return
                    const actual = parseFloat(closingCash) || 0
-                   const { data: res, error } = await (supabase.rpc as any)('reconcile_shift', {
+                   const { data, error } = await supabase.rpc('reconcile_shift', {
                      p_venue_id: currentVenueId,
-                     p_shift_id: null, // handle logic on backend if null (active shift)
+                     // DB param is uuid-nullable (null → reconcile the active shift); the
+                     // generated type can't express that, so cast the sentinel null.
+                     p_shift_id: null as unknown as string,
                      p_actual_cash: actual,
                      p_note: ''
-                   }) as { data: any, error: any }
+                   })
+                   const res = data as { alert?: boolean; discrepancy?: number } | null
 
                    if (error) {
                      pushToast('danger', error.message)
@@ -662,7 +665,7 @@ export function Cashier() {
                    setShiftOpen(false)
                    
                    if (res) {
-                     pushToast('info', `ცვლა დაიხურა. სხვაობა: ${gel(res.discrepancy)}`)
+                     pushToast('info', `ცვლა დაიხურა. სხვაობა: ${gel(res.discrepancy ?? 0)}`)
                    }
                 }}
                 className="nm-btn flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-[var(--status-expired)]"

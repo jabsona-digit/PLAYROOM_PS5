@@ -77,7 +77,7 @@ export function Accounting() {
     setLoading(true)
 
     // Summary KPI (P&L) — surface RPC errors instead of silently rendering ₾0.00
-    const { data: pnlData, error: pnlError } = await (supabase as any).rpc('get_venue_pnl', {
+    const { data: pnlData, error: pnlError } = await supabase.rpc('get_venue_pnl', {
       p_venue_id: currentVenueId,
       p_from: dateFrom,
       p_to: dateTo
@@ -86,45 +86,45 @@ export function Accounting() {
     if (pnlData) setPnl(pnlData as unknown as VenuePnl)
 
     // VAT Summary
-    const { data: vatData } = await (supabase as any).rpc('get_vat_summary', {
+    const { data: vatData } = await supabase.rpc('get_vat_summary', {
       p_venue_id: currentVenueId,
       p_from: dateFrom,
       p_to: dateTo
     })
-    if (vatData) setVatSummary(vatData as VatSummary)
+    if (vatData) setVatSummary(vatData as unknown as VatSummary)
 
     // Monthly Trend
-    const { data: trendData } = await (supabase as any)
+    const { data: trendData } = await supabase
       .from('monthly_pnl')
       .select('*')
       .eq('venue_id', currentVenueId)
       .order('month', { ascending: false })
       .limit(12)
-    if (trendData) setTrend(trendData as MonthlyPnl[])
+    if (trendData) setTrend(trendData as unknown as MonthlyPnl[])
 
     // Expenses List
-    const { data: expData } = await (supabase as any)
+    const { data: expData } = await supabase
       .from('expenses')
       .select('*')
       .eq('venue_id', currentVenueId)
       .order('expense_date', { ascending: false })
-    if (expData) setExpenses(expData as Expense[])
+    if (expData) setExpenses(expData as unknown as Expense[])
 
     // Budgets
-    const { data: budgetData } = await (supabase as any)
+    const { data: budgetData } = await supabase
       .from('budget_vs_actual')
       .select('*')
       .eq('venue_id', currentVenueId)
       .order('month', { ascending: false })
-    if (budgetData) setBudgets(budgetData as BudgetVsActual[])
+    if (budgetData) setBudgets(budgetData as unknown as BudgetVsActual[])
 
     // Invoices
-    const { data: invData } = await (supabase as any)
+    const { data: invData } = await supabase
       .from('invoices')
       .select('*')
       .eq('venue_id', currentVenueId)
       .order('created_at', { ascending: false })
-    if (invData) setInvoiceList(invData as Invoice[])
+    if (invData) setInvoiceList(invData as unknown as Invoice[])
 
     setLoading(false)
   }
@@ -148,7 +148,7 @@ export function Accounting() {
     if (!amount || amount <= 0) return
 
     setAdding(true)
-    const { error } = await (supabase as any).rpc('add_expense', {
+    const { error } = await supabase.rpc('add_expense', {
       p_venue_id: currentVenueId,
       p_category: expenseCat,
       p_amount: amount,
@@ -173,7 +173,7 @@ export function Accounting() {
     if (!canEdit) return
     if (!confirm('ნამდვილად გსურთ წაშლა?')) return
     
-    const { error } = await (supabase as any).rpc('delete_expense', { p_expense_id: id })
+    const { error } = await supabase.rpc('delete_expense', { p_expense_id: id })
     if (error) pushToast('danger', error.message)
     else {
       pushToast('info', 'ხარჯი წაიშალა')
@@ -182,15 +182,16 @@ export function Accounting() {
   }
 
   const handleUpdateBudget = async () => {
-    if (!budgetModal || !currentVenueId || !isAdmin) return
+    if (!budgetModal || !currentVenueId || !currentOrgId || !isAdmin) return
     setAdding(true)
-    
+
     // Ensure month format is YYYY-MM-01 for DB date field
     const dbMonthStr = budgetModal.month.length === 7 ? `${budgetModal.month}-01` : budgetModal.month
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from('venue_budgets')
       .upsert({
+        org_id: currentOrgId,
         venue_id: currentVenueId,
         month: dbMonthStr,
         revenue_target: parseFloat(budgetModal.rev) || 0,
@@ -212,7 +213,7 @@ export function Accounting() {
     
     try {
       // 1. Get next invoice number
-      const { data: invNo, error: noErr } = await (supabase.rpc as any)('next_invoice_number', { p_org_id: currentOrgId })
+      const { data: invNo, error: noErr } = await supabase.rpc('next_invoice_number', { p_org_id: currentOrgId })
       if (noErr) throw noErr
 
       // 2. Calculate totals
@@ -221,7 +222,7 @@ export function Accounting() {
       const total = subtotal + vat_total
 
       // 3. Create invoice
-      const { data: inv, error: invErr } = await (supabase as any)
+      const { data: inv, error: invErr } = await supabase
         .from('invoices')
         .insert({
           org_id: currentOrgId,
@@ -248,7 +249,7 @@ export function Accounting() {
         unit_price: i.price,
         line_total: i.qty * i.price
       }))
-      const { error: itemsErr } = await (supabase as any).from('invoice_items').insert(itemsToInsert)
+      const { error: itemsErr } = await supabase.from('invoice_items').insert(itemsToInsert)
       if (itemsErr) throw itemsErr
 
       pushToast('success', 'ინვოისი შეიქმნა')
@@ -265,7 +266,7 @@ export function Accounting() {
   }
 
   const printInvoice = async (invoice: Invoice) => {
-    const { data: items } = await (supabase as any).from('invoice_items').select('*').eq('invoice_id', invoice.id)
+    const { data: items } = await supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id)
     if (items) {
       setPrintingInvoice({ inv: invoice, items: items as unknown as InvoiceItem[] })
     }
@@ -273,7 +274,7 @@ export function Accounting() {
 
   const handleMarkPaid = async (id: string) => {
     if (!isAdmin) return
-    const { error } = await (supabase as any).from('invoices').update({ status: 'paid' }).eq('id', id)
+    const { error } = await supabase.from('invoices').update({ status: 'paid' }).eq('id', id)
     if (error) pushToast('danger', error.message)
     else {
       pushToast('success', 'ინვოისი მონიშნულია როგორც გადახდილი')
