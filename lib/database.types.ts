@@ -2644,7 +2644,25 @@ export type Database = {
           p_note?: string
           p_org: string
         }
-        Returns: Database["public"]["Tables"]["platform_payments"]["Row"]
+        Returns: {
+          amount: number
+          id: string
+          method: string
+          months: number
+          note: string | null
+          org_id: string
+          paid_at: string
+          period_end: string
+          period_start: string
+          plan: string | null
+          recorded_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "platform_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       next_fiscal_receipt_no: { Args: never; Returns: string }
       next_invoice_number: { Args: { p_org_id: string }; Returns: string }
