@@ -2507,6 +2507,7 @@ export type Database = {
         }
         Returns: string
       }
+      ai_rate_limit: { Args: { p_limit?: number }; Returns: undefined }
       cancel_reservation: {
         Args: { p_reason?: string; p_reservation_id: string }
         Returns: undefined
