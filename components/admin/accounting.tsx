@@ -21,9 +21,14 @@ import { Modal } from './modal'
 import { useModuleAccess } from '@/lib/org'
 import { InvoicePrint } from './invoice-print'
 
-// helper to local yyyy-mm-dd
+// helper to local yyyy-mm-dd — must NOT go through toISOString() (that converts
+// to UTC and, in GE/+4, shifts month boundaries a day earlier → drops the last
+// day of the range).
 function toIsoDate(d: Date) {
-  return d.toISOString().split('T')[0]
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 type TabKey = 'pnl' | 'vat' | 'budgets' | 'invoices'
@@ -71,12 +76,13 @@ export function Accounting() {
     if (!currentVenueId || !isAuthorized) return
     setLoading(true)
 
-    // Summary KPI (P&L)
-    const { data: pnlData } = await (supabase as any).rpc('get_venue_pnl', {
+    // Summary KPI (P&L) — surface RPC errors instead of silently rendering ₾0.00
+    const { data: pnlData, error: pnlError } = await (supabase as any).rpc('get_venue_pnl', {
       p_venue_id: currentVenueId,
       p_from: dateFrom,
       p_to: dateTo
     })
+    if (pnlError) pushToast('danger', `მოგება-ზარალი ვერ ჩაიტვირთა: ${pnlError.message}`)
     if (pnlData) setPnl(pnlData as unknown as VenuePnl)
 
     // VAT Summary

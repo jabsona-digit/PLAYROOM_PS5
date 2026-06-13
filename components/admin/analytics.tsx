@@ -8,8 +8,8 @@ import { supabase } from '@/lib/supabase/client'
 import { gel } from '@/lib/ui'
 
 interface Point {
-  sessRevenue: number[] // per month
-  profit: number[] // per month (session revenue + bar profit)
+  revenue: number[] // per month — session revenue + bar SALES (gross revenue)
+  profit: number[] // per month — session revenue + bar PROFIT (gaming has no COGS)
   hours: number[] // activity count per hour-of-day (0..23)
 }
 
@@ -63,7 +63,7 @@ export function Analytics() {
 
       const idx = new Map(months.map((m, i) => [m.key, i]))
       const key = (iso: string) => iso.slice(0, 7)
-      const sessRevenue = new Array(months.length).fill(0)
+      const revenue = new Array(months.length).fill(0)
       const profit = new Array(months.length).fill(0)
       const hours = new Array(24).fill(0)
 
@@ -71,8 +71,8 @@ export function Analytics() {
         const amt = Number(s.price_total) || 0
         const i = idx.get(key(s.ended_at ?? s.started_at))
         if (i != null) {
-          sessRevenue[i] += amt
-          profit[i] += amt // gaming has no COGS → revenue ≈ profit
+          revenue[i] += amt
+          profit[i] += amt // gaming has no COGS → revenue = profit
         }
         hours[new Date(s.started_at).getHours()]++
       }
@@ -86,11 +86,14 @@ export function Analytics() {
             (Number(it.line_total) || 0) -
             (Number(it.unit_cost_price) || 0) * (Number(it.qty) || 0)
         }
-        if (i != null) profit[i] += barProfit
+        if (i != null) {
+          revenue[i] += Number(b.total) || 0 // bar SALES count toward revenue
+          profit[i] += barProfit // …but only the margin counts toward profit
+        }
         hours[new Date(b.created_at).getHours()]++
       }
 
-      setData({ sessRevenue, profit, hours })
+      setData({ revenue, profit, hours })
       if (!barsTriggered.current) {
         barsTriggered.current = true
         requestAnimationFrame(() => requestAnimationFrame(() => setBarsReady(true)))
@@ -104,7 +107,7 @@ export function Analytics() {
 
   const totals = useMemo(() => {
     if (!data) return { revenue: 0, profit: 0, peakHour: -1, peakVal: 0 }
-    const revenue = data.sessRevenue.reduce((a, b) => a + b, 0)
+    const revenue = data.revenue.reduce((a, b) => a + b, 0)
     const profit = data.profit.reduce((a, b) => a + b, 0)
     let peakHour = -1
     let peakVal = 0
