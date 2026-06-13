@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { 
   CalendarDays, Receipt, Trash2, Plus, FileDown, FileUp, 
   LoaderCircle, LayoutDashboard, Calculator, Target, FileText,
@@ -11,7 +11,7 @@ import { useOrg } from '@/lib/org'
 import { usePlayroom } from '@/lib/store'
 import { supabase } from '@/lib/supabase/client'
 import { gel } from '@/lib/ui'
-import { exportToExcel, downloadTemplate, readExcel } from '@/lib/excel'
+import { exportWorkbook, downloadTemplate, readExcel } from '@/lib/excel'
 import type { 
   Expense, VenuePnl, MonthlyPnl, ExpenseCategory,
   VatSummary, BudgetVsActual, Invoice, InvoiceItem 
@@ -56,6 +56,7 @@ export function Accounting() {
   const [loading, setLoading] = useState(false)
   const [adding, setAdding] = useState(false)
   const [printingInvoice, setPrintingInvoice] = useState<{inv: Invoice, items: InvoiceItem[]} | null>(null)
+  const importRef = useRef<HTMLInputElement>(null)
 
   // Form States (P&L / Expenses)
   const [expenseCat, setExpenseCat] = useState<ExpenseCategory>('rent')
@@ -139,6 +140,77 @@ export function Accounting() {
         წვდომა აკრძალულია — საჭიროა ბუღალტრის უფლებები.
       </div>
     )
+  }
+
+  // Export the current P&L view as a multi-sheet workbook (summary + expenses + trend).
+  const handleExport = () => {
+    if (!pnl) return pushToast('warning', 'ჯერ არ არის მონაცემი')
+    const summary = [{
+      'პერიოდი': `${dateFrom} — ${dateTo}`,
+      'სესიის შემოსავალი': pnl.session_revenue,
+      'ბარის შემოსავალი': pnl.bar_revenue,
+      'სულ შემოსავალი': pnl.total_revenue,
+      'დაბრუნებები': pnl.session_refunds,
+      'სულ ხარჯები': pnl.total_expenses,
+      'სუფთა მოგება': pnl.net_profit,
+    }]
+    const expenseRows = expenses.map(e => ({
+      'თარიღი': e.expense_date,
+      'კატეგორია': EXPENSE_CATEGORY_LABELS[e.category],
+      'თანხა': e.amount,
+      'დღგ': e.vat_amount ?? 0,
+      'აღწერა': e.description ?? '',
+    }))
+    const trendRows = [...trend].reverse().map(t => ({
+      'თვე': (t.month ?? '').slice(0, 7),
+      'სესიები': t.session_revenue,
+      'ბარი': t.bar_revenue,
+      'ხარჯები': t.total_expenses,
+      'მოგება': t.net_profit,
+    }))
+    exportWorkbook(`PnL_${dateFrom}_${dateTo}`, [
+      { name: 'შეჯამება', rows: summary },
+      { name: 'ხარჯები', rows: expenseRows },
+      { name: 'თვეები', rows: trendRows },
+    ])
+    pushToast('success', 'რეპორტი ჩამოიტვირთა')
+  }
+
+  // Import expenses from an Excel file (matches the ხარჯების_შაბლონი template).
+  const handleImportExpenses = async (ev: React.ChangeEvent<HTMLInputElement>) => {
+    const file = ev.target.files?.[0]
+    if (file) ev.target.value = '' // allow re-importing the same file
+    if (!file || !currentVenueId || !canEdit) return
+    try {
+      const rows = await readExcel(file)
+      if (!rows.length) return pushToast('warning', 'ფაილი ცარიელია')
+      const labelToKey = Object.fromEntries(
+        Object.entries(EXPENSE_CATEGORY_LABELS).map(([k, v]) => [v, k]),
+      ) as Record<string, ExpenseCategory>
+      let ok = 0, fail = 0
+      for (const r of rows as Record<string, unknown>[]) {
+        const amount = Number(r['თანხა'])
+        if (!amount || amount <= 0) { fail++; continue }
+        const raw = String(r['კატეგორია'] ?? '').trim()
+        const category: ExpenseCategory =
+          (raw in EXPENSE_CATEGORY_LABELS ? (raw as ExpenseCategory) : labelToKey[raw]) ?? 'other'
+        const dateStr = String(r['თარიღი'] ?? '').slice(0, 10)
+        const expense_date = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? dateStr : toIsoDate(new Date())
+        const { error } = await supabase.rpc('add_expense', {
+          p_venue_id: currentVenueId,
+          p_category: category,
+          p_amount: amount,
+          p_vat_amount: Number(r['დღგ']) || 0,
+          p_description: String(r['აღწერა'] ?? '').trim() || undefined,
+          p_expense_date: expense_date,
+        })
+        if (error) fail++; else ok++
+      }
+      pushToast(ok ? 'success' : 'danger', `იმპორტი: ${ok} დაემატა${fail ? `, ${fail} გამოტოვდა` : ''}`)
+      loadData()
+    } catch {
+      pushToast('danger', 'ფაილის წაკითხვა ვერ მოხერხდა')
+    }
   }
 
   const handleAddExpense = async (e: React.FormEvent) => {
@@ -339,13 +411,40 @@ export function Accounting() {
             </div>
           )}
           {activeTab === 'pnl' && (
-             <button
-                onClick={() => {}} // Handle excel export
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExport}
                 className="nm-btn flex size-10 items-center justify-center rounded-xl text-primary/70"
-                title="რეპორტის ექსპორტი"
+                title="რეპორტის ექსპორტი (Excel)"
               >
                 <FileDown className="size-4" />
               </button>
+              {canEdit && (
+                <>
+                  <button
+                    onClick={() => importRef.current?.click()}
+                    className="nm-btn flex size-10 items-center justify-center rounded-xl text-primary/70"
+                    title="ხარჯების იმპორტი (Excel)"
+                  >
+                    <FileUp className="size-4" />
+                  </button>
+                  <button
+                    onClick={() => downloadTemplate('expenses')}
+                    className="nm-btn flex items-center justify-center rounded-xl px-3 py-2 text-xs font-bold text-muted-foreground"
+                    title="ხარჯების შაბლონის ჩამოტვირთვა"
+                  >
+                    შაბლონი
+                  </button>
+                  <input
+                    ref={importRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleImportExpenses}
+                    className="hidden"
+                  />
+                </>
+              )}
+            </div>
           )}
           {activeTab === 'invoices' && isAdmin && (
             <button

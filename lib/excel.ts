@@ -11,6 +11,19 @@ export function exportToExcel(data: any[], fileName: string, sheetName: string =
 }
 
 /**
+ * Exports several named sheets into one workbook and triggers a download.
+ * Sheet names are clamped to Excel's 31-char limit.
+ */
+export function exportWorkbook(fileName: string, sheets: { name: string; rows: any[] }[]) {
+  const workbook = XLSX.utils.book_new()
+  for (const s of sheets) {
+    const worksheet = XLSX.utils.json_to_sheet(s.rows.length ? s.rows : [{}])
+    XLSX.utils.book_append_sheet(workbook, worksheet, s.name.slice(0, 31))
+  }
+  XLSX.writeFile(workbook, `${fileName}.xlsx`)
+}
+
+/**
  * Downloads a pre-defined Excel template for products or expenses.
  */
 export function downloadTemplate(type: 'products' | 'expenses', existingCategories?: string[]) {
