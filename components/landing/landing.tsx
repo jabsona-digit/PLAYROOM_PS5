@@ -1,0 +1,248 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
+import {
+  Gamepad2,
+  Coffee,
+  Wallet,
+  Calculator,
+  Users,
+  Trophy,
+  Globe,
+  Sparkles,
+  ArrowRight,
+  Check,
+  QrCode,
+  CalendarClock,
+} from 'lucide-react'
+
+const Gamepad3D = dynamic(() => import('./gamepad-3d'), {
+  ssr: false,
+  loading: () => null,
+})
+
+function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [shown, setShown] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          setShown(true)
+          io.disconnect()
+        }
+      },
+      { threshold: 0.15 },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  return (
+    <div ref={ref} className={`reveal${shown ? ' reveal-in' : ''}`} style={{ transitionDelay: `${delay}ms` }}>
+      {children}
+    </div>
+  )
+}
+
+const FEATURES = [
+  { icon: Gamepad2, t: 'სესიები & კონსოლები', d: 'ფიქსირებული ან ღია (pay-as-you-go) სესიები, ცოცხალი ტაიმერებით და გაფრთხილებებით.' },
+  { icon: Coffee, t: 'ბარი / POS', d: 'სწრაფი გაყიდვა, ბარკოდი, მარაგების მართვა — სესიის ანგარიშზევე.' },
+  { icon: Wallet, t: 'კასა & ფინანსები', d: 'შემოსავალი კონსოლებისა და პერიოდების მიხედვით, გადახდის არხები, Z-რეპორტი.' },
+  { icon: Calculator, t: 'ბუღალტერია', d: 'P&L, დღგ (18%), ბიუჯეტები, ინვოისები, ხელფასები — ერთ ადგილას.' },
+  { icon: Users, t: 'თანამშრომლები & PIN', d: 'როლები, PIN-შესვლა, ცვლები და ხელფასები პირდაპირ ბუღალტერიაში.' },
+  { icon: Trophy, t: 'ტურნირები', d: 'Single-elim ბადე, მატჩები, ავტომატური გამარჯვებული + TV რეჟიმი.' },
+  { icon: Globe, t: 'ონლაინ ჯავშნები', d: 'შენი კლუბი play.martelounge.ge-ზე — კლიენტები ჯავშნიან online.' },
+  { icon: Sparkles, t: 'AI ასისტენტი', d: 'ხმოვანი/ტექსტური დამხმარე — სესიები, გაყიდვები, რეპორტები კითხვით.' },
+]
+
+const STEPS = [
+  { n: '1', t: 'დარეგისტრირდი', d: 'შექმენი ანგარიში და კლუბი წუთებში.' },
+  { n: '2', t: 'დააყენე კონსოლები & ტარიფები', d: 'PS5-ები, კუპე/VIP, ფასები — შენ აკონტროლებ.' },
+  { n: '3', t: 'მართე & გაყიდე online', d: 'ადგილზე მართე, ონლაინ ჯავშნები მიიღე — ერთ სისტემაში.' },
+]
+
+const PLANS = [
+  { name: 'Trial', price: '₾0', sub: '14 დღე', feats: ['1 ფილიალი', '4 კონსოლი', 'ძირითადი მოდულები'], cta: 'უფასო ცდა', highlight: false },
+  { name: 'Pro', price: '₾99', sub: '/ თვე', feats: ['3 ფილიალი', 'ბარი + საწყობი', 'ბუღალტერია + ტურნირები', 'ონლაინ ჯავშნები'], cta: 'დაიწყე', highlight: true },
+  { name: 'Enterprise', price: '₾299', sub: '/ თვე', feats: ['ულიმიტო', 'RS.GE ფისკალი', 'API + პრიორიტეტი'], cta: 'დაგვიკავშირდი', highlight: false },
+]
+
+export function Landing() {
+  return (
+    <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
+      {/* animated aurora background */}
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="aurora aurora-1" />
+        <div className="aurora aurora-2" />
+        <div className="aurora aurora-3" />
+      </div>
+
+      {/* nav */}
+      <header className="sticky top-0 z-40 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
+          <span className="text-xl font-extrabold tracking-tight text-glow">
+            MARTE<span className="text-primary">LOUNGE</span>
+          </span>
+          <div className="flex items-center gap-2">
+            <a href="/app" className="px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-primary">
+              შესვლა
+            </a>
+            <a href="/app" className="nm-btn rounded-xl px-4 py-2 text-sm font-bold text-primary">
+              დაიწყე უფასოდ
+            </a>
+          </div>
+        </div>
+      </header>
+
+      {/* hero */}
+      <section className="mx-auto grid max-w-6xl items-center gap-6 px-5 pb-10 pt-8 lg:grid-cols-2 lg:pt-16">
+        <div className="animate-in-up">
+          <span className="nm-raised-sm inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold text-primary">
+            <Sparkles className="size-3.5" /> Gaming Lounge OS
+          </span>
+          <h1 className="mt-5 text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+            მართე შენი <span className="text-primary text-glow">PlayStation</span> კლუბი — ერთ სისტემაში
+          </h1>
+          <p className="mt-5 max-w-lg text-lg text-muted-foreground">
+            სესიები, ბარი, კასა, ბუღალტერია, თანამშრომლები, ტურნირები და{' '}
+            <span className="text-foreground">ონლაინ ჯავშნები</span> — Excel-ის გარეშე.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <a href="/app" className="nm-glow flex items-center gap-2 rounded-xl px-6 py-3 font-bold">
+              დაიწყე უფასოდ <ArrowRight className="size-4" />
+            </a>
+            <a href="#features" className="nm-btn rounded-xl px-6 py-3 font-semibold text-muted-foreground">
+              გაიგე მეტი
+            </a>
+          </div>
+        </div>
+
+        {/* 3D neon gamepad */}
+        <div className="relative h-[340px] w-full sm:h-[440px] lg:h-[520px]">
+          <Gamepad3D />
+        </div>
+      </section>
+
+      {/* features */}
+      <section id="features" className="mx-auto max-w-6xl px-5 py-16">
+        <Reveal>
+          <h2 className="text-center text-3xl font-extrabold tracking-tight">ყველაფერი ერთ პანელში</h2>
+          <p className="mt-2 text-center text-muted-foreground">8 მოდული, რომელიც კლუბს ნამდვილ ბიზნესად აქცევს</p>
+        </Reveal>
+        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {FEATURES.map((f, i) => (
+            <Reveal key={f.t} delay={(i % 4) * 80}>
+              <div className="nm-raised h-full rounded-2xl p-5">
+                <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
+                  <f.icon className="size-5 text-primary" />
+                </div>
+                <h3 className="mt-4 font-bold">{f.t}</h3>
+                <p className="mt-1.5 text-sm text-muted-foreground">{f.d}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* how it works */}
+      <section className="mx-auto max-w-6xl px-5 py-16">
+        <Reveal>
+          <h2 className="text-center text-3xl font-extrabold tracking-tight">როგორ მუშაობს</h2>
+        </Reveal>
+        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {STEPS.map((s, i) => (
+            <Reveal key={s.n} delay={i * 120}>
+              <div className="nm-raised rounded-2xl p-6 text-center">
+                <div className="nm-glow mx-auto flex size-14 items-center justify-center rounded-2xl text-2xl font-extrabold text-primary">
+                  {s.n}
+                </div>
+                <h3 className="mt-4 font-bold">{s.t}</h3>
+                <p className="mt-1.5 text-sm text-muted-foreground">{s.d}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* marketplace */}
+      <section className="mx-auto max-w-6xl px-5 py-16">
+        <Reveal>
+          <div className="nm-raised relative overflow-hidden rounded-3xl p-8 sm:p-12">
+            <div className="relative z-10 max-w-xl">
+              <span className="nm-raised-sm inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold text-primary">
+                <Globe className="size-3.5" /> Marketplace
+              </span>
+              <h2 className="mt-4 text-3xl font-extrabold tracking-tight">
+                შენი კლუბი <span className="text-primary">play.martelounge.ge</span>-ზე
+              </h2>
+              <p className="mt-3 text-muted-foreground">
+                კლიენტები პოულობენ შენს კლუბს, ხედავენ ცოცხალ ხელმისაწვდომობას და ჯავშნიან online.
+                მიიღე ჯავშანი ნებისმიერ მოდულზე — ზარის შეტყობინებით.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-4 text-sm">
+                <span className="flex items-center gap-2"><CalendarClock className="size-4 text-primary" /> ცოცხალი ხელმისაწვდომობა</span>
+                <span className="flex items-center gap-2"><QrCode className="size-4 text-primary" /> QR check-in</span>
+                <span className="flex items-center gap-2"><Check className="size-4 text-primary" /> შეფასებები</span>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* pricing */}
+      <section className="mx-auto max-w-6xl px-5 py-16">
+        <Reveal>
+          <h2 className="text-center text-3xl font-extrabold tracking-tight">ფასები</h2>
+          <p className="mt-2 text-center text-muted-foreground">დაიწyე უფასოდ, გაიზარდე საჭიროებისამებრ</p>
+        </Reveal>
+        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {PLANS.map((p, i) => (
+            <Reveal key={p.name} delay={i * 100}>
+              <div className={`rounded-3xl p-6 ${p.highlight ? 'nm-glow' : 'nm-raised'}`}>
+                <h3 className="text-lg font-bold">{p.name}</h3>
+                <div className="mt-2">
+                  <span className="text-4xl font-extrabold">{p.price}</span>
+                  <span className="text-sm text-muted-foreground"> {p.sub}</span>
+                </div>
+                <ul className="mt-5 space-y-2 text-sm">
+                  {p.feats.map((f) => (
+                    <li key={f} className="flex items-center gap-2">
+                      <Check className="size-4 shrink-0 text-primary" /> {f}
+                    </li>
+                  ))}
+                </ul>
+                <a href="/app" className={`mt-6 block rounded-xl py-3 text-center text-sm font-bold ${p.highlight ? 'nm-btn text-primary' : 'nm-btn text-muted-foreground'}`}>
+                  {p.cta}
+                </a>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* final CTA */}
+      <section className="mx-auto max-w-4xl px-5 py-20 text-center">
+        <Reveal>
+          <h2 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
+            მზად ხარ? <span className="text-primary text-glow">დაიწyე დღესვე</span>
+          </h2>
+          <p className="mt-4 text-muted-foreground">14 დღე უფასოდ. ბარათი არ სჭირდება.</p>
+          <a href="/app" className="nm-glow mt-8 inline-flex items-center gap-2 rounded-2xl px-8 py-4 text-lg font-bold">
+            დაიწyე უფასოდ <ArrowRight className="size-5" />
+          </a>
+        </Reveal>
+      </section>
+
+      <footer className="border-t border-border">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 py-8 text-sm text-muted-foreground sm:flex-row">
+          <span className="font-bold text-foreground">MARTELOUNGE</span>
+          <span>© {new Date().getFullYear()} · PlayStation კლუბების ოპერაციული სისტემა</span>
+          <a href="/app" className="text-primary">შესვლა →</a>
+        </div>
+      </footer>
+    </div>
+  )
+}

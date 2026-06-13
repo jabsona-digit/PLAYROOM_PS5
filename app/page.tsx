@@ -1,5 +1,5 @@
-import { AdminShell } from '@/components/admin/admin-shell'
+import { Landing } from '@/components/landing/landing'
 
 export default function Page() {
-  return <AdminShell />
+  return <Landing />
 }
