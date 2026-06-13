@@ -281,6 +281,7 @@ export type Database = {
           bank: string | null
           created_at: string
           created_by: number | null
+          created_by_user: string | null
           customer_name: string | null
           id: string
           org_id: string
@@ -296,6 +297,7 @@ export type Database = {
           bank?: string | null
           created_at?: string
           created_by?: number | null
+          created_by_user?: string | null
           customer_name?: string | null
           id?: string
           org_id: string
@@ -311,6 +313,7 @@ export type Database = {
           bank?: string | null
           created_at?: string
           created_by?: number | null
+          created_by_user?: string | null
           customer_name?: string | null
           id?: string
           org_id?: string
@@ -1625,6 +1628,7 @@ export type Database = {
           console_id: number
           created_at: string
           created_by: number | null
+          created_by_user: string | null
           customer_name: string | null
           duration_min: number | null
           ended_at: string | null
@@ -1651,6 +1655,7 @@ export type Database = {
           console_id: number
           created_at?: string
           created_by?: number | null
+          created_by_user?: string | null
           customer_name?: string | null
           duration_min?: number | null
           ended_at?: string | null
@@ -1677,6 +1682,7 @@ export type Database = {
           console_id?: number
           created_at?: string
           created_by?: number | null
+          created_by_user?: string | null
           customer_name?: string | null
           duration_min?: number | null
           ended_at?: string | null
@@ -2867,6 +2873,7 @@ export type Database = {
           console_id: number
           created_at: string
           created_by: number | null
+          created_by_user: string | null
           customer_name: string | null
           duration_min: number | null
           ended_at: string | null
@@ -2910,6 +2917,7 @@ export type Database = {
           console_id: number
           created_at: string
           created_by: number | null
+          created_by_user: string | null
           customer_name: string | null
           duration_min: number | null
           ended_at: string | null
