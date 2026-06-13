@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { Eye, LoaderCircle, Lock } from 'lucide-react'
+import { Eye, LoaderCircle, Lock, Clock } from 'lucide-react'
 import type { Session as AuthSession } from '@supabase/supabase-js'
 import type { ModuleKey } from '@/lib/types'
 import { PlayroomProvider, usePlayroom } from '@/lib/store'
@@ -123,8 +123,52 @@ function ImpersonationBar({ onBack }: { onBack: () => void }) {
   )
 }
 
+// Operator/cashier attendance: auto-opens a shift on login and offers an explicit
+// "end shift". Rendered inside the providers so it can toast. Shifts feed payroll.
+function ShiftBadge() {
+  const { currentRole, currentVenueId } = useOrg()
+  const { pushToast } = usePlayroom()
+  const [open, setOpen] = useState(false)
+  const startedRef = useRef(false)
+  const isShiftRole = currentRole === 'operator' || currentRole === 'cashier'
+
+  useEffect(() => {
+    if (!isShiftRole || !currentVenueId || startedRef.current) return
+    startedRef.current = true
+    supabase.rpc('start_shift', { p_venue_id: currentVenueId }).then(({ data }) => {
+      const r = data as { ok?: boolean; started?: boolean; already_open?: boolean } | null
+      if (r?.ok) {
+        setOpen(true)
+        if (r.started) pushToast('success', 'ცვლა დაიწყო')
+      }
+    })
+  }, [isShiftRole, currentVenueId, pushToast])
+
+  if (!isShiftRole || !open) return null
+
+  const end = async () => {
+    if (!currentVenueId || !confirm('დაასრულო ცვლა?')) return
+    await supabase.rpc('end_shift', { p_venue_id: currentVenueId })
+    setOpen(false)
+    startedRef.current = true // don't auto-reopen until next login
+    pushToast('info', 'ცვლა დასრულდა')
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={end}
+      title="ცვლის დასრულება"
+      className="nm-btn flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--status-free)]"
+    >
+      <Clock className="size-3.5" />
+      ცვლაზე
+    </button>
+  )
+}
+
 function Workspace({ email }: { email?: string }) {
-  const { activeEmployee, hasEmployees, activeRole, isPlatformAdmin, impersonating } = useOrg()
+  const { activeEmployee, hasEmployees, activeRole, isPlatformAdmin, impersonating, currentRole, currentVenueId } = useOrg()
   const [active, setActive] = useState<ModuleKey>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -139,6 +183,10 @@ function Workspace({ email }: { email?: string }) {
   }, [canAccess, activeRole, active, isPlatformAdmin])
 
   const logout = async () => {
+    // Close the operator/cashier's own shift before signing out.
+    if ((currentRole === 'operator' || currentRole === 'cashier') && currentVenueId) {
+      try { await supabase.rpc('end_shift', { p_venue_id: currentVenueId }) } catch { /* ignore */ }
+    }
     await supabase.auth.signOut()
   }
 
@@ -177,6 +225,9 @@ function Workspace({ email }: { email?: string }) {
 
           <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
             <ImpersonationBar onBack={() => setActive('platform')} />
+            <div className="flex justify-end empty:hidden [&:not(:empty)]:mb-3">
+              <ShiftBadge />
+            </div>
             <Topbar
               active={active}
               onMenuClick={() => setSidebarOpen(true)}

@@ -606,6 +606,7 @@ export type Database = {
           role: string
           salary_amount: number
           salary_type: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -617,6 +618,7 @@ export type Database = {
           role?: string
           salary_amount?: number
           salary_type?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -628,6 +630,7 @@ export type Database = {
           role?: string
           salary_amount?: number
           salary_type?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -2728,6 +2731,7 @@ export type Database = {
       end_session:
         | { Args: { p_session_id: string }; Returns: undefined }
         | { Args: { p_session_id: string; p_tip?: number }; Returns: undefined }
+      end_shift: { Args: { p_venue_id: string }; Returns: Json }
       extend_session: {
         Args: { p_extra_min: number; p_session_id: string }
         Returns: undefined
@@ -2934,6 +2938,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      start_shift: { Args: { p_venue_id: string }; Returns: Json }
       submit_review: {
         Args: { p_booking_id: string; p_comment?: string; p_rating: number }
         Returns: string
