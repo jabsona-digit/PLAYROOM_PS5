@@ -62,8 +62,8 @@ const STEPS = [
 
 const PLANS = [
   { name: 'Trial', price: '₾0', sub: '14 დღე', feats: ['1 ფილიალი', '4 კონსოლი', 'ძირითადი მოდულები'], cta: 'უფასო ცდა', highlight: false },
-  { name: 'Pro', price: '₾99', sub: '/ თვე', feats: ['3 ფილიალი', 'ბარი + საწყობი', 'ბუღალტერია + ტურნირები', 'ონლაინ ჯავშნები'], cta: 'დაიწყე', highlight: true },
-  { name: 'Enterprise', price: '₾299', sub: '/ თვე', feats: ['ულიმიტო', 'RS.GE ფისკალი', 'API + პრიორიტეტი'], cta: 'დაგვიკავშირდი', highlight: false },
+  { name: 'Pro', price: '₾45', sub: '/ თვე', feats: ['3 ფილიალი', 'ბარი + საწყობი', 'ბუღალტერია + ტურნირები', 'ონლაინ ჯავშნები'], cta: 'დაიწყე', highlight: true },
+  { name: 'Enterprise', price: '₾65', sub: '/ თვე', feats: ['ულიმიტო', 'RS.GE ფისკალი', 'API + პრიორიტეტი'], cta: 'დაგვიკავშირდი', highlight: false },
 ]
 
 export function Landing() {
