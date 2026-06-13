@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'Martelounge',
     short_name: 'Martelounge',
     description: 'Martelounge-ის ადმინ პანელი — სესიები, კასა, ტარიფები, თანამშრომლები',
-    start_url: '/',
+    start_url: '/app',
     display: 'standalone',
     background_color: '#1c1f27',
     theme_color: '#1c1f27',
