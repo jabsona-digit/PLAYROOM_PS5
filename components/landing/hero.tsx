@@ -54,13 +54,13 @@ function useSequence() {
 }
 
 const RECEIPT_LINES: Record<Phase, { y: string; opacity: number }> = {
-  idle: { y: '-86%', opacity: 0 },
-  cardIn: { y: '-86%', opacity: 0 },
-  tap: { y: '-86%', opacity: 0 },
-  success: { y: '-86%', opacity: 0 },
-  receipt: { y: '58%', opacity: 1 },
-  hold: { y: '58%', opacity: 1 },
-  reset: { y: '-86%', opacity: 0 },
+  idle: { y: '-100%', opacity: 0 },
+  cardIn: { y: '-100%', opacity: 0 },
+  tap: { y: '-100%', opacity: 0 },
+  success: { y: '-100%', opacity: 0 },
+  receipt: { y: '4%', opacity: 1 },
+  hold: { y: '4%', opacity: 1 },
+  reset: { y: '-100%', opacity: 0 },
 }
 const BANK: Record<Phase, { opacity: number; x: number; y: number; scale: number }> = {
   idle: { opacity: 0, x: 130, y: -10, scale: 0.85 },
@@ -174,7 +174,7 @@ export function Hero() {
       <div className="relative mx-auto w-full max-w-md" style={{ perspective: 1200 }}>
         {/* fiscal receipt — slides down from behind the card */}
         <motion.div
-          className="absolute left-1/2 top-1/2 z-0 w-40 overflow-hidden rounded-t-md bg-white font-mono text-[9px] leading-tight text-neutral-900 shadow-2xl"
+          className="absolute left-1/2 top-full z-0 -mt-16 w-40 overflow-hidden rounded-t-md bg-white font-mono text-[9px] leading-tight text-neutral-900 shadow-2xl"
           style={{
             clipPath:
               'polygon(0 0,100% 0,100% 96%,92% 100%,84% 96%,76% 100%,68% 96%,60% 100%,52% 96%,44% 100%,36% 96%,28% 100%,20% 96%,12% 100%,4% 96%,0 100%)',
@@ -227,9 +227,15 @@ export function Hero() {
             <p className="mt-2 font-mono text-sm text-muted-foreground">⏱ {timer}</p>
           </div>
 
-          {/* tap zone hint */}
-          <div className="mt-7 flex h-16 items-center justify-center rounded-2xl border border-dashed border-white/15 text-xs text-muted-foreground" style={{ transform: 'translateZ(20px)' }}>
-            <CreditCard className="mr-2 size-4" /> Tap-to-Pay · RS.GE ფისკალი
+          {/* bar order — persistent */}
+          <div className="mt-6 rounded-2xl border border-white/5 bg-black/20 p-4" style={{ transform: 'translateZ(20px)' }}>
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+              <CreditCard className="size-3.5" /> ბარის შეკვეთა
+            </p>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between"><span>🥤 კოკა-კოლა × 2</span><span className="font-mono text-muted-foreground">₾7.00</span></div>
+              <div className="flex justify-between"><span>🍫 სნიკერსი × 1</span><span className="font-mono text-muted-foreground">₾3.50</span></div>
+            </div>
           </div>
 
           {/* success ripple */}

@@ -15,6 +15,7 @@ import {
   QrCode,
   CalendarClock,
 } from 'lucide-react'
+import { motion } from 'motion/react'
 import { Hero } from './hero'
 
 function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
@@ -43,14 +44,14 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
 }
 
 const FEATURES = [
-  { icon: Gamepad2, t: 'სესიები & კონსოლები', d: 'ფიქსირებული ან ღია (pay-as-you-go) სესიები, ცოცხალი ტაიმერებით და გაფრთხილებებით.' },
-  { icon: Coffee, t: 'ბარი / POS', d: 'სწრაფი გაყიდვა, ბარკოდი, მარაგების მართვა — სესიის ანგარიშზევე.' },
-  { icon: Wallet, t: 'კასა & ფინანსები', d: 'შემოსავალი კონსოლებისა და პერიოდების მიხედვით, გადახდის არხები, Z-რეპორტი.' },
-  { icon: Calculator, t: 'ბუღალტერია', d: 'P&L, დღგ (18%), ბიუჯეტები, ინვოისები, ხელფასები — ერთ ადგილას.' },
-  { icon: Users, t: 'თანამშრომლები & PIN', d: 'როლები, PIN-შესვლა, ცვლები და ხელფასები პირდაპირ ბუღალტერიაში.' },
-  { icon: Trophy, t: 'ტურნირები', d: 'Single-elim ბადე, მატჩები, ავტომატური გამარჯვებული + TV რეჟიმი.' },
-  { icon: Globe, t: 'ონლაინ ჯავშნები', d: 'შენი კლუბი play.martelounge.ge-ზე — კლიენტები ჯავშნიან online.' },
-  { icon: Sparkles, t: 'AI ასისტენტი', d: 'ხმოვანი/ტექსტური დამხმარე — სესიები, გაყიდვები, რეპორტები კითხვით.' },
+  { icon: Gamepad2, t: 'სესიები & კონსოლები', d: 'ფიქსირებული ან ღია (pay-as-you-go) სესიები, ცოცხალი ტაიმერებით და გაფრთხილებებით.', from: '#22d3ee', to: '#3b82f6' },
+  { icon: Coffee, t: 'ბარი / POS', d: 'სწრაფი გაყიდვა, ბარკოდი, მარაგების მართვა — სესიის ანგარიშზევე.', from: '#a78bfa', to: '#d946ef' },
+  { icon: Wallet, t: 'კასა & ფინანსები', d: 'შემოსავალი კონსოლებისა და პერიოდების მიხედვით, გადახდის არხები, Z-რეპორტი.', from: '#34d399', to: '#10b981' },
+  { icon: Calculator, t: 'ბუღალტერია', d: 'P&L, დღგ (18%), ბიუჯეტები, ინვოისები, ხელფასები — ერთ ადგილას.', from: '#fbbf24', to: '#f59e0b' },
+  { icon: Users, t: 'თანამშრომლები & PIN', d: 'როლები, PIN-შესვლა, ცვლები და ხელფასები პირდაპირ ბუღალტერიაში.', from: '#38bdf8', to: '#6366f1' },
+  { icon: Trophy, t: 'ტურნირები', d: 'Single-elim ბადე, მატჩები, ავტომატური გამარჯვებული + TV რეჟიმი.', from: '#fbbf24', to: '#ef4444' },
+  { icon: Globe, t: 'ონლაინ ჯავშნები', d: 'შენი კლუბი play.martelounge.ge-ზე — კლიენტები ჯავშნიან online.', from: '#2dd4bf', to: '#06b6d4' },
+  { icon: Sparkles, t: 'AI ასისტენტი', d: 'ხმოვანი/ტექსტური დამხმარე — სესიები, გაყიდვები, რეპორტები კითხვით.', from: '#c084fc', to: '#ec4899' },
 ]
 
 const STEPS = [
@@ -104,13 +105,26 @@ export function Landing() {
         <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((f, i) => (
             <Reveal key={f.t} delay={(i % 4) * 80}>
-              <div className="nm-raised h-full rounded-2xl p-5">
-                <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
-                  <f.icon className="size-5 text-primary" />
+              <motion.div
+                whileHover={{ y: -6 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+                className="group relative h-full overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br from-[var(--surface-2)] to-[var(--surface)] p-5"
+              >
+                {/* hover glow blob */}
+                <div
+                  className="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-50"
+                  style={{ background: f.from }}
+                />
+                {/* gradient icon tile */}
+                <div
+                  className="relative flex size-12 items-center justify-center rounded-2xl"
+                  style={{ background: `linear-gradient(135deg, ${f.from}, ${f.to})`, boxShadow: `0 8px 26px ${f.from}55` }}
+                >
+                  <f.icon className="size-6 text-white drop-shadow" />
                 </div>
-                <h3 className="mt-4 font-bold">{f.t}</h3>
-                <p className="mt-1.5 text-sm text-muted-foreground">{f.d}</p>
-              </div>
+                <h3 className="relative mt-4 font-bold">{f.t}</h3>
+                <p className="relative mt-1.5 text-sm text-muted-foreground">{f.d}</p>
+              </motion.div>
             </Reveal>
           ))}
         </div>
