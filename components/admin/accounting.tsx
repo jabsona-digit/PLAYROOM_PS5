@@ -151,7 +151,8 @@ export function Accounting() {
       'ბარის შემოსავალი': pnl.bar_revenue,
       'სულ შემოსავალი': pnl.total_revenue,
       'დაბრუნებები': pnl.session_refunds,
-      'სულ ხარჯები': pnl.total_expenses,
+      'საქონლის თვითღირებულება (COGS)': pnl.bar_cogs,
+      'ოპერაციული ხარჯები': pnl.total_expenses,
       'სუფთა მოგება': pnl.net_profit,
     }]
     const expenseRows = expenses.map(e => ({
@@ -489,8 +490,18 @@ export function Accounting() {
                   <p className="font-mono text-2xl font-extrabold text-amber-500">{gel(pnl?.session_refunds || 0)}</p>
                 </div>
                 <div className="nm-raised rounded-3xl p-6">
-                  <p className="text-sm font-semibold mb-3 text-red-500">სულ ხარჯები</p>
-                  <p className="font-mono text-2xl font-extrabold text-red-500">{gel(pnl?.total_expenses || 0)}</p>
+                  <p className="text-sm font-semibold mb-3 text-red-500">ხარჯები</p>
+                  <p className="font-mono text-2xl font-extrabold text-red-500">{gel((pnl?.total_expenses || 0) + (pnl?.bar_cogs || 0))}</p>
+                  <div className="mt-4 space-y-2 text-xs text-muted-foreground">
+                    <div className="flex justify-between">
+                      <span>ოპერაციული:</span>
+                      <span className="font-bold text-foreground">{gel(pnl?.total_expenses || 0)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>საქონლის ღირ. (COGS):</span>
+                      <span className="font-bold text-foreground">{gel(pnl?.bar_cogs || 0)}</span>
+                    </div>
+                  </div>
                 </div>
                 <div className="nm-daylight rounded-3xl p-6">
                   <p className="text-sm font-semibold mb-3 text-muted-foreground">სუფთა მოგება</p>

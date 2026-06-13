@@ -2443,6 +2443,7 @@ export type Database = {
       }
       monthly_pnl: {
         Row: {
+          bar_cogs: number | null
           bar_revenue: number | null
           bar_tips: number | null
           month: string | null

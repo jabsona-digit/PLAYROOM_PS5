@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Plus, Edit2, Archive, ListTree, PackageSearch, AlertTriangle, Save, Trash2, Check, X, ScanLine, FileUp, FileDown, ImagePlus } from 'lucide-react'
+import { useEffect, useState, useMemo } from 'react'
+import { Plus, Edit2, Archive, ListTree, PackageSearch, AlertTriangle, Save, Trash2, Check, X, ScanLine, FileUp, FileDown, ImagePlus, Boxes, Tag as TagIcon, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
@@ -160,6 +160,16 @@ export function Inventory() {
   const displayedProducts = products
     .filter(p => activeCategoryId === 'all' || p.category_id === activeCategoryId)
     .filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.barcode === searchQuery)
+
+  // Inventory valuation of stock on hand (active products): cost = what it's worth
+  // to us, retail = what it'd sell for, potential = margin still in the shelf.
+  const valuation = useMemo(() => {
+    const active = products.filter(p => p.is_active)
+    const cost = active.reduce((s, p) => s + (p.cost_price ?? 0) * (p.stock_quantity ?? 0), 0)
+    const retail = active.reduce((s, p) => s + (p.price ?? 0) * (p.stock_quantity ?? 0), 0)
+    const units = active.reduce((s, p) => s + (p.stock_quantity ?? 0), 0)
+    return { cost, retail, potential: retail - cost, units }
+  }, [products])
 
   useEffect(() => {
     let buffer = ''
@@ -329,6 +339,40 @@ export function Inventory() {
 
       {/* Main Grid: Products */}
       <div className="flex flex-1 flex-col gap-6 min-w-0">
+        {/* inventory valuation — value of stock on hand */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="nm-raised flex items-center gap-3 rounded-3xl p-5">
+            <div className="nm-inset flex size-11 shrink-0 items-center justify-center rounded-2xl">
+              <Boxes className="size-5 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm text-muted-foreground">საწყობის ღირებულება</p>
+              <p className="font-mono text-xl font-extrabold text-primary">{gel(valuation.cost)}</p>
+              <p className="text-[11px] text-muted-foreground">{valuation.units} ცალი · შესყიდვის ფასით</p>
+            </div>
+          </div>
+          <div className="nm-raised flex items-center gap-3 rounded-3xl p-5">
+            <div className="nm-inset flex size-11 shrink-0 items-center justify-center rounded-2xl">
+              <TagIcon className="size-5" style={{ color: 'var(--status-active)' }} />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm text-muted-foreground">სარეალიზაციო ღირებულება</p>
+              <p className="font-mono text-xl font-extrabold">{gel(valuation.retail)}</p>
+              <p className="text-[11px] text-muted-foreground">გასაყიდი ფასით</p>
+            </div>
+          </div>
+          <div className="nm-raised flex items-center gap-3 rounded-3xl p-5">
+            <div className="nm-inset flex size-11 shrink-0 items-center justify-center rounded-2xl">
+              <TrendingUp className="size-5" style={{ color: 'var(--status-free)' }} />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm text-muted-foreground">პოტენციური მოგება</p>
+              <p className="font-mono text-xl font-extrabold" style={{ color: 'var(--status-free)' }}>{gel(valuation.potential)}</p>
+              <p className="text-[11px] text-muted-foreground">თუ მთლიანი მარაგი გაიყიდება</p>
+            </div>
+          </div>
+        </div>
+
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">

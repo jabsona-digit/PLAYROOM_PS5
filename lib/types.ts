@@ -247,6 +247,7 @@ export interface VenuePnl {
   session_refunds: number
   bar_revenue: number
   bar_tips: number
+  bar_cogs: number
   total_revenue: number
   total_expenses: number
   net_profit: number
@@ -264,6 +265,7 @@ export interface MonthlyPnl {
   bar_tips: number
   total_expenses: number
   net_profit: number
+  bar_cogs: number
 }
 
 export interface AuditLog {
