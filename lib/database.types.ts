@@ -1650,6 +1650,125 @@ export type Database = {
           },
         ]
       }
+      service_requests: {
+        Row: {
+          console_id: number
+          created_at: string
+          id: string
+          items: Json
+          kind: string
+          org_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          sale_id: string | null
+          session_id: string | null
+          status: string
+          total: number
+          venue_id: string
+        }
+        Insert: {
+          console_id: number
+          created_at?: string
+          id?: string
+          items?: Json
+          kind: string
+          org_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sale_id?: string | null
+          session_id?: string | null
+          status?: string
+          total?: number
+          venue_id: string
+        }
+        Update: {
+          console_id?: number
+          created_at?: string
+          id?: string
+          items?: Json
+          kind?: string
+          org_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sale_id?: string | null
+          session_id?: string | null
+          status?: string
+          total?: number
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_requests_console_id_fkey"
+            columns: ["console_id"]
+            isOneToOne: false
+            referencedRelation: "console_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_requests_console_id_fkey"
+            columns: ["console_id"]
+            isOneToOne: false
+            referencedRelation: "consoles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_requests_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_requests_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_requests_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "bar_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_requests_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_revenue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_requests_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_requests_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "service_requests_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_requests_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       session_extensions: {
         Row: {
           created_at: string
@@ -2925,6 +3044,19 @@ export type Database = {
         Returns: Json
       }
       plan_monthly_price: { Args: { p_plan: string }; Returns: number }
+      portal_get_menu: { Args: { p_venue_id: string }; Returns: Json }
+      portal_get_session_status: {
+        Args: { p_console_id: number }
+        Returns: Json
+      }
+      portal_place_order: {
+        Args: { p_console_id: number; p_items: Json; p_venue_id: string }
+        Returns: Json
+      }
+      portal_request_service: {
+        Args: { p_console_id: number; p_kind: string; p_venue_id: string }
+        Returns: Json
+      }
       process_payroll: {
         Args: {
           p_from: string
@@ -2958,6 +3090,15 @@ export type Database = {
       report_match: {
         Args: { p_match: string; p_score1: number; p_score2: number }
         Returns: undefined
+      }
+      resolve_service_request: {
+        Args: {
+          p_bank?: string
+          p_id: string
+          p_payment_method?: string
+          p_status?: string
+        }
+        Returns: Json
       }
       revoke_invite: { Args: { p_invite_id: string }; Returns: undefined }
       seed_tournament: { Args: { p_tournament: string }; Returns: undefined }
