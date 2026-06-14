@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   BarChart3, TrendingUp, Gauge, Coins, Gamepad2, Flame, Snowflake,
-  Lightbulb, LoaderCircle, Clock,
+  Lightbulb, LoaderCircle, Clock, Sparkles,
 } from 'lucide-react'
 import { useOrg } from '@/lib/org'
 import { gel } from '@/lib/ui'
@@ -46,6 +46,23 @@ function rangeOf(preset: Preset) {
   return { from: start.toISOString(), to: to.toISOString() }
 }
 
+// minimal markdown for Gemini's Georgian advice (headings, bullets, **bold**)
+function renderAdvice(text: string) {
+  return text.split('\n').map((line, i) => {
+    if (line.trim() === '') return <div key={i} className="h-2" />
+    const isHead = /^#{1,4}\s/.test(line)
+    const clean = line.replace(/^#{1,4}\s/, '').replace(/^[-*]\s/, '• ')
+    const parts = clean.split(/(\*\*.*?\*\*)/g)
+    return (
+      <p key={i} className={cn('leading-relaxed', isHead ? 'mt-3 mb-1 font-black text-foreground' : 'mb-1 text-muted-foreground')}>
+        {parts.map((p, j) => (p.startsWith('**') && p.endsWith('**')
+          ? <strong key={j} className="font-bold text-foreground">{p.slice(2, -2)}</strong>
+          : p))}
+      </p>
+    )
+  })
+}
+
 function Kpi({ icon: Icon, label, value, hint }: { icon: typeof Gauge; label: string; value: string; hint?: string }) {
   return (
     <div className="nm-raised rounded-3xl p-5">
@@ -65,6 +82,8 @@ export function RevpachAnalytics() {
   const [dailyHours, setDailyHours] = useState(12)
   const [data, setData] = useState<Analytics | null>(null)
   const [loading, setLoading] = useState(true)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiReport, setAiReport] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!currentVenueId) return
@@ -79,6 +98,19 @@ export function RevpachAnalytics() {
   }, [currentVenueId, preset, dailyHours])
 
   useEffect(() => { load() }, [load])
+  // a fresh range invalidates a stale AI report
+  useEffect(() => { setAiReport(null) }, [preset, dailyHours, currentVenueId])
+
+  const runAdvisor = async () => {
+    if (!currentVenueId) return
+    setAiLoading(true); setAiReport(null)
+    const { from, to } = rangeOf(preset)
+    const { data: res, error } = await supabase.functions.invoke('ai-assistant', {
+      body: { action: 'run_revpach_advisor', venue_id: currentVenueId, from, to, daily_hours: dailyHours },
+    })
+    setAiLoading(false)
+    setAiReport(error ? 'რეკომენდაცია ვერ მომზადდა. სცადეთ თავიდან.' : ((res as { text?: string })?.text ?? 'ცარიელი პასუხი'))
+  }
 
   // heatmap lookup + max for intensity
   const { heatLookup, heatMax, goldHour } = useMemo(() => {
@@ -151,6 +183,14 @@ export function RevpachAnalytics() {
             />
             <span className="text-xs text-muted-foreground">სთ/დღე</span>
           </label>
+          <button
+            onClick={runAdvisor}
+            disabled={aiLoading || loading || !data}
+            className="nm-btn flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-bold text-primary disabled:opacity-50"
+          >
+            {aiLoading ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+            AI რჩევები
+          </button>
         </div>
       </div>
 
@@ -200,6 +240,23 @@ export function RevpachAnalytics() {
                 <p className="text-sm font-black">🥇 {insight.top?.name ?? '—'} · {gel(insight.top?.revpach ?? 0)}</p>
                 <p className="mt-1 text-sm font-bold text-muted-foreground">🔻 {insight.weak?.name ?? '—'} · {gel(insight.weak?.revpach ?? 0)}</p>
               </div>
+            </div>
+          )}
+
+          {/* AI recommendations */}
+          {(aiReport || aiLoading) && (
+            <div className="nm-raised rounded-3xl p-6">
+              <div className="mb-3 flex items-center gap-2">
+                <Sparkles className="size-5 text-primary" />
+                <h3 className="text-sm font-extrabold">AI რეკომენდაციები</h3>
+              </div>
+              {aiLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <LoaderCircle className="size-4 animate-spin" /> ვაანალიზებ მონაცემებს…
+                </div>
+              ) : (
+                <div className="text-sm">{renderAdvice(aiReport!)}</div>
+              )}
             </div>
           )}
 

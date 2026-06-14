@@ -295,6 +295,8 @@ Deno.serve(async (req) => {
     action?: string
     from?: string
     to?: string
+    venue_id?: string
+    daily_hours?: number
   }
   try {
     body = await req.json()
@@ -344,6 +346,37 @@ Use neat markdown formatting.`
     } catch (e) {
       console.error('AUDIT_ERROR', (e as Error).message)
       return json({ type: 'error', text: 'აუდიტის შეცდომა.' })
+    }
+  }
+
+  // ---- Path D: RevPACH AI advisor ----
+  if (body.action === 'run_revpach_advisor') {
+    const vId = body.venue_id ?? venueId
+    if (!vId) return json({ error: 'venue not found' }, 400)
+    try {
+      const from = body.from || new Date(Date.now() - 30 * 86400000).toISOString()
+      const to = body.to || new Date().toISOString()
+      const { data: analytics, error: aErr } = await db.rpc('get_console_analytics', {
+        p_venue_id: vId, p_from: from, p_to: to, p_daily_hours: body.daily_hours ?? 12,
+      })
+      if (aErr) throw aErr
+
+      const advSys = `You are a revenue strategist for a Georgian PS5 gaming lounge. You receive RevPACH analytics JSON
+(RevPACH = revenue per available console-hour; occupancy %; a per-console matrix; a 7×24 demand heatmap where
+dow 0=Sunday..6=Saturday and hour is 0-23 in Georgian local time).
+
+Write a SHORT, SPECIFIC, ACTIONABLE report in GEORGIAN markdown:
+1. **დატვირთვის გაზრდა** — 2-3 კონკრეტული აქცია მკვდარი ზონებისთვის (დაასახელე დღე+საათი heatmap-იდან, შესთავაზე ფასი/შეთავაზება).
+2. **სუსტი / უქმე კონსოლები** — რა ვუყოთ.
+3. **ფასი / ტევადობა** — ერთი ჭკვიანი დასკვნა.
+Use the real numbers from the data (RevPACH, occupancy %, gold hour). Keep it under ~180 words. No preamble, do not echo the JSON.`
+
+      const g = await callGemini(advSys, [{ role: 'user', parts: [{ text: JSON.stringify(analytics) }] }])
+      const text = g?.candidates?.[0]?.content?.parts?.find((p: { text?: string }) => p.text)?.text ?? 'რეკომენდაცია ვერ მომზადდა.'
+      return json({ type: 'text', text })
+    } catch (e) {
+      console.error('REVPACH_ADVISOR_ERROR', (e as Error).message)
+      return json({ type: 'error', text: 'რეკომენდაციის შეცდომა.' })
     }
   }
 
