@@ -19,6 +19,7 @@ import {
   Globe,
   Trophy,
   BookOpen,
+  BarChart3,
   Lock,
   type LucideIcon,
 } from 'lucide-react'
@@ -41,6 +42,7 @@ const NAV: { key: ModuleKey; label: string; icon: LucideIcon }[] = [
   { key: 'reservations', label: 'ჯავშნები', icon: CalendarClock },
   { key: 'online_bookings', label: 'ონლაინ ჯავშნები', icon: Globe },
   { key: 'tournaments', label: 'ტურნირები', icon: Trophy },
+  { key: 'analytics', label: 'ანალიტიკა', icon: BarChart3 },
   { key: 'guide', label: 'სახელმძღვანელო', icon: BookOpen },
 ]
 

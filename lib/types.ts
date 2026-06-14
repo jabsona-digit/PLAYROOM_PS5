@@ -23,6 +23,7 @@ export type ModuleKey =
   | 'online_bookings'
   | 'tournaments'
   | 'guide'
+  | 'analytics'
 
 export interface AppSettings {
   venue_name: string

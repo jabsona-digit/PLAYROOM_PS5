@@ -27,6 +27,7 @@ import { Reservations } from './reservations'
 import { OnlineBookings } from './online-bookings'
 import { Tournaments } from './tournaments'
 import { Guide } from './guide'
+import { RevpachAnalytics } from './analytics-v2'
 import { BookingAlertsProvider } from './booking-alerts'
 import { ServiceInbox } from './service-inbox'
 import { AiAssistant } from './ai-assistant'
@@ -251,6 +252,7 @@ function Workspace({ email }: { email?: string }) {
               {active === 'online_bookings' && <OnlineBookings />}
               {active === 'tournaments' && <Tournaments />}
               {active === 'guide' && <Guide />}
+              {active === 'analytics' && <RevpachAnalytics />}
               {active === 'platform' && (
                 <PlatformConsole onViewAs={() => setActive('dashboard')} />
               )}
