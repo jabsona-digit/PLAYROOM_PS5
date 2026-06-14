@@ -1313,6 +1313,60 @@ export type Database = {
           },
         ]
       }
+      org_payment_credentials: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          last_tested_at: string | null
+          merchant_id: string | null
+          org_id: string
+          provider: string
+          secret_ref: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_tested_at?: string | null
+          merchant_id?: string | null
+          org_id: string
+          provider: string
+          secret_ref?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_tested_at?: string | null
+          merchant_id?: string | null
+          org_id?: string
+          provider?: string
+          secret_ref?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_payment_credentials_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_payment_credentials_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string
@@ -2955,6 +3009,10 @@ export type Database = {
       delete_console: { Args: { p_console_id: number }; Returns: undefined }
       delete_customer: { Args: { p_customer_id: string }; Returns: undefined }
       delete_expense: { Args: { p_expense_id: string }; Returns: undefined }
+      delete_payment_credentials: {
+        Args: { p_org_id: string; p_provider: string }
+        Returns: Json
+      }
       end_session:
         | { Args: { p_session_id: string }; Returns: undefined }
         | { Args: { p_session_id: string; p_tip?: number }; Returns: undefined }
@@ -2964,6 +3022,7 @@ export type Database = {
         Returns: undefined
       }
       get_open_drawer: { Args: { p_venue_id: string }; Returns: Json }
+      get_payment_settings: { Args: { p_org_id: string }; Returns: Json }
       get_vat_summary: {
         Args: { p_from: string; p_to: string; p_venue_id: string }
         Returns: Json
@@ -3101,10 +3160,23 @@ export type Database = {
         Returns: Json
       }
       revoke_invite: { Args: { p_invite_id: string }; Returns: undefined }
+      save_payment_credentials: {
+        Args: {
+          p_merchant_id: string
+          p_org_id: string
+          p_provider: string
+          p_secret: Json
+        }
+        Returns: Json
+      }
       seed_tournament: { Args: { p_tournament: string }; Returns: undefined }
       set_employee_pin: {
         Args: { p_employee_id: number; p_pin: string }
         Returns: undefined
+      }
+      set_payment_provider_active: {
+        Args: { p_active: boolean; p_org_id: string; p_provider: string }
+        Returns: Json
       }
       slugify: { Args: { p: string }; Returns: string }
       start_open_session: {
