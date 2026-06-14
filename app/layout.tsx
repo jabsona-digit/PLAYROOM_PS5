@@ -13,8 +13,28 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Martelounge — Gaming Lounge OS',
-  description: 'Martelounge-ის ადმინ პანელი — სესიები, კასა, ტარიფები, თანამშრომლები',
+  metadataBase: new URL('https://martelounge.ge'),
+  title: {
+    default: 'Martelounge — PlayStation კლუბის მართვის სისტემა',
+    template: '%s · Martelounge',
+  },
+  description:
+    'PS5 კლუბებისა და gaming lounge-ების სრული ოპერაციული სისტემა: სესიები, ბარი/POS, კასა, ბუღალტერია, თანამშრომლები, ტურნირები, ონლაინ ჯავშნები და AI. დაიწყე 14 დღე უფასოდ.',
+  keywords: [
+    'gaming lounge', 'PlayStation კლუბი', 'PS5 კლუბი', 'კლუბის მართვის სისტემა',
+    'gaming lounge software', 'POS', 'Martelounge', 'მართელაუნჯი',
+  ],
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    siteName: 'Martelounge',
+    locale: 'ka_GE',
+    url: 'https://martelounge.ge',
+    title: 'Martelounge — PlayStation კლუბის მართვის სისტემა',
+    description:
+      'PS5 კლუბის სრული ოპერაციული სისტემა — სესიები, ბარი, კასა, ბუღალტერია, ტურნირები, AI. 14 დღე უფასოდ.',
+  },
+  twitter: { card: 'summary_large_image' },
   icons: {
     icon: '/icon-192.png',
     apple: '/icon-512.png',
