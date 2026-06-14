@@ -12,6 +12,11 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
+> _Last updated **2026-06-14** — through migration **0058**. Since the previous (0036) revision:
+> tournaments, capacity/typed-resource booking, God-Mode tenant billing, payroll/RBAC hardening,
+> team email-invites, operator shifts & attribution, shared cash drawer, abandoned sessions, bar COGS,
+> **In-Seat Ordering portal**, **AI receipt OCR + anti-fraud audit**, and **per-tenant online payments (Phase 1)**._
+
 > Product was renamed **Playroom OS → Martelounge** (martel-**OU**-nge; domain bought 2026-06-08).
 > "Playroom" survives only as a demo/tenant name.
 
@@ -36,7 +41,7 @@ This document is the single source of truth for anyone (human or AI) joining the
 
 | | Admin panel | Marketplace |
 |---|---|---|
-| Repo | `playroom-admin-panel` (this) | `martelounge-web` (sibling on Desktop; no GitHub remote) |
+| Repo | `playroom-admin-panel` (this) | `martelounge-web` (sibling on Desktop; GitHub `jabsona-digit/PLAYROOM_PS5-REPO`) |
 | Domain | `martelounge.ge` (+ www) | `play.martelounge.ge` |
 | Rendering | `output: 'export'` — pure **static** SPA | **SSR** (SEO) via `@opennextjs/cloudflare` |
 | Host | Cloudflare **Pages** (project `playroom-ps5`) | Cloudflare **Worker** |
@@ -104,6 +109,7 @@ PLATFORM (God Mode)           platform_admins — all tenants, MRR, plan/suspend
 
 ```
 app/                    globals.css (theme+neumorphic), layout.tsx (Noto Sans Georgian), page.tsx → <AdminShell/>
+app/p/page.tsx          PUBLIC In-Seat Ordering portal — /p?v=<venue>&c=<console>, anon, NO auth gate
 functions/api/upload.js Cloudflare Pages Function — POST /api/upload → R2 (verifies Supabase JWT)
 components/admin/
   admin-shell.tsx       auth gate → OrgProvider → (Splash|Onboarding|Suspended|PinGate|Workspace)
@@ -137,6 +143,14 @@ components/admin/
   billing.tsx           tenant billing: plan, trial countdown, upgrade CTA
   analytics.tsx         monthly profit bars + hourly heatmap (CSS/SVG)
   ai-assistant.tsx      floating ✨ chat: text + voice (ka-GE), confirm-gated actions
+  receipt-scanner.tsx   AI receipt OCR (Gemini Vision) → auto-fills an expense (used in accounting)
+  fraud-audit.tsx       "🕵️ AI აუდიტი" tab in history — audit-log forensics + per-operator Trust Score
+  service-inbox.tsx     floating realtime In-Seat inbox (order/battery/call) → fulfil → bar_sale
+  qr-print-modal.tsx    print per-console QR codes for the In-Seat portal (qrcode.react)
+  payment-settings.tsx  Settings: connect own TBC/BOG merchant (Vault-encrypted; BYO-merchant)
+  team-settings.tsx     Settings: email-invite staff (each gets own login + role)
+  tournaments.tsx       single-elim PS5 brackets + TV mode
+  guide.tsx             in-app handbook (searchable; covers AI, In-Seat, payments, …)
   modal.tsx / toast.tsx
 lib/
   supabase/client.ts    browser Supabase client
@@ -148,7 +162,7 @@ lib/
   upload.ts             optimizeImage() + uploadImage(file, folder) + slugify() — shared R2 upload helper
   ui.ts / hooks.ts / notify.ts / print.ts
 supabase/functions/ai-assistant/index.ts   Gemini function-calling agent (runs as caller's JWT)
-supabase/migrations/    0001–0036 (see §7)
+supabase/migrations/    0001–0058 (see §7)
 ```
 
 ### Modules & status
@@ -164,12 +178,18 @@ supabase/migrations/    0001–0036 (see §7)
 | Inventory (products/categories, R2 photos) | `inventory` | owner/admin/manager | ✅ |
 | Customers (loyalty) | `customers` | owner/admin/manager/cashier | ✅ |
 | Employees (CRUD + salary + PIN + clock) | `employees` | owner/admin | ✅ |
-| Settings (+ fiscal/VAT + marketplace publish) | `settings` | owner/admin | ✅ |
+| Settings (+ fiscal/VAT + marketplace publish + **team invites** + **online-payment credentials**) | `settings` | owner/admin | ✅ |
 | Reservations (internal) | `reservations` | owner/admin/manager/cashier | ✅ |
 | **Online bookings (marketplace inbox + QR check-in)** | `online_bookings` | owner/admin/manager/cashier | ✅ |
 | Platform God Mode | `platform` | platform_admins | ✅ |
 | Billing | `billing` | owner | ✅ |
+| Tournaments (single-elim brackets + TV mode) | `tournaments` | owner/admin/manager | ✅ |
+| Guide (in-app searchable handbook) | `guide` | all | ✅ |
 | AI assistant (Gemini, voice, actions) | `ai-assistant` | all | ✅ |
+
+> **Not modules (always-on overlays):** the **In-Seat operator inbox** (`service-inbox.tsx`, floating, realtime)
+> and the **AI assistant** float over every module; the public **In-Seat portal** lives at `/p` (its own page,
+> no auth). Receipt OCR + AI fraud audit live inside accounting / history.
 
 > **Adding a module touches 6 places** (types, org MODULE_ROLES + MODULE_ORDER, sidebar NAV, admin-shell render,
 > topbar TITLES). A missing topbar `TITLES` key crashes the page. See `memory/admin-module-registration.md`.
@@ -268,6 +288,24 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 0034  public_venue_plans VIEW (anon active tiers per published venue — booking pricing)
 0035  fix review one-per-booking: full unique index on marketplace_reviews.booking_id (ON CONFLICT)
 0036  add marketplace_bookings to supabase_realtime publication (live admin bell)
+─ v4: tournaments, capacity, platform billing, hardening ─────────────────────────────────────────────
+0037  tournaments/participants/matches + seed_tournament (power-of-2 + byes) + report_match (auto-advance)
+0038  capacity booking: get_venue_availability counts bookings+reservations+LIVE sessions; create_marketplace_booking peak-concurrency check
+0039  typed resources: consoles.console_type (PS5/კუპე/VIP) + enforce_console_capacity trigger (walk-in guard)
+0040  platform billing: organizations.current_period_end + platform_payments + plan_monthly_price + mark_tenant_paid; plan prices Trial 0 / Pro 45 / Enterprise 65
+0041  fix get_venue_pnl (sum over CTE col)    0042  track monthly_pnl    0043  bootstrap_founder
+0044/0045  lock function grants least-privilege (anon = marketplace + portal RPCs only; helpers locked)
+0046  pnl tips + public_reviews              0047  ai_rate_limit (ai_usage + guard on ai-assistant)
+0048  harden employees chain (writes admin-only)   0049  hide pin_hash (column SELECT revoked)
+0050  payroll idempotent (payroll_runs)      0051  team invites (org_invites + create/accept/revoke_invite)
+0052  shift-on-login (start_shift/end_shift) 0053  operator attribution (sessions/bar_sales created_by_user)
+0054  shared cash drawer                     0055  abandoned sessions (flag auto-closed; excluded from revenue)
+0056  bar COGS in P&L + inventory valuation
+─ in-seat ordering + payments ────────────────────────────────────────────────────────────────────────
+0057  IN-SEAT ORDERING: service_requests + RLS + realtime; anon SECURITY DEFINER RPCs (portal_get_menu /
+      portal_get_session_status / portal_place_order / portal_request_service) + resolve_service_request (operator → bar_sale)
+0058  PER-TENANT PAYMENTS (Phase 1): org_payment_credentials (RLS-locked) + Supabase Vault secrets +
+      save/get/set_active/delete_payment_credentials (BYO TBC/BOG merchant; secrets never reach the client)
 ```
 
 > **Schema-compat invariants:** no enum types (all `text + CHECK`); `consoles.id` & `pricing_plans.id`
@@ -314,6 +352,17 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 > Anon clients read **only the curated public views** (never raw `venues`/etc.) — these are
 > SECURITY DEFINER views exposing safe columns; tighter than granting anon base-table access.
 
+### In-Seat, Payments, Platform, Tournaments
+| Table | Key columns |
+|---|---|
+| `service_requests` | id, org_id, venue_id, console_id(int), session_id?, **kind** (order/battery/call), items(jsonb snapshot), total, **status** (pending/done/dismissed), resolved_by, sale_id → bar_sales. RLS org-scoped; anon revoked (portal RPCs only); in realtime publication |
+| `org_payment_credentials` | id, org_id, **provider** (tbc/bog), merchant_id, **secret_ref** → `vault.secrets` (encrypted), is_active, status, last_tested_at; unique(org_id,provider). RLS ON, ZERO authenticated grants — RPC-only |
+| `platform_payments` | tenant subscription payments log (platform-only RLS); `organizations.current_period_end` = paid-until |
+| `tournaments` / `tournament_participants` / `tournament_matches` | single-elim bracket (seed_tournament + report_match auto-advance + champion) |
+
+> Secrets policy: payment credentials use **Supabase Vault** (`vault.create_secret`/`decrypted_secrets`),
+> decryptable server-side only. PIN hashes (`employees.pin_hash`) have column SELECT revoked (0049).
+
 ---
 
 ## 9. RPCs & functions
@@ -337,6 +386,15 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 - `reply_to_review(p_id,p_reply)` — staff (`is_org_member`)
 - `slugify(text)`, `recompute_venue_rating()` (trigger)
 
+**In-Seat portal** (SECURITY DEFINER; the 4 portal_* RPCs granted to **anon**): `portal_get_menu(venue)`,
+`portal_get_session_status(console)`, `portal_place_order(venue,console,items)` (server-priced, anti-spam,
+suspension-aware), `portal_request_service(venue,console,kind)`; + `resolve_service_request(id,status,method?,bank?)`
+(operator-only → rings up `create_bar_sale`).
+
+**Payments / platform / tournaments:** `save_payment_credentials` / `get_payment_settings` /
+`set_payment_provider_active` / `delete_payment_credentials` (per-tenant BYO merchant, Vault-backed,
+is_org_admin-gated); `mark_tenant_paid(org,months,…)` (God-Mode billing); `seed_tournament` / `report_match`.
+
 **Views (security_invoker / curated):** `session_revenue`, `console_stats`, `daily/period_revenue`,
 `monthly_pnl`, `budget_vs_actual`, `platform_org_overview`, `public_venues`, `public_reviews`, `public_venue_plans`.
 
@@ -359,6 +417,15 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 - Safe: `booking_id` is an unguessable uuid, the QR only appears in the owner's RLS-protected account,
   and lookup requires org-staff RLS.
 
+### In-Seat Ordering (live, migration 0057)
+- Customer scans a per-console QR (printed from Settings via `qr-print-modal.tsx`) → opens the PUBLIC
+  portal `app/p` (`/p?v=<venue>&c=<console>`, anon, no auth gate) → live bar menu + session countdown +
+  order / call-staff / report-dead-joystick.
+- **Money-safe:** the portal NEVER writes financial rows. Orders land as PENDING `service_requests` via
+  anon SECURITY DEFINER RPCs (server-priced, ≤5 pending/console, suspension-aware). `service_requests` is in
+  the realtime publication; `service-inbox.tsx` (floating, bottom-left) gives the operator a live inbox
+  (beep + badge). Fulfilling an order → `resolve_service_request` rings up the real `create_bar_sale`.
+
 ---
 
 ## 11. AI assistant
@@ -375,6 +442,13 @@ Client (ai-assistant.tsx) → supabase.functions.invoke('ai-assistant',{messages
 - `GEMINI_API_KEY` lives ONLY as a Supabase secret, from a **fresh** GCP project. Never client-side/in git.
 - Deploy: `memory/edge-function-deploy.md` (CLI with User `SUPABASE_ACCESS_TOKEN`, `--use-api`).
 
+**Two more AI capabilities on the same edge fn (deployed, version 16+):**
+- **Receipt OCR** — a message can carry an `image` (webp base64) → Gemini Vision. `receipt-scanner.tsx`
+  snaps a receipt → returns `{amount,date,category,description}` JSON → auto-fills the expense form in accounting.
+- **AI anti-fraud (Path C)** — `action:'run_fraud_audit'` (+`from`/`to`) reads `audit_logs`
+  (cancel/refund/void/expense.delete) RLS-scoped to the caller's venue → Gemini forensic report +
+  per-operator **Trust Score** (Georgian markdown). UI: `fraud-audit.tsx`, the "🕵️ AI აუდიტი" tab in history.
+
 ---
 
 ## 12. RS.GE Fiscal, Billing & Plans
@@ -383,8 +457,17 @@ Client (ai-assistant.tsx) → supabase.functions.invoke('ai-assistant',{messages
 `window.print()` 80mm; receipt no `next_fiscal_receipt_no()` → `GE-YYYYMMDD-XXXXXX`. Phase C (hardware
 bridge → Daisy/EFTS → RS.GE) is future.
 
-**Plans:** trial (₾0, 1 venue/4 consoles/3 employees/14d) · pro (₾99/mo) · enterprise (₾299/mo, RS.GE fiscal+API).
-Upgrade = manual/invoice; platform admin changes plan in God Mode. **Auto-billing (TBC Pay/BOG) is future.**
+**Plans** (`plan_monthly_price()` is the DB source of truth): trial (₾0, 14d) · **pro (₾45/mo)** ·
+**enterprise (₾65/mo**, RS.GE fiscal+API). God-Mode billing (migration 0040) is LIVE: `mark_tenant_paid`
+records a `platform_payments` row + extends `current_period_end`; overdue badge + MRR in `platform.tsx`.
+Subscription auto-billing (platform's own card flow) is future.
+
+**Customer payments (BYO-merchant, migration 0058 — Phase 1 LIVE):** each owner connects their OWN
+TBC/BOG merchant account in Settings → „ონლაინ გადახდები" (`payment-settings.tsx`); secrets live in
+**Supabase Vault**, never returned to the client, accessed only via is_org_admin-gated RPCs. Customers'
+online-booking money lands in the OWNER's bank — the platform never custodies funds (no aggregator licence).
+⏭️ Phase 2 (pending owner keys): live checkout + bank callbacks as edge functions → set
+`marketplace_bookings.payment_status='paid'`. Bar + walk-in stay in-person (method recorded, not processed).
 
 ---
 
@@ -422,14 +505,21 @@ Upgrade = manual/invoice; platform admin changes plan in God Mode. **Auto-billin
 
 ## 15. Roadmap (remaining)
 
-- 💳 **Online payments** — TBC Pay / BOG Pay card flow + webhooks (set `payment_status='paid'`, `payment_ref`);
-  also venue auto-billing. Deferred until API keys. (Schema already has the columns.)
+- 💳 **Online payments — Phase 2** — live checkout + bank callbacks as edge functions (reuse the Kale-group
+  BOG/TBC logic, per-tenant Vault keys) → set `payment_status='paid'`/`payment_ref`. Phase 1 (credential
+  storage) is DONE (0058); Phase 2 is blocked on the owner obtaining merchant keys.
+- 📲 **SMS/Email (Twilio)** — booking confirm + reminder to cut no-shows. Blocked on a Twilio account.
+- 📈 **RevPACH console analytics** — `get_console_analytics` RPC + heatmap/matrix UI (data already in `sessions`;
+  unblocked, high ROI).
 - 🧾 **RS.GE Fiscal Phase C** — local hardware bridge.
-- 🏆 **Tournaments** — brackets/participants/matches + TV display mode (`app/tv/[venue_id]`).
-- 🧑‍💼 **External accountant invites (0037)** — needs an RLS redesign so `accountant` is truly READ-ONLY
-  (today `org_scope` "for all" policies grant any member write; split SELECT vs write on finance tables).
-- 📱 **PWA install + camera barcode** in POS/inventory; phone OTP (Twilio) for marketplace signup.
+- 🧑‍💼 **External accountant read-only** — RLS redesign so `accountant` is truly read-only (split SELECT vs write).
 - 🌐 Optional: move marketplace to the apex (`martelounge.ge`) and admin → `app.martelounge.ge`.
+
+> ✅ **Shipped since the 0036 revision:** tournaments (0037), capacity + typed-resource booking (0038/0039),
+> God-Mode tenant billing (0040), accounting fixes + COGS (0041/0042/0056), grant hardening (0044/0045),
+> AI rate-limit (0047), employees/PIN hardening (0048/0049), idempotent payroll (0050), team invites (0051),
+> operator shifts + attribution (0052/0053), shared cash drawer (0054), abandoned sessions (0055),
+> In-Seat Ordering (0057), per-tenant payments Phase 1 (0058), AI receipt OCR + anti-fraud, PWA + camera scan.
 
 > Living roadmap & decisions: `memory/roadmap-v3-marketplace.md`, `memory/marketplace-backend.md`,
 > `memory/marketplace-frontend.md`, `memory/media-r2-uploads.md`, `memory/admin-module-registration.md`.

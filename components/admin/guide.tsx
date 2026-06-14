@@ -17,6 +17,8 @@ import {
   Lightbulb,
   AlertTriangle,
   Info,
+  Sparkles,
+  ShieldAlert,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -30,7 +32,8 @@ const CATEGORIES = [
   { id: 'customers', title: '7. კლიენტები, ჯავშნები, ტურნირები', icon: Trophy },
   { id: 'settings', title: '8. პარამეტრები & ფისკალი', icon: Settings },
   { id: 'billing', title: '9. გამოწერა & პლატფორმა', icon: CreditCard },
-  { id: 'faq', title: '10. ხშირი კითხვები (FAQ)', icon: HelpCircle },
+  { id: 'ai', title: '10. AI ფუნქციები', icon: Sparkles },
+  { id: 'faq', title: '11. ხშირი კითხვები (FAQ)', icon: HelpCircle },
 ]
 
 export function Guide() {
@@ -119,6 +122,28 @@ export function Guide() {
           <p>
             <b>გადახდის მეთოდები:</b> ნაღდი, ბარათი, გადარიცხვა. შეგიძლიათ მიუთითოთ ბანკი (TBC / BOG) და დაამატოთ tips. მნიშვნელოვანია: ბარის გაყიდვა შესაძლებელია პირდაპირ მიებას მიმდინარე სესიას.
           </p>
+        </div>
+      ),
+    },
+    {
+      category: 'pos',
+      title: 'In-Seat Ordering — QR პორტალი 🪑',
+      content: (
+        <div className="space-y-3">
+          <p>
+            თითო კონსოლზე გააკრავთ QR კოდს (იბეჭდება Settings-დან). სტუმარი ასკანერებს → ტელეფონში ეხსნება საჯარო პორტალი ლოგინის გარეშე: ხედავს ბარის მენიუს, სესიის ტაიმერს, აკეთებს შეკვეთას ან იძახებს ოპერატორს (ჯოისტიკის გამოცვლა / სტაფის გამოძახება).
+          </p>
+          <div
+            className="rounded-2xl p-4 text-sm"
+            style={{ background: 'color-mix(in oklch, var(--primary) 12%, transparent)' }}
+          >
+            <div className="flex items-start gap-2">
+              <Info className="size-5 shrink-0" style={{ color: 'var(--primary)' }} />
+              <p>
+                <b>ოპერატორის Inbox:</b> შეკვეთა მაშინვე ჩნდება ეკრანის ქვედა-მარცხენა „🔔" პანელში ხმოვანი სიგნალით. ოპერატორი ასრულებს → ირჩევს გადახდას (ნაღდი/TBC/BOG) → ავტომატურად იჭრება ბარის გაყიდვა. ფასს <b>სერვერი ითვლის</b> — თანხა თვითნებურად არ ჩამოიჭრება.
+              </p>
+            </div>
+          </div>
         </div>
       ),
     },
@@ -265,6 +290,28 @@ export function Guide() {
       ),
     },
     {
+      category: 'settings',
+      title: 'ონლაინ გადახდები (შენი merchant key) 💳',
+      content: (
+        <div className="space-y-3">
+          <p>
+            Settings → „ონლაინ გადახდები" — დააკავშირებთ თქვენს <b>საკუთარ</b> TBC ან BOG merchant account-ს. ონლაინ ჯავშნის თანხა პირდაპირ <b>თქვენს</b> ბანკში ჩაირიცხება — პლატფორმა ფულს არ ეხება.
+          </p>
+          <div
+            className="rounded-2xl p-4 text-sm"
+            style={{ background: 'color-mix(in oklch, var(--status-free) 12%, transparent)' }}
+          >
+            <div className="flex items-start gap-2">
+              <ShieldAlert className="size-5 shrink-0" style={{ color: 'var(--status-free)' }} />
+              <p>
+                გასაღებები ინახება <b>დაშიფრულად</b> და ჩასმის შემდეგ აღარასდროს ჩანს ეკრანზე. ბარსა და walk-in სესიაში გადახდა ადგილზე ხდება (ნაღდი ან ფიზიკური POS ტერმინალი) — სისტემა მხოლოდ აღრიცხავს მეთოდს.
+              </p>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
       category: 'billing',
       title: 'გამოწერა (SaaS)',
       content: (
@@ -272,6 +319,59 @@ export function Guide() {
           გამოწერები: Trial (უფასო), PRO (₾45/თვე), ENTERPRISE (₾65/თვე). ანგარიშსწორება ამჟამად ხელით ხდება (WhatsApp/გადარიცხვა).
           SaaS მფლობელისთვის არსებობს პლატფორმის God Mode, სადაც ჩანს ყველა ორგანიზაციის MRR და გამოწერის სტატუსი.
         </p>
+      ),
+    },
+    {
+      category: 'ai',
+      title: 'AI ასისტენტი (✨ ჩატი + ხმა)',
+      content: (
+        <div className="space-y-3">
+          <p>
+            ეკრანის კუთხეში მცურავი ✨ ღილაკი ხსნის AI ასისტენტს (Gemini). მიწერთ ან ეტყვით ხმით (ქართულად): „რამდენი გამოვიმუშავე დღეს?", „დაიწყე სესია TV 3-ზე", „გაყიდე 2 Red Bull".
+          </p>
+          <div
+            className="rounded-2xl p-4 text-sm"
+            style={{ background: 'color-mix(in oklch, var(--primary) 12%, transparent)' }}
+          >
+            <div className="flex items-start gap-2">
+              <Info className="size-5 shrink-0" style={{ color: 'var(--primary)' }} />
+              <p>
+                <b>უსაფრთხო:</b> ასისტენტი მუშაობს <b>თქვენივე უფლებებით</b> — ვერაფერს ხედავს ან აკეთებს იმაზე მეტს, რასაც თქვენ თვითონ. ნებისმიერი ცვლილება (სესია/გაყიდვა) ჯერ <b>დასადასტურებლად</b> გამოგიჩნდებათ.
+              </p>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      category: 'ai',
+      title: 'ჩეკის სკანერი (OCR) 📸',
+      content: (
+        <p>
+          ბუღალტერიაში ხარჯის დამატებისას დააჭირეთ „ჩეკის სკანირებას" → გადაუღეთ ფიზიკურ ჩეკს → AI ამოიკითხავს თანხას, თარიღსა და კატეგორიას და ავტომატურად შეავსებს ფორმას. ხელით აკრეფა აღარ გჭირდებათ.
+        </p>
+      ),
+    },
+    {
+      category: 'ai',
+      title: 'AI ანტი-თაღლითობა & Trust Score 🕵️',
+      content: (
+        <div className="space-y-3">
+          <p>
+            ისტორიაში → ჩანართი „🕵️ AI აუდიტი". აირჩევთ პერიოდს და AI გაასკანერებს ჟურნალებს (გაუქმებები, დაბრუნებები, ბარის void-ები, ხარჯის წაშლები) → მოგცემთ ფორენზიკულ ანგარიშს ქართულად და თითო ოპერატორის <b>ნდობის ინდექსს (Trust Score)</b>.
+          </p>
+          <div
+            className="rounded-2xl p-4 text-sm"
+            style={{ background: 'color-mix(in oklch, var(--status-warning5) 12%, transparent)' }}
+          >
+            <div className="flex items-start gap-2">
+              <ShieldAlert className="size-5 shrink-0" style={{ color: 'var(--status-warning5)' }} />
+              <p>
+                მაგ: „ოპერატორმა X დღეს 4 ბარის გაყიდვა გააუქმა — საშუალოზე 500%-ით მეტი". ერთი თაღლითობის დაჭერა პროგრამის საფასურს ამართლებს.
+              </p>
+            </div>
+          </div>
+        </div>
       ),
     },
     {
