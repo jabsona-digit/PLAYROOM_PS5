@@ -12,10 +12,11 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
-> _Last updated **2026-06-14** — through migration **0058**. Since the previous (0036) revision:
+> _Last updated **2026-06-14** — through migration **0059**. Since the previous (0036) revision:
 > tournaments, capacity/typed-resource booking, God-Mode tenant billing, payroll/RBAC hardening,
 > team email-invites, operator shifts & attribution, shared cash drawer, abandoned sessions, bar COGS,
-> **In-Seat Ordering portal**, **AI receipt OCR + anti-fraud audit**, and **per-tenant online payments (Phase 1)**._
+> **In-Seat Ordering portal**, **AI receipt OCR + anti-fraud audit**, **per-tenant online payments (Phase 1)**,
+> **RevPACH analytics + AI advisor (0059)**, and **bot-safe SEO + ISR caching** on both sites._
 
 > Product was renamed **Playroom OS → Martelounge** (martel-**OU**-nge; domain bought 2026-06-08).
 > "Playroom" survives only as a demo/tenant name.
@@ -151,6 +152,7 @@ components/admin/
   team-settings.tsx     Settings: email-invite staff (each gets own login + role)
   tournaments.tsx       single-elim PS5 brackets + TV mode
   guide.tsx             in-app handbook (searchable; covers AI, In-Seat, payments, …)
+  analytics-v2.tsx      RevPACH module — KPIs, per-console matrix, 7×24 heatmap, AI advisor button
   modal.tsx / toast.tsx
 lib/
   supabase/client.ts    browser Supabase client
@@ -186,6 +188,7 @@ supabase/migrations/    0001–0058 (see §7)
 | Tournaments (single-elim brackets + TV mode) | `tournaments` | owner/admin/manager | ✅ |
 | Guide (in-app searchable handbook) | `guide` | all | ✅ |
 | AI assistant (Gemini, voice, actions) | `ai-assistant` | all | ✅ |
+| Analytics — RevPACH (matrix + 7×24 heatmap + AI advisor) | `analytics` | owner/admin/manager | ✅ |
 
 > **Not modules (always-on overlays):** the **In-Seat operator inbox** (`service-inbox.tsx`, floating, realtime)
 > and the **AI assistant** float over every module; the public **In-Seat portal** lives at `/p` (its own page,
@@ -227,6 +230,15 @@ show it at the venue → staff **scan + check-in** (admin online-bookings) → a
 
 > Supabase **"Confirm email" should be OFF** (dashboard) for smooth signup, else signUp returns no session
 > until the user confirms (the register form handles both). Phone OTP via Twilio is a later upgrade.
+
+**SEO & bot-safety (both sites, 2026-06-14):** `app/robots.ts` + `app/sitemap.ts` on each (admin = `force-static`
+for `output:export`); both GSC-verified + sitemaps submitted; robots **Disallow `/*?`** (kills `?q=` crawl-
+amplification — the Kale lesson) + AI-scraper block; OG/canonical per page. On the marketplace, public pages are
+**ISR-cached** to shield Supabase from crawls: auth moved client-side (`components/header-auth.tsx` +
+`booking-widget` self-reads the session) and all public reads go through a **cookie-less** `lib/supabase/public.ts`
+client, so `/` (ISR 30m) and `/[slug]` (SSG+ISR 1h via `generateStaticParams`) serve from CDN, not Supabase.
+`/venues` (search) + `/account` (per-user) stay dynamic. User-side: Cloudflare **Bot Fight Mode** is On.
+See `memory/seo-and-bot-safety.md`.
 
 ---
 
@@ -306,6 +318,8 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
       portal_get_session_status / portal_place_order / portal_request_service) + resolve_service_request (operator → bar_sale)
 0058  PER-TENANT PAYMENTS (Phase 1): org_payment_credentials (RLS-locked) + Supabase Vault secrets +
       save/get/set_active/delete_payment_credentials (BYO TBC/BOG merchant; secrets never reach the client)
+0059  RevPACH ANALYTICS: get_console_analytics(venue,from,to,daily_hours) — per-console occupancy/RevPACH,
+      venue totals + 7×24 demand heatmap (Asia/Tbilisi); is_org_member-gated. Feeds the AI advisor (Path D).
 ```
 
 > **Schema-compat invariants:** no enum types (all `text + CHECK`); `consoles.id` & `pricing_plans.id`
@@ -395,6 +409,9 @@ suspension-aware), `portal_request_service(venue,console,kind)`; + `resolve_serv
 `set_payment_provider_active` / `delete_payment_credentials` (per-tenant BYO merchant, Vault-backed,
 is_org_admin-gated); `mark_tenant_paid(org,months,…)` (God-Mode billing); `seed_tournament` / `report_match`.
 
+**Analytics:** `get_console_analytics(venue, from, to, daily_hours)` — per-console occupancy + RevPACH +
+7×24 demand heatmap (is_org_member-gated; pure SQL over `sessions`). Consumed by `analytics-v2.tsx` and the AI advisor.
+
 **Views (security_invoker / curated):** `session_revenue`, `console_stats`, `daily/period_revenue`,
 `monthly_pnl`, `budget_vs_actual`, `platform_org_overview`, `public_venues`, `public_reviews`, `public_venue_plans`.
 
@@ -448,6 +465,9 @@ Client (ai-assistant.tsx) → supabase.functions.invoke('ai-assistant',{messages
 - **AI anti-fraud (Path C)** — `action:'run_fraud_audit'` (+`from`/`to`) reads `audit_logs`
   (cancel/refund/void/expense.delete) RLS-scoped to the caller's venue → Gemini forensic report +
   per-operator **Trust Score** (Georgian markdown). UI: `fraud-audit.tsx`, the "🕵️ AI აუდიტი" tab in history.
+- **RevPACH advisor (Path D)** — `action:'run_revpach_advisor'` calls `get_console_analytics` under the
+  caller's JWT → Gemini returns short, specific Georgian recommendations (fill dead zones, weak/idle
+  consoles, a pricing insight). UI: "✨ AI რჩევები" in the `analytics` module.
 
 ---
 
@@ -509,8 +529,8 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
   BOG/TBC logic, per-tenant Vault keys) → set `payment_status='paid'`/`payment_ref`. Phase 1 (credential
   storage) is DONE (0058); Phase 2 is blocked on the owner obtaining merchant keys.
 - 📲 **SMS/Email (Twilio)** — booking confirm + reminder to cut no-shows. Blocked on a Twilio account.
-- 📈 **RevPACH console analytics** — `get_console_analytics` RPC + heatmap/matrix UI (data already in `sessions`;
-  unblocked, high ROI).
+- 🧠 **Proactive "AI Manager"** — nightly digest (RevPACH + fraud + inventory + COGS) → Telegram briefing with
+  one-tap actions; the *intelligence* moat, works from venue #1. See `memory/killer-features-pending.md`.
 - 🧾 **RS.GE Fiscal Phase C** — local hardware bridge.
 - 🧑‍💼 **External accountant read-only** — RLS redesign so `accountant` is truly read-only (split SELECT vs write).
 - 🌐 Optional: move marketplace to the apex (`martelounge.ge`) and admin → `app.martelounge.ge`.
@@ -519,7 +539,8 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
 > God-Mode tenant billing (0040), accounting fixes + COGS (0041/0042/0056), grant hardening (0044/0045),
 > AI rate-limit (0047), employees/PIN hardening (0048/0049), idempotent payroll (0050), team invites (0051),
 > operator shifts + attribution (0052/0053), shared cash drawer (0054), abandoned sessions (0055),
-> In-Seat Ordering (0057), per-tenant payments Phase 1 (0058), AI receipt OCR + anti-fraud, PWA + camera scan.
+> In-Seat Ordering (0057), per-tenant payments Phase 1 (0058), RevPACH analytics + AI advisor (0059),
+> AI receipt OCR + anti-fraud, bot-safe SEO + ISR caching (both sites, GSC verified), PWA + camera scan.
 
 > Living roadmap & decisions: `memory/roadmap-v3-marketplace.md`, `memory/marketplace-backend.md`,
 > `memory/marketplace-frontend.md`, `memory/media-r2-uploads.md`, `memory/admin-module-registration.md`.
