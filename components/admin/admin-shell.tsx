@@ -28,6 +28,7 @@ import { OnlineBookings } from './online-bookings'
 import { Tournaments } from './tournaments'
 import { Guide } from './guide'
 import { BookingAlertsProvider } from './booking-alerts'
+import { ServiceInbox } from './service-inbox'
 import { AiAssistant } from './ai-assistant'
 import { ToastViewport } from './toast'
 import { PinGate } from './pin-gate'
@@ -257,6 +258,7 @@ function Workspace({ email }: { email?: string }) {
           </main>
         </div>
       </div>
+      <ServiceInbox />
       <AiAssistant />
       <ToastViewport />
       </BookingAlertsProvider>

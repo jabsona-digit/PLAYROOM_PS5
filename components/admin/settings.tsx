@@ -12,6 +12,7 @@ import {
   X,
   FileText,
   Save,
+  QrCode,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
@@ -22,6 +23,7 @@ import { supabase } from '@/lib/supabase/client'
 import { Modal } from './modal'
 import { MarketplaceSettings } from './marketplace-settings'
 import { TeamSettings } from './team-settings'
+import { QrPrintModal } from './qr-print-modal'
 
 // Bookable resource types — a coupe/VIP is a separate capacity pool (0039).
 const CTYPES = ['standard', 'coupe', 'vip']
@@ -348,6 +350,7 @@ export function Settings() {
   const [addOpen, setAddOpen] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [newName, setNewName] = useState('')
+  const [qrOpen, setQrOpen] = useState(false)
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -484,17 +487,28 @@ export function Settings() {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setNewName('')
-              setAddOpen(true)
-            }}
-            className="nm-btn flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary"
-          >
-            <Plus className="size-4" />
-            <span className="hidden sm:inline">კონსოლის დამატება</span>
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setQrOpen(true)}
+              className="nm-btn flex items-center justify-center rounded-2xl px-3 py-2.5 text-sm font-bold text-muted-foreground"
+              title="QR კოდების ბეჭდვა"
+            >
+              <QrCode className="size-4 sm:mr-2" />
+              <span className="hidden sm:inline">QR კოდები</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setNewName('')
+                setAddOpen(true)
+              }}
+              className="nm-btn flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary"
+            >
+              <Plus className="size-4" />
+              <span className="hidden sm:inline">კონსოლის დამატება</span>
+            </button>
+          </div>
         </div>
 
         <div className="space-y-3">
@@ -548,6 +562,8 @@ export function Settings() {
           </div>
         </div>
       </Modal>
+
+      <QrPrintModal open={qrOpen} onClose={() => setQrOpen(false)} />
     </div>
   )
 }
