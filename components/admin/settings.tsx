@@ -22,6 +22,7 @@ import type { ConsoleUnit } from '@/lib/types'
 import { supabase } from '@/lib/supabase/client'
 import { Modal } from './modal'
 import { MarketplaceSettings } from './marketplace-settings'
+import { PaymentSettings } from './payment-settings'
 import { TeamSettings } from './team-settings'
 import { QrPrintModal } from './qr-print-modal'
 
@@ -528,6 +529,8 @@ export function Settings() {
       <FiscalSettings />
 
       <MarketplaceSettings />
+
+      <PaymentSettings />
 
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="ახალი კონსოლი">
         <div className="space-y-5">
