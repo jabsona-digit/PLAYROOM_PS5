@@ -17,6 +17,10 @@ import {
   Phone,
   MessageCircle,
   Mail,
+  ShieldCheck,
+  BarChart3,
+  CreditCard,
+  HelpCircle,
 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { Hero } from './hero'
@@ -56,6 +60,10 @@ const FEATURES = [
   { icon: Trophy, t: 'ტურნირები', d: 'Single-elim ბადე, მატჩები, ავტომატური გამარჯვებული + TV რეჟიმი.', from: '#fbbf24', to: '#ef4444' },
   { icon: Globe, t: 'ონლაინ ჯავშნები', d: 'შენი კლუბი play.martelounge.ge-ზე — კლიენტები ჯავშნიან online.', from: '#2dd4bf', to: '#06b6d4' },
   { icon: Sparkles, t: 'AI ასისტენტი', d: 'ხმოვანი/ტექსტური დამხმარე — სესიები, გაყიდვები, რეპორტები კითხვით.', from: '#c084fc', to: '#ec4899' },
+  { icon: QrCode, t: 'In-Seat Ordering', d: 'სტუმარი მაგიდიდან QR-ით უკვეთავს — ოპერატორთან ცოცხალი inbox ხმოვანი სიგნალით.', from: '#f472b6', to: '#db2777' },
+  { icon: ShieldCheck, t: 'AI ანტი-თაღლითობა', d: 'AI ამოწმებს გაუქმებებს/დაბრუნებებს და თითო ოპერატორს ნდობის ინდექსს (Trust Score) აძლევს.', from: '#fb7185', to: '#e11d48' },
+  { icon: BarChart3, t: 'RevPACH ანალიტიკა', d: 'სად კარგავ ფულს — კონსოლების ეფექტურობა, მოთხოვნის რუკა და AI რეკომენდაციები.', from: '#60a5fa', to: '#2563eb' },
+  { icon: CreditCard, t: 'ონლაინ გადახდები', d: 'დააკავშირე შენი TBC/BOG — ჯავშნის თანხა პირდაპირ შენს ანგარიშზე ჩაირიცხება.', from: '#34d399', to: '#059669' },
 ]
 
 const STEPS = [
@@ -74,6 +82,21 @@ const PLANS = [
   { name: 'Trial', price: '₾0', sub: '14 დღე', feats: ['1 ფილიალი', '4 კონსოლი', 'ძირითადი მოდულები'], cta: 'უფასო ცდა', highlight: false },
   { name: 'Pro', price: '₾45', sub: '/ თვე', feats: ['3 ფილიალი', 'ბარი + საწყობი', 'ბუღალტერია + ტურნირები', 'ონლაინ ჯავშნები'], cta: 'დაიწყე', highlight: true },
   { name: 'Enterprise', price: '₾65', sub: '/ თვე', feats: ['ულიმიტო', 'RS.GE ფისკალი', 'API + პრიორიტეტი'], cta: 'დაგვიკავშირდი', highlight: false },
+]
+
+const VALUE = [
+  { big: 'Excel-ს ასამარებ', small: 'სესია, ბარი, კასა, ბუღალტერია — ერთ სისტემაში, ქაღალდის გარეშე.' },
+  { big: 'ხედავ ყველა თეთრს', small: 'ვინ, როდის და რა გაყიდა — AI ანტი-თაღლითობა და per-operator აღრიცხვა.' },
+  { big: 'მეტი შემოსავალი', small: 'In-Seat შეკვეთები, ონლაინ ჯავშნები და RevPACH-ის ჭკვიანი რჩევები.' },
+]
+
+const FAQS = [
+  { q: 'ჩემი მონაცემები დაცულია?', a: 'დიახ — თითო კლუბის მონაცემი იზოლირებულია (RLS), წვდომა მხოლოდ შენს გუნდს აქვს როლების მიხედვით, გასაღებები დაშიფრულია.' },
+  { q: 'სპეციალური აპარატურა მჭირდება?', a: 'არა. მუშაობს ნებისმიერ ტელეფონზე, ტაბლეტსა თუ კომპიუტერზე ბრაუზერით — და შეგიძლია აპლიკაციად დააინსტალირო (PWA).' },
+  { q: 'RS.GE ფისკალი მუშაობს?', a: 'Enterprise პლანი მოიცავს ფისკალურ ჩეკსა და დღგ-ს აღრიცხვას. აპარატურულ ბრიჯს ეტაპობრივად ვამატებთ.' },
+  { q: 'Excel-იდან გადმოსვლა რთულია?', a: 'არა — რეგისტრაცია წუთებში, კონსოლები და ტარიფები მარტივად ეთითება; ხარჯების Excel-იმპორტიც შესაძლებელია.' },
+  { q: 'ბარათი სჭირდება ცდისთვის?', a: 'არა. 14 დღე სრულიად უფასოა, ბარათის გარეშე.' },
+  { q: 'რამდენიმე ფილიალი შეიძლება?', a: 'დიახ — Pro-დან მრავალი ფილიალი, თითოს თავისი კონსოლები, გუნდი და კასა; ქსელის მფლობელს — საერთო ხედი.' },
 ]
 
 export function Landing() {
@@ -142,7 +165,7 @@ export function Landing() {
       <section id="features" className="mx-auto max-w-6xl px-5 py-16">
         <Reveal>
           <h2 className="text-center text-3xl font-extrabold tracking-tight">ყველაფერი ერთ პანელში</h2>
-          <p className="mt-2 text-center text-muted-foreground">8 მოდული, რომელიც კლუბს ნამდვილ ბიზნესად აქცევს</p>
+          <p className="mt-2 text-center text-muted-foreground">12 მოდული, რომელიც კლუბს ნამდვილ ბიზნესად აქცევს</p>
         </Reveal>
         <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((f, i) => (
@@ -167,6 +190,20 @@ export function Landing() {
                 <h3 className="relative mt-4 font-bold">{f.t}</h3>
                 <p className="relative mt-1.5 text-sm text-muted-foreground">{f.d}</p>
               </motion.div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* value props */}
+      <section className="mx-auto max-w-6xl px-5 pb-2 pt-0">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {VALUE.map((v, i) => (
+            <Reveal key={v.big} delay={i * 90}>
+              <div className="nm-raised h-full rounded-2xl p-6">
+                <p className="text-lg font-extrabold text-primary">{v.big}</p>
+                <p className="mt-2 text-sm text-muted-foreground">{v.small}</p>
+              </div>
             </Reveal>
           ))}
         </div>
@@ -221,7 +258,7 @@ export function Landing() {
       <section className="mx-auto max-w-6xl px-5 py-16">
         <Reveal>
           <h2 className="text-center text-3xl font-extrabold tracking-tight">ფასები</h2>
-          <p className="mt-2 text-center text-muted-foreground">დაიწyე უფასოდ, გაიზარდე საჭიროებისამებრ</p>
+          <p className="mt-2 text-center text-muted-foreground">დაიწყე უფასოდ, გაიზარდე საჭიროებისამებრ</p>
         </Reveal>
         <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {PLANS.map((p, i) => (
@@ -252,11 +289,11 @@ export function Landing() {
       <section className="mx-auto max-w-4xl px-5 py-20 text-center">
         <Reveal>
           <h2 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
-            მზად ხარ? <span className="text-primary text-glow">დაიწyე დღესვე</span>
+            მზად ხარ? <span className="text-primary text-glow">დაიწყე დღესვე</span>
           </h2>
           <p className="mt-4 text-muted-foreground">14 დღე უფასოდ. ბარათი არ სჭირდება.</p>
           <a href="/app" className="nm-glow mt-8 inline-flex items-center gap-2 rounded-2xl px-8 py-4 text-lg font-bold">
-            დაიწyე უფასოდ <ArrowRight className="size-5" />
+            დაიწყე უფასოდ <ArrowRight className="size-5" />
           </a>
         </Reveal>
       </section>
@@ -275,6 +312,26 @@ export function Landing() {
           </div>
           <p className="text-center text-xs text-muted-foreground">კურსორი მიიტანე — ბარათი გადაბრუნდება</p>
         </Reveal>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="mx-auto max-w-3xl px-5 py-16">
+        <Reveal>
+          <h2 className="text-center text-3xl font-extrabold tracking-tight">ხშირი კითხვები</h2>
+        </Reveal>
+        <div className="mt-10 space-y-3">
+          {FAQS.map((f, i) => (
+            <Reveal key={f.q} delay={(i % 3) * 80}>
+              <details className="nm-raised group rounded-2xl p-5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-bold">
+                  <span className="flex items-center gap-2"><HelpCircle className="size-4 shrink-0 text-primary" /> {f.q}</span>
+                  <span className="text-xl text-primary transition-transform group-open:rotate-45">+</span>
+                </summary>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{f.a}</p>
+              </details>
+            </Reveal>
+          ))}
+        </div>
       </section>
 
       {/* contact */}
