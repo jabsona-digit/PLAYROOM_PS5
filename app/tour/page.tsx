@@ -18,6 +18,7 @@ import {
   ChevronDown,
   Gamepad2,
 } from 'lucide-react'
+import { AiCore } from '@/components/landing/ai-core'
 
 // ─── animated number that counts up when scrolled into view (skips when reduced) ───
 function CountUp({ to, suffix = '', duration = 1200 }: { to: number; suffix?: string; duration?: number }) {
@@ -145,6 +146,9 @@ export default function TourPage() {
           <ChevronDown className="size-7" />
         </motion.div>
       </section>
+
+      {/* ── AI CORE (interactive 3D + mouse spotlight) ── */}
+      <AiCore />
 
       {/* ── GUIDED FEATURE REVEAL ── */}
       <section className="mx-auto max-w-5xl space-y-24 px-5 py-24 sm:space-y-32">
