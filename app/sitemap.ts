@@ -7,5 +7,6 @@ export const dynamic = 'force-static'
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: 'https://martelounge.ge', changeFrequency: 'weekly', priority: 1 },
+    { url: 'https://martelounge.ge/tour', changeFrequency: 'monthly', priority: 0.7 },
   ]
 }
