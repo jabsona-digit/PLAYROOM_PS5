@@ -3021,6 +3021,15 @@ export type Database = {
         Args: { p_extra_min: number; p_session_id: string }
         Returns: undefined
       }
+      get_console_analytics: {
+        Args: {
+          p_daily_hours?: number
+          p_from: string
+          p_to: string
+          p_venue_id: string
+        }
+        Returns: Json
+      }
       get_open_drawer: { Args: { p_venue_id: string }; Returns: Json }
       get_payment_settings: { Args: { p_org_id: string }; Returns: Json }
       get_vat_summary: {
