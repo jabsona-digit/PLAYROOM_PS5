@@ -35,6 +35,7 @@ export const metadata: Metadata = {
       'PS5 კლუბის სრული ოპერაციული სისტემა — სესიები, ბარი, კასა, ბუღალტერია, ტურნირები, AI. 14 დღე უფასოდ.',
   },
   twitter: { card: 'summary_large_image' },
+  verification: { google: 'Z7s8o7LVOARJUvdVEK4dvDKQKoeIovggssg17u_GbMo' },
   icons: {
     icon: '/icon-192.png',
     apple: '/icon-512.png',
