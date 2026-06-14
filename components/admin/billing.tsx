@@ -18,8 +18,8 @@ import { useOrg } from '@/lib/org'
 import { supabase } from '@/lib/supabase/client'
 import { gel } from '@/lib/ui'
 
-const CONTACT_WHATSAPP = 'https://wa.me/995599000000?text=გამარჯობა%2C%20მინდა%20გამოვიწეরო%20'
-const CONTACT_EMAIL = 'mailto:info@runabe.com?subject=Runabe%20Billing'
+const CONTACT_WHATSAPP = 'https://wa.me/995500057527?text=გამარჯობა%2C%20მინდა%20გამოვიწერო%20'
+const CONTACT_EMAIL = 'mailto:martecompanygeo@gmail.com?subject=Martelounge%20Billing'
 
 interface OrgDetails {
   plan: string
