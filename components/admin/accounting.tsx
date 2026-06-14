@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { 
   CalendarDays, Receipt, Trash2, Plus, FileDown, FileUp, 
   LoaderCircle, LayoutDashboard, Calculator, Target, FileText,
-  Printer, Check, X, AlertCircle
+  Printer, Check, X, AlertCircle, Sparkles
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useOrg } from '@/lib/org'
@@ -20,6 +20,7 @@ import { EXPENSE_CATEGORY_LABELS } from '@/lib/types'
 import { Modal } from './modal'
 import { useModuleAccess } from '@/lib/org'
 import { InvoicePrint } from './invoice-print'
+import { ReceiptScanner } from './receipt-scanner'
 
 // helper to local yyyy-mm-dd — must NOT go through toISOString() (that converts
 // to UTC and, in GE/+4, shifts month boundaries a day earlier → drops the last
@@ -72,6 +73,7 @@ export function Accounting() {
   const [newInvClient, setNewInvClient] = useState('')
   const [newInvTin, setNewInvTin] = useState('')
   const [newInvItems, setNewInvItems] = useState<{ desc: string, qty: number, price: number }[]>([{ desc: '', qty: 1, price: 0 }])
+  const [showOcr, setShowOcr] = useState(false)
 
   const loadData = async () => {
     if (!currentVenueId || !isAuthorized) return
@@ -252,6 +254,13 @@ export function Accounting() {
       pushToast('info', 'ხარჯი წაიშალა')
       loadData()
     }
+  }
+
+  const handleOcrResults = (data: { amount: number, date: string, category: string, description: string }) => {
+    setExpenseAmount(data.amount.toString())
+    setExpenseDate(data.date)
+    setExpenseCat(data.category as ExpenseCategory)
+    setExpenseDesc(data.description)
   }
 
   const handleUpdateBudget = async () => {
@@ -536,7 +545,19 @@ export function Accounting() {
                 </div>
 
                 <div className="nm-raised rounded-3xl p-6">
-                  <h3 className="text-base font-extrabold mb-4">დაამატე ხარჯი</h3>
+                  <div className="mb-4 flex items-center justify-between">
+                    <h3 className="text-base font-extrabold">დაამატე ხარჯი</h3>
+                    {canEdit && (
+                      <button
+                        onClick={() => setShowOcr(true)}
+                        className="nm-btn flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[10px] font-black uppercase text-primary"
+                        title="ჩეკის სკანირება AI-თ"
+                      >
+                        <Sparkles className="size-3" />
+                        სკანირება
+                      </button>
+                    )}
+                  </div>
                   {canEdit ? (
                     <form onSubmit={handleAddExpense} className="space-y-4">
                       <label className="block">
@@ -630,6 +651,13 @@ export function Accounting() {
                   ))}
                 </div>
               </div>
+
+              {showOcr && (
+                <ReceiptScanner 
+                  onDetected={handleOcrResults} 
+                  onClose={() => setShowOcr(false)} 
+                />
+              )}
             </div>
           )}
 

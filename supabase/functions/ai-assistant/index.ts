@@ -290,8 +290,11 @@ Deno.serve(async (req) => {
   }
 
   let body: {
-    messages?: { role: 'user' | 'model'; text: string }[]
+    messages?: { role: 'user' | 'model'; text: string; image?: string }[]
     confirmedAction?: { name: string; args: Record<string, unknown> }
+    action?: string
+    from?: string
+    to?: string
   }
   try {
     body = await req.json()
@@ -302,6 +305,48 @@ Deno.serve(async (req) => {
   const sys = systemPrompt(role, isPlatformAdmin)
   const overloadMsg = 'AI ამჟამად გადატვირთულია 🙏 სცადე რამდენიმე წამში.'
 
+  // ---- Path C: Fraud Audit ----
+  if (body.action === 'run_fraud_audit') {
+    if (!venueId) return json({ error: 'venue not found' }, 400)
+    try {
+      const from = body.from || new Date(Date.now() - 7 * 86400000).toISOString()
+      const to = body.to || new Date().toISOString()
+      
+      const { data: logs, error: logsErr } = await db.from('audit_logs')
+        .select('created_at, actor_email, action, entity_type, payload')
+        .eq('venue_id', venueId)
+        .gte('created_at', from)
+        .lte('created_at', to)
+        .in('action', ['session.cancel', 'session.refund', 'bar_sale.void', 'expense.delete']) // Add more severity filter
+        .order('created_at', { ascending: false })
+        .limit(1000)
+
+      if (logsErr) throw logsErr
+
+      const auditSys = `You are a forensic AI Auditor for Martelounge. Analyze these security logs.
+Look for:
+- session.cancel or session.refund (especially repeating per operator)
+- bar_sale.void (voiding orders)
+- expense.delete
+
+Generate a Markdown report IN GEORGIAN:
+1. მოკლე შეჯამება (Executive Summary).
+2. ნდობის ინდექსი (Trust Score 0-100) ყველა ოპერატორზე.
+3. საეჭვო ქმედებები (ფაქტების ჩამონათვალი დროებით და მოვლენებით).
+4. რეკომენდაციები.
+Use neat markdown formatting.`
+
+      const rawLogs = logs && logs.length > 0 ? logs : [{ info: 'ამ პერიოდში საეჭვო ლოგები (void/cancel) არ მოიძებნა.' }]
+
+      const g = await callGemini(auditSys, [{ role: 'user', parts: [{ text: JSON.stringify(rawLogs) }] }])
+      const text = g?.candidates?.[0]?.content?.parts?.find((p: { text?: string }) => p.text)?.text ?? 'აუდიტი ვერ მოხერხდა.'
+      return json({ type: 'text', text })
+    } catch (e) {
+      console.error('AUDIT_ERROR', (e as Error).message)
+      return json({ type: 'error', text: 'აუდიტის შეცდომა.' })
+    }
+  }
+
   // ---- Path A: execute a confirmed action, then summarize ----
   if (body.confirmedAction) {
     const { name, args } = body.confirmedAction
@@ -309,7 +354,18 @@ Deno.serve(async (req) => {
     try {
       const result = await runTool(db, venueId, name, args)
       const contents = [
-        ...(body.messages ?? []).map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
+        ...(body.messages ?? []).map((m) => {
+          const parts: any[] = [{ text: m.text }]
+          if (m.image) {
+            parts.push({
+              inline_data: {
+                mime_type: 'image/webp', // Default to webp as per project standard
+                data: m.image
+              }
+            })
+          }
+          return { role: m.role, parts }
+        }),
         { role: 'user', parts: [{ text: `მოქმედება "${name}" შესრულდა. შედეგი: ${JSON.stringify(result)}. დაუდასტურე მომხმარებელს მოკლედ ქართულად.` }] },
       ]
       const g = await callGemini(sys, contents)
@@ -323,7 +379,18 @@ Deno.serve(async (req) => {
   }
 
   // ---- Path B: agent loop ----
-  const contents: unknown[] = (body.messages ?? []).map((m) => ({ role: m.role, parts: [{ text: m.text }] }))
+  const contents: unknown[] = (body.messages ?? []).map((m) => {
+    const parts: any[] = [{ text: m.text }]
+    if (m.image) {
+      parts.push({
+        inline_data: {
+          mime_type: 'image/webp',
+          data: m.image
+        }
+      })
+    }
+    return { role: m.role, parts }
+  })
   try {
     for (let hop = 0; hop < 6; hop++) {
       const g = await callGemini(sys, contents)
