@@ -19,6 +19,7 @@ import {
   Gamepad2,
 } from 'lucide-react'
 import { AiCore } from '@/components/landing/ai-core'
+import { Starfield } from '@/components/landing/starfield'
 
 // ─── animated number that counts up when scrolled into view (skips when reduced) ───
 function CountUp({ to, suffix = '', duration = 1200 }: { to: number; suffix?: string; duration?: number }) {
@@ -109,8 +110,18 @@ export default function TourPage() {
       </header>
 
       {/* ── HERO ── */}
-      <section ref={heroRef} className="relative mx-auto flex min-h-[92vh] max-w-5xl flex-col items-center justify-center px-5 text-center">
-        <motion.div style={{ y: heroY, opacity: heroOpacity }}>
+      <section ref={heroRef} className="relative flex min-h-[92vh] flex-col items-center justify-center overflow-hidden px-5 text-center">
+        {/* cosmic backdrop: starfield + teal→violet glow */}
+        <Starfield className="absolute inset-0 -z-[1]" />
+        <div
+          className="pointer-events-none absolute left-1/2 top-1/2 -z-[1] size-[680px] max-w-[120vw] -translate-x-1/2 -translate-y-1/2 rounded-full"
+          style={{
+            background:
+              'radial-gradient(circle, color-mix(in oklch, var(--primary) 22%, transparent), color-mix(in oklch, #7c3aed 16%, transparent) 38%, transparent 70%)',
+            filter: 'blur(50px)',
+          }}
+        />
+        <motion.div style={{ y: heroY, opacity: heroOpacity }} className="mx-auto max-w-5xl">
           <motion.div
             variants={headline}
             initial={reduce ? undefined : 'hidden'}
@@ -134,6 +145,9 @@ export default function TourPage() {
                 დაიწყე უფასოდ <ArrowRight className="size-5" />
               </a>
             </motion.div>
+            <motion.p variants={line} className="mt-6 text-sm text-muted-foreground">
+              ქართული PS5 ლაუნჯებისთვის შექმნილი · 12 მოდული ერთ პანელში
+            </motion.p>
           </motion.div>
         </motion.div>
 
