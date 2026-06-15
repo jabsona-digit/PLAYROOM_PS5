@@ -12,12 +12,13 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
-> _Last updated **2026-06-15** — through migration **0062**. Since the previous (0036) revision:
+> _Last updated **2026-06-16** — through migration **0066**. Since the previous (0036) revision:
 > tournaments, capacity/typed-resource booking, God-Mode tenant billing, **plan entitlements (0062)**, payroll/RBAC hardening,
 > team email-invites, operator shifts & attribution, shared cash drawer, abandoned sessions, bar COGS,
 > **In-Seat Ordering portal** (live-session + per-session PIN/QR access gate, 0060–0061),
-> **AI receipt OCR + anti-fraud audit**, **per-tenant online payments (Phase 1)**,
-> **RevPACH analytics + AI advisor (0059)**, and **bot-safe SEO + ISR caching** on both sites._
+> **AI receipt OCR + anti-fraud audit** (+ Georgian↔Latin fuzzy product resolution), **per-tenant online payments (Phase 1)**,
+> **RevPACH analytics + AI advisor (0059)**, **hardware console control** (vendor-agnostic power/TV gating, 0063–0066),
+> **mobile-responsive admin**, and **bot-safe SEO + ISR caching** on both sites._
 
 > Product was renamed **Playroom OS → Martelounge** (martel-**OU**-nge; domain bought 2026-06-08).
 > "Playroom" survives only as a demo/tenant name.
@@ -152,6 +153,7 @@ components/admin/
   service-inbox.tsx     floating realtime In-Seat inbox (order/battery/call) → fulfil → bar_sale
   qr-print-modal.tsx    print per-console QR codes for the In-Seat portal (qrcode.react)
   inseat-access-modal.tsx  operator's per-session In-Seat PIN + QR (&k=) for a live console
+  hardware-settings.tsx  Settings → 🔌 Hardware: per-console mode/driver/target + Force ON/OFF + Shelly Cloud creds + "require hw" toggle
   payment-settings.tsx  Settings: connect own TBC/BOG merchant (Vault-encrypted; BYO-merchant)
   team-settings.tsx     Settings: email-invite staff (each gets own login + role)
   tournaments.tsx       single-elim PS5 brackets + TV mode
@@ -168,7 +170,8 @@ lib/
   upload.ts             optimizeImage() + uploadImage(file, folder) + slugify() — shared R2 upload helper
   ui.ts / hooks.ts / notify.ts / print.ts
 supabase/functions/ai-assistant/index.ts   Gemini function-calling agent (runs as caller's JWT)
-supabase/migrations/    0001–0058 (see §7)
+supabase/functions/hardware-control/index.ts  cloud power dispatch (Shelly Cloud; service-role reads the Vault secret)
+supabase/migrations/    0001–0066 (see §7)
 ```
 
 ### Modules & status
@@ -330,6 +333,13 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 0062  PLAN ENTITLEMENTS: org_plan/plan_rank/require_plan/plan_limit + BEFORE triggers — PRO gates bar_sales/
       bar_products/bar_categories/customers/expenses; ENTERPRISE gates venues.fiscal_enabled; limits venues
       (1/3/∞), consoles/venue (4/8/∞), PIN employees (3/∞). Platform admins bypass; existing rows grandfathered.
+─ hardware console control (vendor-agnostic; tie power/TV to session — anti-fraud) ────────────────────
+0063  HARDWARE foundation: console_hardware (control_mode manual/cloud/agent, driver, target tv/console/hdmi,
+      jsonb config) + power_events audit + log_power_event + get_ghost_power_events. Device-agnostic, SSD-safe.
+0064  set_console_power (sets desired_state; manual logs immediately; Force=admin) + ghost query → state_poll only
+0065  HARDWARE cloud creds: hardware_credentials (Vault auth_key) + save/get_settings/delete + get_hardware_secret
+      (service_role ONLY) → edge `hardware-control` Shelly Cloud driver (cloud→cloud, no on-site agent)
+0066  venues.hardware_required + enforce_hardware_required trigger (OPT-IN: block session if console has no hw)
 ```
 
 > **Schema-compat invariants:** no enum types (all `text + CHECK`); `consoles.id` & `pricing_plans.id`
@@ -383,6 +393,10 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 | `org_payment_credentials` | id, org_id, **provider** (tbc/bog), merchant_id, **secret_ref** → `vault.secrets` (encrypted), is_active, status, last_tested_at; unique(org_id,provider). RLS ON, ZERO authenticated grants — RPC-only |
 | `platform_payments` | tenant subscription payments log (platform-only RLS); `organizations.current_period_end` = paid-until |
 | `tournaments` / `tournament_participants` / `tournament_matches` | single-elim bracket (seed_tournament + report_match auto-advance + champion) |
+| `console_hardware` | id, org_id, venue_id, console_id, **control_mode** (manual/cloud/agent), driver, **target** (tv/console/hdmi/network — default `tv`, SSD-safe), config(jsonb), secret_ref, desired_state, last_known_state. RLS member-read / admin-write |
+| `power_events` | console on/off audit (uuid session_id; **triggered_by**; success/error). Ghost partial index → anti-fraud read |
+| `hardware_credentials` | per-venue cloud account (**provider** shelly/tuya, server, **secret_ref** → Vault auth_key). RLS admin; key readable only by `service_role` |
+| `venues.hardware_required` | bool (default false) — opt-in gate: block starting a session on a console with no active hardware |
 
 > Secrets policy: payment credentials use **Supabase Vault** (`vault.create_secret`/`decrypted_secrets`),
 > decryptable server-side only. PIN hashes (`employees.pin_hash`) have column SELECT revoked (0049).
@@ -416,6 +430,8 @@ rate-limited via `ratelimit.check`), `portal_place_order(venue,console,items,cod
 suspension-aware), `portal_request_service(venue,console,kind,code)`. Every write requires a **live session**
 + matching `portal_code` (else `no_active_session` / `bad_code`). + `resolve_service_request(id,status,method?,bank?)`
 (operator-only → rings up `create_bar_sale`).
+
+**Hardware control** (vendor-agnostic): `set_console_power(console,action,session?,trigger)` — member-gated, Force=admin; sets `desired_state` and for manual/no-device logs the event immediately. `log_power_event(...)` + `get_ghost_power_events(venue,from,to)` (anti-fraud). `save_hardware_credentials` / `get_hardware_settings` / `delete_hardware_credentials` (admin; Vault-backed) + **`get_hardware_secret`** (granted to **`service_role` only** — the Shelly auth_key, for the edge fn). `enforce_hardware_required` trigger blocks session start when `venues.hardware_required` and the console has no active hardware. Cloud devices dispatch via the `hardware-control` edge fn (Shelly Cloud); LAN relays via a local agent (planned, Phase 2).
 
 **Payments / platform / tournaments:** `save_payment_credentials` / `get_payment_settings` /
 `set_payment_provider_active` / `delete_payment_credentials` (per-tenant BYO merchant, Vault-backed,
@@ -460,6 +476,22 @@ is_org_admin-gated); `mark_tenant_paid(org,months,…)` (God-Mode billing); `see
   sessionStorage-kept code and **re-locks** when the session ends or the code rotates. `portal_unlock` is
   rate-limited. The operator reads the PIN off the live console card or shows the QR (`inseat-access-modal.tsx`).
 
+### Hardware console control (vendor-agnostic, migrations 0063–0066)
+- **Goal:** tie physical power/TV-signal to session status so staff can't run a console without an open
+  session (lost revenue, invisible to anti-fraud/RevPACH). **SSD-safe:** `target` defaults to `tv` (cut the
+  display, never hard-kill the PS5).
+- **Device-agnostic:** a console maps to ONE `console_hardware` row with `control_mode` (manual | cloud |
+  agent) + a free-form `driver` + jsonb `config` — new devices need a driver in code, not a migration.
+  `manual` mode works with no device (Force ON/OFF + audit). Settings → 🔌 Hardware (`hardware-settings.tsx`).
+- **Dispatch:** session start/end fire `set_console_power` (fire-and-forget, never blocks the session); it sets
+  `desired_state`. **Cloud** devices (Shelly Cloud) → the `hardware-control` edge fn (caller JWT authorises via
+  RLS; **service-role** reads the Vault auth_key via `get_hardware_secret`; POSTs the vendor cloud) → logs
+  `power_events`. **Agent** (LAN relays — USR/Waveshare/Shelly-LAN, the Georgian "სოჩიკი") = planned Phase 2:
+  a local bridge subscribes to `desired_state` and drives the relay locally (cloud can't reach 192.168.x.x).
+- **Opt-in enforcement:** `venues.hardware_required` (default off). When on, a BEFORE-INSERT trigger on
+  `sessions` blocks starting a session on a console with no active hardware (`hardware_required`). Anti-fraud
+  read `get_ghost_power_events` flags a console powered on with no session (agent state-poll, Phase 3).
+
 ---
 
 ## 11. AI assistant
@@ -473,6 +505,9 @@ Client (ai-assistant.tsx) → supabase.functions.invoke('ai-assistant',{messages
 - Read tools (overview/consoles/plans/products/customers/sales/sessions/employees/reservations/expenses/revenue)
   + confirm-gated write tools (start_session, start_open_session, end_session, create_bar_sale, restock_product).
 - Models: `gemini-2.5-flash → 2.0-flash → 2.5-flash-lite`; **thinking disabled** (`thinkingBudget:0`); retry on 429/503.
+- **Robust product refs:** `restock_product`/`create_bar_sale` accept a `product_name` resolved server-side
+  (Georgian↔Latin transliteration + fuzzy match, e.g. "ქემელი ბლუ"→"CAMEL BLUE"); ambiguous → ask, unknown →
+  list. A one-time agent **nudge** forces a real functionCall when the model only *promises* an action in text.
 - `GEMINI_API_KEY` lives ONLY as a Supabase secret, from a **fresh** GCP project. Never client-side/in git.
 - Deploy: `memory/edge-function-deploy.md` (CLI with User `SUPABASE_ACCESS_TOKEN`, `--use-api`).
 
@@ -564,6 +599,8 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
 - 📲 **SMS/Email (Twilio)** — booking confirm + reminder to cut no-shows. Blocked on a Twilio account.
 - 🧠 **Proactive "AI Manager"** — nightly digest (RevPACH + fraud + inventory + COGS) → Telegram briefing with
   one-tap actions; the *intelligence* moat, works from venue #1. See `memory/killer-features-pending.md`.
+- 🔌 **Hardware control — Phase 2/3** — local **agent** (separate repo) for LAN relays (USR/Waveshare/Shelly-LAN,
+  the Georgian "სოჩიკი") + HDMI matrix + state-poll ghost detection. Foundation + Shelly Cloud done (0063–0066).
 - 🧾 **RS.GE Fiscal Phase C** — local hardware bridge.
 - 🧑‍💼 **External accountant read-only** — RLS redesign so `accountant` is truly read-only (split SELECT vs write).
 - 🌐 ✅ DONE (2026-06-15): admin → `app.martelounge.ge`, apex `martelounge.ge` = new marketing site (separate repo).
@@ -574,7 +611,8 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
 > operator shifts + attribution (0052/0053), shared cash drawer (0054), abandoned sessions (0055),
 > In-Seat Ordering (0057) + live-session/per-session PIN-QR access gate (0060/0061), per-tenant payments
 > Phase 1 (0058), RevPACH analytics + AI advisor (0059), plan entitlements / tier enforcement (0062),
-> AI receipt OCR + anti-fraud, bot-safe SEO + ISR caching (both sites, GSC verified), PWA + camera scan.
+> hardware console control + Shelly Cloud (0063–0066), AI receipt OCR + anti-fraud + fuzzy product resolution,
+> mobile-responsive admin, bot-safe SEO + ISR caching (both sites, GSC verified), PWA + camera scan.
 
 > Living roadmap & decisions: `memory/roadmap-v3-marketplace.md`, `memory/marketplace-backend.md`,
 > `memory/marketplace-frontend.md`, `memory/media-r2-uploads.md`, `memory/admin-module-registration.md`.
