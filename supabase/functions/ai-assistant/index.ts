@@ -31,6 +31,12 @@ const json = (body: unknown, status = 200) =>
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+// The model sometimes PROMISES an action ("დავამატებ 10 ცალს…") in plain text
+// instead of emitting the functionCall — so nothing happens. Detect that intent
+// to nudge it once into actually calling the tool.
+const PROMISE_RE =
+  /(და(ვ)?ამატებ|ჩავამატებ|შევავსებ|დავიწყებ|გავხსნი|გავყიდ|დავასრულებ|დავხურავ|დავარეგისტრირებ|გავაკეთებ|ვამატებ|ვიწყებ)|\b(i('?ll| will)|let me)\s+(add|start|sell|create|restock|register|open|close|end)/i
+
 const READ_TOOLS = new Set([
   'get_overview',
   'list_consoles',
@@ -366,7 +372,8 @@ Rules:
   • If the user does NOT name a duration and wants pay-as-you-go (e.g. "ღია სესია", "მიმდინარე", "რამდენ ხანსაც ითამაშებს", "open") → call start_open_session with console_id, plan_id, payment_method (NO duration_min). The price is settled when the session ends.
   If payment method is unstated assume cash.
 - When the user says "add/restock [product] N" (დაამატე/შეავსე) it means restock_product (increase stock of an EXISTING product), NOT creating a new product. Call restock_product with product_name exactly as the user said it (Georgian/transliterated/partial is fine — the server matches it, e.g. "ქემელი ბლუ"→"CAMEL BLUE") and add_qty. If the tool returns needs_clarification, show the candidates and ask which one; if it returns product_not_found, tell the user it must be added in Inventory first. The same product_name matching works for create_bar_sale items.
-- Be action-oriented: once you have enough info, call the function instead of asking more questions. Actions are auto-confirmed by the UI.`
+- Be action-oriented: once you have enough info, call the function instead of asking more questions.
+- CRITICAL: to perform an action you MUST emit the functionCall. NEVER reply with only a promise like "დავამატებ…/დავიწყებ…/გავყიდი…" without calling the tool in the SAME turn — calling a write tool pops a confirm card for the user, so calling it IS how you act. Either call the function now, or (if one detail is missing) ask one short question.`
 }
 
 Deno.serve(async (req) => {
@@ -548,6 +555,7 @@ Use the real numbers from the data (RevPACH, occupancy %, gold hour). Keep it un
     return { role: m.role, parts }
   })
   try {
+    let nudged = false
     for (let hop = 0; hop < 6; hop++) {
       const g = await callGemini(sys, contents)
       const parts = g?.candidates?.[0]?.content?.parts ?? []
@@ -560,6 +568,14 @@ Use the real numbers from the data (RevPACH, occupancy %, gold hour). Keep it un
         if (!text) {
           console.error('EMPTY_CANDIDATE', JSON.stringify(g?.candidates?.[0]?.finishReason ?? g))
           return json({ type: 'text', text: 'ვერ მოვამზადე პასუხი 🙏 სცადე ხელახლა ან უფრო კონკრეტულად დაწერე.' })
+        }
+        // Model promised an action but didn't call the tool → nudge it once to
+        // actually emit the functionCall (otherwise nothing happens).
+        if (!nudged && PROMISE_RE.test(text)) {
+          nudged = true
+          contents.push({ role: 'model', parts: [{ text }] })
+          contents.push({ role: 'user', parts: [{ text: 'შეასრულე ახლავე: გამოიძახე შესაბამისი ფუნქცია (functionCall) — მაგ. restock_product / create_bar_sale / start_session. არ დაწერო მხოლოდ რომ გააკეთებ. თუ ერთი დეტალი აკლია, ჰკითხე მოკლედ.' }] })
+          continue
         }
         return json({ type: 'text', text })
       }
