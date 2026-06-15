@@ -7,6 +7,7 @@ import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
 import { supabase } from '@/lib/supabase/client'
 import { planErrorText } from '@/lib/ui'
+import { cn } from '@/lib/utils'
 import type { ConsoleUnit } from '@/lib/types'
 
 // console_hardware isn't in the generated DB types until the post-deploy regen.
@@ -44,6 +45,46 @@ function StatusDot({ unit }: { unit: ConsoleUnit }) {
       <span className="size-2 rounded-full" style={{ background: color, boxShadow: `0 0 6px ${color}` }} />
       {label}
     </span>
+  )
+}
+
+// Owner toggle: require a configured control method before a session can start.
+function RequireToggle() {
+  const { hardwareRequired, refreshLive, pushToast } = usePlayroom()
+  const { currentVenueId } = useOrg()
+  const [busy, setBusy] = useState(false)
+
+  const toggle = async () => {
+    if (!currentVenueId) return
+    setBusy(true)
+    const { error } = await (supabase.from('venues') as any)
+      .update({ hardware_required: !hardwareRequired })
+      .eq('id', currentVenueId)
+    setBusy(false)
+    if (error) return pushToast('danger', planErrorText(error.message))
+    pushToast('success', !hardwareRequired ? 'ჩაირთო — სესია მოითხოვს Hardware-ს' : 'გამოირთო')
+    await refreshLive()
+  }
+
+  return (
+    <div className="nm-inset mb-4 flex items-center justify-between gap-3 rounded-2xl p-4">
+      <div className="min-w-0">
+        <p className="text-sm font-bold">სესია მხოლოდ კონფიგურირებულ კონსოლზე</p>
+        <p className="text-xs text-muted-foreground">
+          ჩართვისას ოპერატორი სესიას ვერ დაიწყებს კონსოლზე, რომელსაც Hardware კონტროლი არ აქვს (anti-fraud). გამორთულზე — ყველაფერი ჩვეულებრივ მუშაობს.
+        </p>
+      </div>
+      <button
+        onClick={toggle}
+        disabled={busy}
+        role="switch"
+        aria-checked={hardwareRequired}
+        className={cn('relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-50',
+          hardwareRequired ? 'bg-primary' : 'bg-muted-foreground/30')}
+      >
+        <span className={cn('absolute top-1 size-5 rounded-full bg-white transition-all', hardwareRequired ? 'left-6' : 'left-1')} />
+      </button>
+    </div>
   )
 }
 
@@ -124,6 +165,8 @@ export function HardwareSettings() {
           </p>
         </div>
       </div>
+
+      <RequireToggle />
 
       <ShellyAccountCard />
 

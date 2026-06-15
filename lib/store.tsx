@@ -45,6 +45,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 interface PlayroomState {
   consoles: ConsoleUnit[]
+  hardwareRequired: boolean
   plans: PricingPlan[]
   employees: Employee[]
   shifts: Shift[]
@@ -155,6 +156,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
   const { currentOrgId, currentVenueId } = useOrg()
 
   const [consoles, setConsoles] = useState<ConsoleUnit[]>([])
+  const [hardwareRequired, setHardwareRequired] = useState(false)
   const [plans, setPlans] = useState<PricingPlan[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [shifts, setShifts] = useState<Shift[]>([])
@@ -243,16 +245,18 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
   const loadLive = useCallback(async () => {
     const venue = venueRef.current
     if (!venue) return
-    const [{ data: cons }, { data: active }, { data: hw }] = await Promise.all([
+    const [{ data: cons }, { data: active }, { data: hw }, { data: ven }] = await Promise.all([
       supabase.from('consoles').select('*').eq('venue_id', venue).order('slot_number'),
       supabase
         .from('sessions')
         .select('*, session_extensions(*)')
         .eq('venue_id', venue)
         .eq('status', 'active'),
-      // console_hardware isn't in generated types until the post-deploy regen
+      // console_hardware / venues.hardware_required aren't in generated types until the post-deploy regen
       (supabase.from('console_hardware' as never).select('*').eq('venue_id', venue) as unknown as Promise<{ data: any[] | null }>),
+      (supabase.from('venues').select('hardware_required').eq('id', venue).maybeSingle() as unknown as Promise<{ data: { hardware_required?: boolean } | null }>),
     ])
+    setHardwareRequired(!!ven?.hardware_required)
     if (!cons) return
     const byConsole = new Map<number, Session>()
     for (const s of active ?? []) byConsole.set(s.console_id, mapSession(s))
@@ -454,7 +458,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
         p_payment_method: payment_method,
         p_bank: payment_method === 'cash' ? undefined : bank ?? undefined,
       })
-      if (error) return pushToast('danger', error.message)
+      if (error) return pushToast('danger', planErrorText(error.message))
       pushToast('success', `${target?.name ?? 'კონსოლი'} — სესია დაიწყო`)
       await refetchLive()
       firePower(console_id, 'on', 'session_start')
@@ -472,7 +476,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
         p_payment_method: payment_method,
         p_bank: payment_method === 'cash' ? undefined : bank ?? undefined,
       })
-      if (error) return pushToast('danger', error.message)
+      if (error) return pushToast('danger', planErrorText(error.message))
       pushToast('success', `${target?.name ?? 'კონსოლი'} — მიმდინარე სესია დაიწყო`)
       await refetchLive()
       firePower(console_id, 'on', 'session_start')
@@ -694,6 +698,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<PlayroomState>(
     () => ({
       consoles,
+      hardwareRequired,
       plans,
       employees,
       shifts,
@@ -724,6 +729,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       consoles,
+      hardwareRequired,
       plans,
       employees,
       shifts,

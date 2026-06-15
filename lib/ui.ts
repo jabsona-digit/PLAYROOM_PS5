@@ -58,6 +58,7 @@ export function planErrorText(msg: string): string {
   if (!msg) return 'შეცდომა. სცადეთ თავიდან.'
   if (msg.includes('plan_upgrade_required:enterprise')) return 'ეს ფუნქცია ENTERPRISE გეგმაშია — გადადი „გამოწერა"-ში.'
   if (msg.includes('plan_upgrade_required')) return 'ეს ფუნქცია PRO გეგმიდან ხელმისაწვდომია — გადადი „გამოწერა"-ში.'
+  if (msg.includes('hardware_required')) return 'ამ კონსოლზე ჯერ დააკონფიგურირე Hardware კონტროლი (პარამეტრები → 🔌 Hardware), ან გამორთე მოთხოვნა.'
   const lim = msg.match(/plan_limit_reached:(\w+):(\d+)/)
   if (lim) {
     const kind: Record<string, string> = { venues: 'ფილიალების', consoles: 'კონსოლების', employees: 'თანამშრომლების' }

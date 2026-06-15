@@ -96,7 +96,7 @@ function StatCard({
 }
 
 function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
-  const { extendSession } = usePlayroom()
+  const { extendSession, hardwareRequired } = usePlayroom()
   const tilt = use3dTilt(4)
   const [startOpen, setStartOpen] = useState(false)
   const [extendOpen, setExtendOpen] = useState(false)
@@ -107,6 +107,8 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
   const s = unit.active_session
   const isFree = unit.status === 'free' || !s
   const isOpen = !!s?.is_open
+  // strict mode: block starting a session on a console with no active hardware
+  const hwBlocked = hardwareRequired && !(unit.hardware && unit.hardware.is_active)
 
   const clock = now ?? new Date(s?.started_at ?? Date.now()).getTime()
   const remainingMs = s && s.ends_at ? new Date(s.ends_at).getTime() - clock : 0
@@ -198,12 +200,15 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
         {isFree ? (
           <div className="mt-6">
             <p className="text-sm text-muted-foreground">
-              კონსოლი თავისუფალია — დაიწყე ახალი სესია.
+              {hwBlocked
+                ? 'სესიის დასაწყებად ჯერ დააკონფიგურირე Hardware (პარამეტრები → 🔌).'
+                : 'კონსოლი თავისუფალია — დაიწყე ახალი სესია.'}
             </p>
             <button
               type="button"
               onClick={() => setStartOpen(true)}
-              className="nm-btn mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-primary"
+              disabled={hwBlocked}
+              className="nm-btn mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Play className="size-4" />
               სესიის დაწყება
