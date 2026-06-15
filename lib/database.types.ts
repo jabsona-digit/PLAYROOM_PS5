@@ -2725,6 +2725,7 @@ export type Database = {
           fiscal_enabled: boolean
           fiscal_tin: string | null
           gallery: Json
+          hardware_required: boolean
           id: string
           is_active: boolean
           is_published: boolean
@@ -2751,6 +2752,7 @@ export type Database = {
           fiscal_enabled?: boolean
           fiscal_tin?: string | null
           gallery?: Json
+          hardware_required?: boolean
           id?: string
           is_active?: boolean
           is_published?: boolean
@@ -2777,6 +2779,7 @@ export type Database = {
           fiscal_enabled?: boolean
           fiscal_tin?: string | null
           gallery?: Json
+          hardware_required?: boolean
           id?: string
           is_active?: boolean
           is_published?: boolean
