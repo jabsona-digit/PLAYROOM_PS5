@@ -15,6 +15,7 @@ import {
   Landmark,
   Play,
   Plus,
+  QrCode,
   Square,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -23,6 +24,7 @@ import { formatClock, gel, openBillableMinutes, paymentMethodLabel, statusMeta }
 import type { Bank, ConsoleUnit, PaymentMethod } from '@/lib/types'
 import { Modal } from './modal'
 import { Analytics } from './analytics'
+import { InSeatAccessModal } from './inseat-access-modal'
 import { useFiscal } from '@/lib/fiscal'
 
 const METHOD_ICON: Record<PaymentMethod, typeof Banknote> = {
@@ -98,6 +100,7 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
   const [startOpen, setStartOpen] = useState(false)
   const [extendOpen, setExtendOpen] = useState(false)
   const [endOpen, setEndOpen] = useState(false)
+  const [accessOpen, setAccessOpen] = useState(false)
 
   const meta = statusMeta[unit.status]
   const s = unit.active_session
@@ -123,6 +126,17 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
     unit.status === 'warning_10' ? 'nm-neon-orange' :
     unit.status === 'warning_5' || unit.status === 'expired' ? 'nm-neon-red' :
     'nm-neon-blue'
+
+  const accessChip = s?.portal_code ? (
+    <button
+      type="button"
+      onClick={() => setAccessOpen(true)}
+      className="nm-btn mt-3 flex w-full items-center justify-center gap-2 rounded-2xl py-2.5 text-xs font-bold text-muted-foreground"
+    >
+      <QrCode className="size-4 text-primary" />
+      In-Seat კოდი · <span className="font-mono tracking-widest text-primary">{s.portal_code}</span>
+    </button>
+  ) : null
 
   return (
     <>
@@ -218,6 +232,7 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
               <Square className="size-4" />
               დასრულება და გადახდა
             </button>
+            {accessChip}
           </div>
         ) : (
           <div className="mt-5">
@@ -272,6 +287,7 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
                 დასრულება
               </button>
             </div>
+            {accessChip}
           </div>
         )}
       </div>
@@ -294,6 +310,15 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
         onClose={() => setEndOpen(false)}
         unit={unit}
       />
+      {s?.portal_code && (
+        <InSeatAccessModal
+          open={accessOpen}
+          onClose={() => setAccessOpen(false)}
+          consoleId={unit.id}
+          consoleName={unit.name}
+          code={s.portal_code}
+        />
+      )}
     </>
   )
 }

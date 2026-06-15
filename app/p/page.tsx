@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useSearchParams } from 'next/navigation'
-import { Gamepad2, Clock, Coffee, Plus, Minus, Send, CheckCircle2, Bell, BatteryWarning, AlertTriangle } from 'lucide-react'
+import { Gamepad2, Clock, Coffee, Plus, Minus, Send, CheckCircle2, Bell, BatteryWarning, AlertTriangle, KeyRound, ScanLine } from 'lucide-react'
 import { gel } from '@/lib/ui'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase/client'
@@ -23,6 +23,7 @@ function PortalApp() {
   const params = useSearchParams()
   const venueId = params.get('v')
   const consoleId = params.get('c')
+  const codeParam = params.get('k') // session QR embeds the access code as &k=
 
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -44,6 +45,14 @@ function PortalApp() {
   const [successType, setSuccessType] = useState<'order' | 'battery' | 'call' | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
+  // per-session access gate — proves this device holds the CURRENT session's
+  // code (typed PIN or scanned from a session QR's &k=). Rotates each session.
+  const [unlocked, setUnlocked] = useState(false)
+  const [code, setCode] = useState<string | null>(null)
+  const [pinInput, setPinInput] = useState('')
+  const [verifying, setVerifying] = useState(false)
+  const [pinError, setPinError] = useState(false)
+
   // live countdown clock
   const [nowTs, setNowTs] = useState(() => Date.now())
   useEffect(() => {
@@ -58,10 +67,48 @@ function PortalApp() {
     const { data, error } = await rpc('portal_get_session_status', { p_console_id: Number(consoleId) })
     if (error || !data || data.error) return
     setConsoleName(data.console_name ?? null)
-    setSessionActive(!!data.active)
-    setEndsAt(data.active ? data.ends_at : null)
-    setPlanName(data.active ? data.plan_name : null)
+    const active = !!data.active
+    setSessionActive(active)
+    setEndsAt(active ? data.ends_at : null)
+    setPlanName(active ? data.plan_name : null)
+    // session ended → drop any unlocked access (the code dies with the session)
+    if (!active) {
+      setUnlocked(false)
+      setCode(null)
+      try { sessionStorage.removeItem(`inseat_code_${consoleId}`) } catch {}
+    }
   }, [consoleId])
+
+  // Verify a candidate code against the live session; on success unlock + persist.
+  const tryUnlock = useCallback(async (candidate: string): Promise<boolean> => {
+    if (!venueId || !consoleId || !candidate) return false
+    setVerifying(true)
+    const { data, error } = await rpc('portal_unlock', {
+      p_venue_id: venueId,
+      p_console_id: Number(consoleId),
+      p_code: candidate,
+    })
+    setVerifying(false)
+    if (error || !data?.ok) {
+      if (data?.error === 'bad_code') setPinError(true)
+      return false
+    }
+    setUnlocked(true)
+    setCode(candidate)
+    setConsoleName(data.console_name ?? null)
+    setSessionActive(true)
+    setEndsAt(data.ends_at ?? null)
+    setPlanName(data.plan_name ?? null)
+    try { sessionStorage.setItem(`inseat_code_${consoleId}`, candidate) } catch {}
+    return true
+  }, [venueId, consoleId])
+
+  const relock = () => {
+    setUnlocked(false)
+    setCode(null)
+    setPinInput('')
+    try { sessionStorage.removeItem(`inseat_code_${consoleId}`) } catch {}
+  }
 
   // initial load: menu + session
   useEffect(() => {
@@ -85,9 +132,14 @@ function PortalApp() {
       setActiveTab(firstTab)
       setLoading(false)
       await loadSession()
+      // auto-unlock: scanned session QR (&k=) wins, else a code kept from earlier
+      let stored: string | null = null
+      try { stored = sessionStorage.getItem(`inseat_code_${consoleId}`) } catch {}
+      const initCode = codeParam || stored
+      if (initCode) await tryUnlock(initCode)
     })()
     return () => { cancelled = true }
-  }, [venueId, consoleId, loadSession])
+  }, [venueId, consoleId, codeParam, loadSession, tryUnlock])
 
   // keep the session timer honest (operator may extend/end it)
   useEffect(() => {
@@ -102,7 +154,7 @@ function PortalApp() {
   }
 
   const addToCart = (p: Product) => {
-    if (!sessionActive) { flashError(orderErrorText('no_active_session')); return }
+    if (!unlocked) { flashError(orderErrorText('no_active_session')); return }
     setCart((prev) => {
       const existing = prev.find((i) => i.id === p.id)
       if (existing) return prev.map((i) => (i.id === p.id ? { ...i, qty: i.qty + 1 } : i))
@@ -119,6 +171,8 @@ function PortalApp() {
       case 'venue_unavailable': return 'კლუბი ამჟამად მიუწვდომელია.'
       case 'product_unavailable': return 'ზოგი პროდუქტი აღარ არის ხელმისაწვდომი. განაახლეთ გვერდი.'
       case 'no_active_session': return 'სესია არ არის აქტიური. შეკვეთა და მოთხოვნა ხელმისაწვდომია მხოლოდ თამაშის დროს — მიმართეთ ოპერატორს.'
+      case 'bad_code': return 'კოდი არასწორია ან ვადაგასულია. შეიყვანეთ ხელახლა.'
+      case 'rate_limited': return 'ბევრი მცდელობა იყო. დაელოდეთ ერთ წუთს.'
       case 'console_mismatch':
       case 'venue_not_found': return 'არასწორი QR კოდი.'
       default: return 'შეცდომა. სცადეთ თავიდან.'
@@ -127,15 +181,17 @@ function PortalApp() {
 
   const handleOrder = async () => {
     if (cart.length === 0 || !venueId || !consoleId) return
-    if (!sessionActive) { flashError(orderErrorText('no_active_session')); return }
+    if (!unlocked || !code) { flashError(orderErrorText('no_active_session')); return }
     setBusy(true)
     const { data, error } = await rpc('portal_place_order', {
       p_venue_id: venueId,
       p_console_id: Number(consoleId),
       p_items: cart.map((i) => ({ product_id: i.id, qty: i.qty })),
+      p_code: code,
     })
     setBusy(false)
     if (error || !data?.ok) {
+      if (data?.error === 'bad_code') relock()
       flashError(orderErrorText(data?.error))
       return
     }
@@ -146,15 +202,17 @@ function PortalApp() {
 
   const handleServiceRequest = async (kind: 'battery' | 'call') => {
     if (!venueId || !consoleId) return
-    if (!sessionActive) { flashError(orderErrorText('no_active_session')); return }
+    if (!unlocked || !code) { flashError(orderErrorText('no_active_session')); return }
     setBusy(true)
     const { data, error } = await rpc('portal_request_service', {
       p_venue_id: venueId,
       p_console_id: Number(consoleId),
       p_kind: kind,
+      p_code: code,
     })
     setBusy(false)
     if (error || !data?.ok) {
+      if (data?.error === 'bad_code') relock()
       flashError(orderErrorText(data?.error))
       return
     }
@@ -228,13 +286,15 @@ function PortalApp() {
                 <p className="text-4xl font-mono font-black mt-1">{clock}</p>
                 {planName ? <p className="mt-1 text-xs text-muted-foreground font-bold">{planName}</p> : null}
               </div>
-              <button
-                onClick={() => handleServiceRequest('call')}
-                disabled={busy}
-                className="nm-daylight px-5 py-2.5 rounded-xl text-xs font-bold text-primary whitespace-nowrap disabled:opacity-50"
-              >
-                დროის გაგრძელება
-              </button>
+              {unlocked && (
+                <button
+                  onClick={() => handleServiceRequest('call')}
+                  disabled={busy}
+                  className="nm-daylight px-5 py-2.5 rounded-xl text-xs font-bold text-primary whitespace-nowrap disabled:opacity-50"
+                >
+                  დროის გაგრძელება
+                </button>
+              )}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
@@ -244,40 +304,70 @@ function PortalApp() {
           )}
         </div>
 
-        {/* Quick Service Actions — only while a session is live */}
-        <div className="grid grid-cols-2 gap-3 mt-3">
-          <button
-            onClick={() => handleServiceRequest('battery')}
-            disabled={busy || !sessionActive}
-            className="nm-raised flex flex-col items-center justify-center p-3 rounded-2xl active:scale-95 transition-transform disabled:opacity-40 disabled:active:scale-100"
-          >
-            <BatteryWarning className="size-5 text-red-500 mb-1.5" />
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-tight text-center">
-              ჯოისტიკი დაჯდა
-            </span>
-          </button>
-          <button
-            onClick={() => handleServiceRequest('call')}
-            disabled={busy || !sessionActive}
-            className="nm-raised flex flex-col items-center justify-center p-3 rounded-2xl active:scale-95 transition-transform disabled:opacity-40 disabled:active:scale-100"
-          >
-            <Bell className="size-5 text-[var(--status-free)] mb-1.5" />
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-tight text-center">
-              სტაფის გამოძახება
-            </span>
-          </button>
-        </div>
+        {/* Locked: need the CURRENT session's code (typed PIN or scanned QR) */}
+        {sessionActive && !unlocked && (
+          <div className="nm-raised rounded-3xl p-6 mt-3 text-center">
+            <div className="nm-inset mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl">
+              <KeyRound className="size-6 text-primary" />
+            </div>
+            <h3 className="text-lg font-black mb-1">შეიყვანე წვდომის კოდი</h3>
+            <p className="text-sm text-muted-foreground mb-5">
+              ოპერატორმა მოგცა 6-ნიშნა კოდი — შეიყვანე აქ, ან უბრალოდ დაასკანერე სესიის QR.
+            </p>
+            <input
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={pinInput}
+              onChange={(e) => { setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6)); setPinError(false) }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && pinInput.length === 6) tryUnlock(pinInput) }}
+              placeholder="••••••"
+              className="nm-inset mb-3 w-full rounded-2xl py-4 text-center font-mono text-3xl font-black tracking-[0.4em] outline-none"
+            />
+            {pinError && <p className="mb-3 text-xs font-bold text-red-400">არასწორი კოდი. სცადე თავიდან.</p>}
+            <button
+              type="button"
+              onClick={() => tryUnlock(pinInput)}
+              disabled={verifying || pinInput.length !== 6}
+              className="nm-daylight flex w-full items-center justify-center gap-2 rounded-2xl py-4 font-black text-primary disabled:opacity-50"
+            >
+              {verifying ? <span className="animate-pulse">მოწმდება...</span> : <><ScanLine className="size-5" /> გახსნა</>}
+            </button>
+          </div>
+        )}
+
+        {/* Quick Service Actions — only once the session code is verified */}
+        {unlocked && (
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            <button
+              onClick={() => handleServiceRequest('battery')}
+              disabled={busy}
+              className="nm-raised flex flex-col items-center justify-center p-3 rounded-2xl active:scale-95 transition-transform disabled:opacity-40 disabled:active:scale-100"
+            >
+              <BatteryWarning className="size-5 text-red-500 mb-1.5" />
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-tight text-center">
+                ჯოისტიკი დაჯდა
+              </span>
+            </button>
+            <button
+              onClick={() => handleServiceRequest('call')}
+              disabled={busy}
+              className="nm-raised flex flex-col items-center justify-center p-3 rounded-2xl active:scale-95 transition-transform disabled:opacity-40 disabled:active:scale-100"
+            >
+              <Bell className="size-5 text-[var(--status-free)] mb-1.5" />
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-tight text-center">
+                სტაფის გამოძახება
+              </span>
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Bar Menu */}
+      {/* Bar Menu — only once the session code is verified */}
+      {unlocked && (
       <div className="flex-1 px-4 mt-2">
         <h2 className="text-sm font-black mb-4 flex items-center gap-2 text-muted-foreground uppercase tracking-widest">
           <Coffee className="size-4" /> ბარის მენიუ
-          {!loading && !sessionActive && (
-            <span className="ml-auto normal-case tracking-normal text-[10px] font-bold text-amber-400/80">
-              სესია არ არის აქტიური
-            </span>
-          )}
         </h2>
 
         {loading ? (
@@ -309,7 +399,7 @@ function PortalApp() {
             </div>
 
             {/* Product Grid */}
-            <div className={cn('grid grid-cols-2 gap-4 mt-2', !sessionActive && 'opacity-50')}>
+            <div className="grid grid-cols-2 gap-4 mt-2">
               {visibleProducts.map((p) => (
                 <button
                   key={p.id}
@@ -327,6 +417,7 @@ function PortalApp() {
           </>
         )}
       </div>
+      )}
 
       {/* Error toast */}
       {errorMsg && mounted && createPortal(

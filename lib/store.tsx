@@ -118,6 +118,7 @@ function mapSession(r: any): Session {
     bank: (r.bank ?? null) as Session['bank'],
     is_open: r.is_open ?? false,
     created_by_user: r.created_by_user ?? null,
+    portal_code: r.portal_code ?? null,
     extensions: (r.session_extensions ?? []).map(mapExtension),
   }
 }

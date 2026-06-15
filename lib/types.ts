@@ -72,6 +72,7 @@ export interface Session {
   bank?: Bank | null
   is_open: boolean
   created_by_user?: string | null // auth user (operator) who created the session
+  portal_code?: string | null // per-session In-Seat access code (PIN + QR), rotates each session
   extensions: SessionExtension[]
 }
 
