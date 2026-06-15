@@ -92,7 +92,7 @@ function PortalApp() {
   // keep the session timer honest (operator may extend/end it)
   useEffect(() => {
     if (!venueId || !consoleId) return
-    const iv = setInterval(loadSession, 45_000)
+    const iv = setInterval(loadSession, 20_000)
     return () => clearInterval(iv)
   }, [venueId, consoleId, loadSession])
 
@@ -102,6 +102,7 @@ function PortalApp() {
   }
 
   const addToCart = (p: Product) => {
+    if (!sessionActive) { flashError(orderErrorText('no_active_session')); return }
     setCart((prev) => {
       const existing = prev.find((i) => i.id === p.id)
       if (existing) return prev.map((i) => (i.id === p.id ? { ...i, qty: i.qty + 1 } : i))
@@ -117,6 +118,7 @@ function PortalApp() {
       case 'too_many_pending': return 'ბევრი შეკვეთა გაქვთ მოლოდინში. დაელოდეთ ოპერატორს.'
       case 'venue_unavailable': return 'კლუბი ამჟამად მიუწვდომელია.'
       case 'product_unavailable': return 'ზოგი პროდუქტი აღარ არის ხელმისაწვდომი. განაახლეთ გვერდი.'
+      case 'no_active_session': return 'სესია არ არის აქტიური. შეკვეთა და მოთხოვნა ხელმისაწვდომია მხოლოდ თამაშის დროს — მიმართეთ ოპერატორს.'
       case 'console_mismatch':
       case 'venue_not_found': return 'არასწორი QR კოდი.'
       default: return 'შეცდომა. სცადეთ თავიდან.'
@@ -125,6 +127,7 @@ function PortalApp() {
 
   const handleOrder = async () => {
     if (cart.length === 0 || !venueId || !consoleId) return
+    if (!sessionActive) { flashError(orderErrorText('no_active_session')); return }
     setBusy(true)
     const { data, error } = await rpc('portal_place_order', {
       p_venue_id: venueId,
@@ -143,6 +146,7 @@ function PortalApp() {
 
   const handleServiceRequest = async (kind: 'battery' | 'call') => {
     if (!venueId || !consoleId) return
+    if (!sessionActive) { flashError(orderErrorText('no_active_session')); return }
     setBusy(true)
     const { data, error } = await rpc('portal_request_service', {
       p_venue_id: venueId,
@@ -234,17 +238,18 @@ function PortalApp() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              თამაშის დასაწყებად მიმართეთ ოპერატორს ან გამოიძახეთ ღილაკით ქვემოთ.
+              შეკვეთა, ჯოისტიკის გამოცვლა და სტაფის გამოძახება ხელმისაწვდომია მხოლოდ აქტიური სესიის დროს.
+              თამაშის დასაწყებად მიმართეთ ოპერატორს.
             </p>
           )}
         </div>
 
-        {/* Quick Service Actions */}
+        {/* Quick Service Actions — only while a session is live */}
         <div className="grid grid-cols-2 gap-3 mt-3">
           <button
             onClick={() => handleServiceRequest('battery')}
-            disabled={busy}
-            className="nm-raised flex flex-col items-center justify-center p-3 rounded-2xl active:scale-95 transition-transform disabled:opacity-50"
+            disabled={busy || !sessionActive}
+            className="nm-raised flex flex-col items-center justify-center p-3 rounded-2xl active:scale-95 transition-transform disabled:opacity-40 disabled:active:scale-100"
           >
             <BatteryWarning className="size-5 text-red-500 mb-1.5" />
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-tight text-center">
@@ -253,8 +258,8 @@ function PortalApp() {
           </button>
           <button
             onClick={() => handleServiceRequest('call')}
-            disabled={busy}
-            className="nm-raised flex flex-col items-center justify-center p-3 rounded-2xl active:scale-95 transition-transform disabled:opacity-50"
+            disabled={busy || !sessionActive}
+            className="nm-raised flex flex-col items-center justify-center p-3 rounded-2xl active:scale-95 transition-transform disabled:opacity-40 disabled:active:scale-100"
           >
             <Bell className="size-5 text-[var(--status-free)] mb-1.5" />
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-tight text-center">
@@ -268,6 +273,11 @@ function PortalApp() {
       <div className="flex-1 px-4 mt-2">
         <h2 className="text-sm font-black mb-4 flex items-center gap-2 text-muted-foreground uppercase tracking-widest">
           <Coffee className="size-4" /> ბარის მენიუ
+          {!loading && !sessionActive && (
+            <span className="ml-auto normal-case tracking-normal text-[10px] font-bold text-amber-400/80">
+              სესია არ არის აქტიური
+            </span>
+          )}
         </h2>
 
         {loading ? (
@@ -299,7 +309,7 @@ function PortalApp() {
             </div>
 
             {/* Product Grid */}
-            <div className="grid grid-cols-2 gap-4 mt-2">
+            <div className={cn('grid grid-cols-2 gap-4 mt-2', !sessionActive && 'opacity-50')}>
               {visibleProducts.map((p) => (
                 <button
                   key={p.id}
