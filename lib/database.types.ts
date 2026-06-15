@@ -918,6 +918,72 @@ export type Database = {
           },
         ]
       }
+      hardware_credentials: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          provider: string
+          secret_ref: string | null
+          server: string | null
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          provider: string
+          secret_ref?: string | null
+          server?: string | null
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          provider?: string
+          secret_ref?: string | null
+          server?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hardware_credentials_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hardware_credentials_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hardware_credentials_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "hardware_credentials_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hardware_credentials_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           description: string
@@ -3211,6 +3277,10 @@ export type Database = {
       delete_console: { Args: { p_console_id: number }; Returns: undefined }
       delete_customer: { Args: { p_customer_id: string }; Returns: undefined }
       delete_expense: { Args: { p_expense_id: string }; Returns: undefined }
+      delete_hardware_credentials: {
+        Args: { p_provider: string; p_venue_id: string }
+        Returns: Json
+      }
       delete_payment_credentials: {
         Args: { p_org_id: string; p_provider: string }
         Returns: Json
@@ -3241,6 +3311,11 @@ export type Database = {
           triggered_by: string
         }[]
       }
+      get_hardware_secret: {
+        Args: { p_provider: string; p_venue_id: string }
+        Returns: Json
+      }
+      get_hardware_settings: { Args: { p_venue_id: string }; Returns: Json }
       get_open_drawer: { Args: { p_venue_id: string }; Returns: Json }
       get_payment_settings: { Args: { p_org_id: string }; Returns: Json }
       get_vat_summary: {
@@ -3412,6 +3487,15 @@ export type Database = {
         Returns: Json
       }
       revoke_invite: { Args: { p_invite_id: string }; Returns: undefined }
+      save_hardware_credentials: {
+        Args: {
+          p_auth_key: string
+          p_provider: string
+          p_server: string
+          p_venue_id: string
+        }
+        Returns: Json
+      }
       save_payment_credentials: {
         Args: {
           p_merchant_id: string
