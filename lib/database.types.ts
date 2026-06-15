@@ -3422,6 +3422,15 @@ export type Database = {
         Returns: Json
       }
       seed_tournament: { Args: { p_tournament: string }; Returns: undefined }
+      set_console_power: {
+        Args: {
+          p_action: string
+          p_console_id: number
+          p_session_id?: string
+          p_triggered_by?: string
+        }
+        Returns: Json
+      }
       set_employee_pin: {
         Args: { p_employee_id: number; p_pin: string }
         Returns: undefined
