@@ -1896,6 +1896,7 @@ export type Database = {
           notified_5: boolean
           org_id: string
           payment_method: string
+          portal_code: string | null
           price_per_hour: number
           price_total: number
           pricing_plan_id: number
@@ -1923,6 +1924,7 @@ export type Database = {
           notified_5?: boolean
           org_id: string
           payment_method?: string
+          portal_code?: string | null
           price_per_hour: number
           price_total: number
           pricing_plan_id: number
@@ -1950,6 +1952,7 @@ export type Database = {
           notified_5?: boolean
           org_id?: string
           payment_method?: string
+          portal_code?: string | null
           price_per_hour?: number
           price_total?: number
           pricing_plan_id?: number
@@ -3118,11 +3121,25 @@ export type Database = {
         Returns: Json
       }
       portal_place_order: {
-        Args: { p_console_id: number; p_items: Json; p_venue_id: string }
+        Args: {
+          p_code: string
+          p_console_id: number
+          p_items: Json
+          p_venue_id: string
+        }
         Returns: Json
       }
       portal_request_service: {
-        Args: { p_console_id: number; p_kind: string; p_venue_id: string }
+        Args: {
+          p_code: string
+          p_console_id: number
+          p_kind: string
+          p_venue_id: string
+        }
+        Returns: Json
+      }
+      portal_unlock: {
+        Args: { p_code: string; p_console_id: number; p_venue_id: string }
         Returns: Json
       }
       process_payroll: {
@@ -3213,6 +3230,7 @@ export type Database = {
           notified_5: boolean
           org_id: string
           payment_method: string
+          portal_code: string | null
           price_per_hour: number
           price_total: number
           pricing_plan_id: number
@@ -3257,6 +3275,7 @@ export type Database = {
           notified_5: boolean
           org_id: string
           payment_method: string
+          portal_code: string | null
           price_per_hour: number
           price_total: number
           pricing_plan_id: number
