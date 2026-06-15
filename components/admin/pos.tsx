@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ArrowLeftRight, Banknote, CreditCard, Landmark, Plus, Minus, X, Coffee, ShoppingCart, Printer, ScanLine } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { ArrowLeftRight, Banknote, CreditCard, Landmark, Plus, Minus, X, Coffee, ShoppingCart, Printer, ScanLine, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
@@ -54,6 +55,7 @@ export function Pos() {
   const [isVoiding, setIsVoiding] = useState(false)
   
   const [scannerOpen, setScannerOpen] = useState(false)
+  const [cartSheetOpen, setCartSheetOpen] = useState(false)
 
   const handleScan = (code: string) => {
     const match = products.find(x => x.barcode === code)
@@ -159,6 +161,7 @@ export function Pos() {
   }, [products, pushToast])
 
   const cartTotal = cart.reduce((sum, item) => sum + item.product.price * item.qty, 0)
+  const cartCount = cart.reduce((sum, item) => sum + item.qty, 0)
 
   const addToCart = (product: BarProduct) => {
     setCart(prev => {
@@ -223,6 +226,7 @@ export function Pos() {
         })
       }
       setCart([])
+      setCartSheetOpen(false)
       setMethod('cash')
       setAttachedSessionId('')
       setTip(0)
@@ -230,8 +234,192 @@ export function Pos() {
     }
   }
 
+  const cartPanel = (
+    <div className="nm-raised flex h-fit flex-col rounded-[2rem] p-5">
+      <div className="mb-6 flex items-center gap-3">
+        <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
+          <ShoppingCart className="size-5 text-primary" />
+        </div>
+        <h2 className="text-xl font-extrabold tracking-tight">კალათა</h2>
+      </div>
+
+      <div className="mb-6 min-h-[120px] flex-1 space-y-3">
+        {cart.length === 0 ? (
+          <div className="flex h-[120px] items-center justify-center text-sm text-muted-foreground">
+            კალათა ცარიელია
+          </div>
+        ) : (
+          cart.map((item) => (
+            <div key={item.product.id} className="nm-inset group flex items-center justify-between rounded-2xl p-3 transition-colors hover:bg-white/[0.02]">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="nm-raised size-10 shrink-0 rounded-lg p-1.5 flex items-center justify-center overflow-hidden">
+                  {item.product.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={item.product.image_url} alt="" className="w-full h-full object-contain drop-shadow-sm" />
+                  ) : (
+                    <Coffee className="size-5 text-muted-foreground/30" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-bold text-sm text-foreground/90">{item.product.name}</p>
+                  <p className="mt-0.5 text-xs font-black text-primary">{gel(item.product.price)}</p>
+                </div>
+              </div>
+              <div className="ml-3 flex shrink-0 items-center gap-2">
+                <button
+                  onClick={() => updateQty(item.product.id, -1)}
+                  className="nm-btn flex size-8 items-center justify-center rounded-xl transition-transform hover:scale-105 active:scale-95"
+                >
+                  <Minus className="size-3" />
+                </button>
+                <span className="min-w-[24px] text-center text-sm font-bold tabular-nums">
+                  {item.qty}
+                </span>
+                <button
+                  onClick={() => updateQty(item.product.id, 1)}
+                  className="nm-btn flex size-8 items-center justify-center rounded-xl transition-transform hover:scale-105 active:scale-95"
+                >
+                  <Plus className="size-3" />
+                </button>
+                <button
+                  onClick={() => updateQty(item.product.id, -item.qty)}
+                  className="ml-1 flex size-8 items-center justify-center rounded-xl text-muted-foreground/50 hover:text-[var(--status-expired)] hover:bg-white/[0.05] transition-colors"
+                  title="ამოშლა"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Payment Method Selector & Unified Tabs */}
+      <div className="mb-6 space-y-4">
+        {activeConsoles.length > 0 && (
+          <div>
+            <p className="mb-2 text-sm font-semibold text-muted-foreground">
+              მიბმა ოთახზე / სესიაზე (Optional)
+            </p>
+            <select
+              value={attachedSessionId}
+              onChange={e => setAttachedSessionId(e.target.value)}
+              className="nm-inset w-full rounded-2xl px-4 py-3 text-sm font-bold outline-none appearance-none bg-transparent"
+            >
+              <option value="" className="bg-background">-- არცერთზე (პირდაპირი გადახდა) --</option>
+              {activeConsoles.map(c => (
+                <option key={c.active_session!.id} value={c.active_session!.id} className="bg-background">
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {!attachedSessionId && (
+          <div>
+            <p className="mb-3 text-sm font-semibold text-muted-foreground">
+              გადახდის მეთოდი
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {(['cash', 'card', 'transfer'] as PaymentMethod[]).map((m) => {
+                const Icon = METHOD_ICON[m]
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMethod(m)}
+                    className={cn(
+                      'flex flex-col items-center gap-1.5 rounded-xl py-3 text-xs font-bold',
+                      m === method ? 'nm-daylight text-primary' : 'nm-btn',
+                    )}
+                  >
+                    <Icon className="size-4" />
+                    {paymentMethodLabel[m]}
+                  </button>
+                )
+              })}
+            </div>
+            {method !== 'cash' ? (
+              <div className="mt-3">
+                <p className="mb-2 text-xs font-semibold text-muted-foreground">ბანკი</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {BANKS.map((b) => (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => setBank(b)}
+                      className={cn(
+                        'flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-bold',
+                        b === bank ? 'nm-daylight text-primary' : 'nm-btn',
+                      )}
+                    >
+                      <Landmark className="size-4" />
+                      {b}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
+
+      <label className="mb-4 block">
+        <span className="text-sm font-semibold text-muted-foreground">ჩაიანი (₾)</span>
+        <input
+          type="number"
+          min={0}
+          step={0.5}
+          value={tip || ''}
+          onChange={(e) => setTip(Number(e.target.value))}
+          className="nm-inset mt-1.5 w-full rounded-2xl px-4 py-2.5 text-sm font-bold outline-none text-primary"
+        />
+      </label>
+
+      {/* Total & Checkout */}
+      <div className="nm-inset mb-4 flex flex-col gap-1 rounded-2xl px-4 py-3">
+        {tip > 0 && (
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">ჩაიანი:</span>
+            <span className="font-mono text-sm font-bold text-amber-400">{gel(tip)}</span>
+          </div>
+        )}
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-bold text-muted-foreground">ჯამი</span>
+          <span className="font-mono text-2xl font-extrabold text-primary tabular-nums">
+            {gel(cartTotal + tip)}
+          </span>
+        </div>
+      </div>
+
+      <button
+        onClick={handleCheckout}
+        disabled={cart.length === 0 || loading}
+        className={cn(
+          "nm-btn flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-extrabold text-primary",
+          (cart.length === 0 || loading) && "opacity-50"
+        )}
+      >
+        <ShoppingCart className="size-4" />
+        გადახდა {loading && "..."}
+      </button>
+      <button
+        onClick={() => printKitchenTicket(cart.map(i => ({ name: i.product.name, qty: i.qty })), attachedSessionId ? 'ოთახი (სესია)' : 'ბარი')}
+        disabled={cart.length === 0}
+        className={cn(
+          "nm-btn mt-3 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-muted-foreground",
+          cart.length === 0 && "opacity-40"
+        )}
+      >
+        <Printer className="size-4" />
+        ბარის ჩეკი (Kitchen)
+      </button>
+    </div>
+  )
+
   return (
-    <div className="flex w-full flex-col gap-6 lg:flex-row">
+    <div className={cn('flex w-full flex-col gap-6 lg:flex-row', cart.length > 0 && 'pb-24 lg:pb-0')}>
       <div className="flex flex-1 flex-col gap-6">
         {/* Categories & Search */}
         <div className="flex flex-col gap-4">
@@ -360,8 +548,8 @@ export function Pos() {
         </div>
       </div>
 
-      {/* Cart (Sidebar) */}
-      <div className="flex w-full flex-col gap-6 lg:w-[360px] xl:w-[420px]">
+      {/* Cart — desktop sidebar (mobile uses the sticky bar + sheet below) */}
+      <div className="hidden w-full flex-col gap-6 lg:flex lg:w-[360px] xl:w-[420px]">
         <div className="nm-raised flex h-fit flex-col rounded-[2rem] p-5">
           <div className="mb-6 flex items-center gap-3">
             <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
@@ -546,6 +734,44 @@ export function Pos() {
           </button>
         </div>
       </div>
+
+      {/* Cart — mobile sticky bar (collapsed) → expands into a bottom sheet */}
+      {cart.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setCartSheetOpen(true)}
+          className="nm-raised fixed inset-x-3 bottom-3 z-40 flex items-center justify-between gap-3 rounded-2xl px-5 py-3.5 lg:hidden"
+        >
+          <span className="relative flex items-center gap-3">
+            <ShoppingCart className="size-5 text-primary" />
+            <span className="absolute -left-1.5 -top-2 flex min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-black text-[var(--primary-foreground)]">
+              {cartCount}
+            </span>
+            <span className="font-mono text-lg font-extrabold text-primary tabular-nums">{gel(cartTotal + tip)}</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-sm font-extrabold text-primary">
+            გაყიდვა <ChevronUp className="size-4" />
+          </span>
+        </button>
+      )}
+
+      {cartSheetOpen && createPortal(
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end lg:hidden">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in" onClick={() => setCartSheetOpen(false)} />
+          <div className="relative max-h-[92dvh] overflow-y-auto rounded-t-[2rem] bg-background p-3 pb-8 shadow-[0_-20px_50px_rgba(0,0,0,0.6)] animate-in slide-in-from-bottom-full duration-300">
+            <button
+              onClick={() => setCartSheetOpen(false)}
+              className="nm-btn absolute right-4 top-4 z-10 flex size-9 items-center justify-center rounded-xl text-muted-foreground"
+              aria-label="დახურვა"
+            >
+              <X className="size-4" />
+            </button>
+            <div className="mx-auto mb-2 h-1.5 w-12 rounded-full bg-muted-foreground/30" />
+            {cartPanel}
+          </div>
+        </div>,
+        document.body,
+      )}
 
       <Modal open={voidModalOpen} onClose={() => setVoidModalOpen(false)} title="გაყიდვის გაუქმება">
         <div className="space-y-4">
