@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Plug, Power, Settings2, Zap, AlertTriangle } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Plug, Power, Settings2, Zap, AlertTriangle, Cloud } from 'lucide-react'
 import { Modal } from './modal'
 import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
@@ -47,6 +47,65 @@ function StatusDot({ unit }: { unit: ConsoleUnit }) {
   )
 }
 
+// Venue-level Shelly Cloud account (server + auth_key). The key is write-only:
+// saved to Vault, never read back to the client (see migration 0065).
+function ShellyAccountCard() {
+  const { pushToast } = usePlayroom()
+  const { currentVenueId } = useOrg()
+  const [server, setServer] = useState('')
+  const [authKey, setAuthKey] = useState('')
+  const [configured, setConfigured] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!currentVenueId) return
+    const { data } = await (supabase.rpc as any)('get_hardware_settings', { p_venue_id: currentVenueId })
+    const sh = (data?.providers ?? []).find((p: any) => p.provider === 'shelly')
+    setConfigured(!!sh?.configured)
+    if (sh?.server) setServer(sh.server)
+  }, [currentVenueId])
+  useEffect(() => { load() }, [load])
+
+  const save = async () => {
+    if (!currentVenueId) return
+    setSaving(true)
+    const { error } = await (supabase.rpc as any)('save_hardware_credentials', {
+      p_venue_id: currentVenueId, p_provider: 'shelly', p_server: server, p_auth_key: authKey || null,
+    })
+    setSaving(false)
+    if (error) return pushToast('danger', planErrorText(error.message))
+    setAuthKey('')
+    pushToast('success', 'Shelly account შენახულია')
+    load()
+  }
+
+  return (
+    <div className="nm-inset mb-4 rounded-2xl p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <Cloud className="size-4 text-primary" />
+        <p className="text-sm font-extrabold">Shelly Cloud account</p>
+        {configured && (
+          <span className="ml-auto text-[10px] font-bold uppercase tracking-widest text-[var(--status-free)]">დაკავშირებულია ✅</span>
+        )}
+      </div>
+      <p className="mb-3 text-xs text-muted-foreground">
+        Cloud რეჟიმისთვის: Shelly აპში → Settings → <b>Authorization Cloud Key</b> (server + key). გასაღები ინახება დაშიფრულად.
+      </p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <input value={server} onChange={(e) => setServer(e.target.value)} placeholder="shelly-XX-eu.shelly.cloud"
+          className="nm-inset rounded-xl px-3 py-2.5 text-sm font-mono outline-none" />
+        <input value={authKey} onChange={(e) => setAuthKey(e.target.value)} type="password"
+          placeholder={configured ? '•••••• (შესაცვლელად შეიყვანე ახალი)' : 'auth_key'}
+          className="nm-inset rounded-xl px-3 py-2.5 text-sm font-mono outline-none" />
+      </div>
+      <button onClick={save} disabled={saving || !server}
+        className="nm-btn mt-3 rounded-xl px-5 py-2.5 text-xs font-bold text-primary disabled:opacity-50">
+        {saving ? 'ინახება...' : 'შენახვა'}
+      </button>
+    </div>
+  )
+}
+
 export function HardwareSettings() {
   const { consoles, forceConsolePower } = usePlayroom()
   const [editId, setEditId] = useState<number | null>(null)
@@ -65,6 +124,8 @@ export function HardwareSettings() {
           </p>
         </div>
       </div>
+
+      <ShellyAccountCard />
 
       {consoles.length === 0 ? (
         <p className="nm-inset rounded-2xl p-6 text-center text-sm text-muted-foreground">კონსოლები არ არის.</p>
@@ -228,11 +289,18 @@ function HardwareEditModal({ unit, onClose }: { unit: ConsoleUnit; onClose: () =
               </>
             )}
             {needsDevice && (
-              <label className="block col-span-2">
-                <span className="text-xs font-bold text-muted-foreground">Device ID</span>
-                <input value={deviceId} onChange={(e) => setDeviceId(e.target.value)} placeholder="vendor device id"
-                  className="nm-inset mt-1.5 w-full rounded-xl px-3 py-2.5 text-sm font-mono outline-none" />
-              </label>
+              <>
+                <label className="block">
+                  <span className="text-xs font-bold text-muted-foreground">Device ID</span>
+                  <input value={deviceId} onChange={(e) => setDeviceId(e.target.value)} placeholder="Shelly device id"
+                    className="nm-inset mt-1.5 w-full rounded-xl px-3 py-2.5 text-sm font-mono outline-none" />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-bold text-muted-foreground">Channel</span>
+                  <input value={channel} onChange={(e) => setChannel(e.target.value.replace(/\D/g, ''))} placeholder="0"
+                    className="nm-inset mt-1.5 w-full rounded-xl px-3 py-2.5 text-sm font-mono outline-none" />
+                </label>
+              </>
             )}
           </div>
         )}

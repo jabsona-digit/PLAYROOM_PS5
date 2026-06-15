@@ -422,12 +422,21 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
   }, [pushToast])
 
   // Best-effort hardware power — fire-and-forget, never blocks the session flow.
+  // set_console_power handles manual/agent; for cloud devices it returns
+  // mode:'cloud' and we invoke the hardware-control edge fn to hit the vendor API.
   const firePower = useCallback(
     (consoleId: number, action: 'on' | 'off', triggeredBy: string, sessionId?: string | null) => {
-      ;(supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ error: unknown }>)(
+      ;(supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: { mode?: string } | null }>)(
         'set_console_power',
         { p_console_id: consoleId, p_action: action, p_session_id: sessionId ?? null, p_triggered_by: triggeredBy },
       )
+        .then(({ data }) => {
+          if (data?.mode === 'cloud') {
+            return supabase.functions.invoke('hardware-control', {
+              body: { console_id: consoleId, action, session_id: sessionId ?? null, triggered_by: triggeredBy },
+            })
+          }
+        })
         .then(() => loadLive())
         .catch((e) => console.error('power', e))
     },
@@ -499,15 +508,23 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
 
   const forceConsolePower = useCallback(
     async (consoleId: number, on: boolean) => {
-      const { error } = await (
-        supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ error: { message: string } | null }>
+      const action = on ? 'force_on' : 'force_off'
+      const { data, error } = await (
+        supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: { mode?: string } | null; error: { message: string } | null }>
       )('set_console_power', {
-        p_console_id: consoleId,
-        p_action: on ? 'force_on' : 'force_off',
-        p_session_id: null,
-        p_triggered_by: 'admin_force',
+        p_console_id: consoleId, p_action: action, p_session_id: null, p_triggered_by: 'admin_force',
       })
       if (error) return pushToast('danger', planErrorText(error.message))
+      // cloud device → hit the vendor API and surface real failures to the operator
+      if (data?.mode === 'cloud') {
+        const { data: res, error: fErr } = await supabase.functions.invoke('hardware-control', {
+          body: { console_id: consoleId, action, triggered_by: 'admin_force' },
+        })
+        if (fErr || (res && (res as { ok?: boolean }).ok === false)) {
+          await loadLive()
+          return pushToast('danger', 'მოწყობილობამ ვერ უპასუხა: ' + (((res as { error?: string })?.error) ?? fErr?.message ?? ''))
+        }
+      }
       pushToast('success', on ? 'ჩაირთო ✅' : 'გამოირთო')
       await loadLive()
     },
