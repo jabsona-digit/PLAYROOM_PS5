@@ -31,7 +31,7 @@ export function QrPrintModal({
 
         <div className="print:block grid grid-cols-2 gap-6 overflow-y-auto max-h-[50vh] pb-4">
           {consoles.map((c) => {
-            const url = `https://martelounge.ge/p?v=${currentVenueId}&c=${c.id}`
+            const url = `https://app.martelounge.ge/p?v=${currentVenueId}&c=${c.id}`
             return (
               <div
                 key={c.id}
