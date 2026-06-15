@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
+import { useOrg } from '@/lib/org'
 import { useFiscal } from '@/lib/fiscal'
 import { statusMeta } from '@/lib/ui'
 import type { ConsoleUnit } from '@/lib/types'
@@ -211,6 +212,7 @@ function ConsoleRow({ unit }: { unit: ConsoleUnit }) {
 }
 
 function FiscalSettings() {
+  const { plan, isPlatformAdmin } = useOrg()
   const { fiscalSettings, saveFiscalSettings, savingFiscal } = useFiscal()
   const [tin, setTin] = useState(fiscalSettings.fiscal_tin ?? '')
   const [bizName, setBizName] = useState(fiscalSettings.fiscal_business_name ?? '')
@@ -237,6 +239,33 @@ function FiscalSettings() {
     })
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  // RS.GE fiscal is an ENTERPRISE feature (enforced for real by migration 0062's
+  // venues.fiscal_enabled trigger). Show a locked card on lower plans.
+  if (!isPlatformAdmin && plan !== 'enterprise') {
+    return (
+      <section className="nm-raised rounded-3xl p-6 lg:col-span-2">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
+            <FileText className="size-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-lg font-extrabold tracking-tight">ფისკალური ჩეკი</h2>
+            <p className="text-xs text-muted-foreground">RS.GE — PDF/ამობეჭდვა (Phase B).</p>
+          </div>
+        </div>
+        <div
+          className="rounded-2xl p-4 text-sm"
+          style={{ background: 'color-mix(in oklch, var(--primary) 10%, transparent)' }}
+        >
+          <p className="mb-1 font-bold">🔒 ENTERPRISE ფუნქცია</p>
+          <p className="text-muted-foreground">
+            RS.GE ფისკალი ხელმისაწვდომია მხოლოდ ENTERPRISE გეგმაზე. გასააქტიურებლად გადადი „გამოწერა"-ში.
+          </p>
+        </div>
+      </section>
+    )
   }
 
   return (

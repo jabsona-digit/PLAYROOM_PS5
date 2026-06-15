@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { supabase } from './supabase/client'
 import { useOrg } from './org'
-import { setCurrencySymbol } from './ui'
+import { setCurrencySymbol, planErrorText } from './ui'
 import { playExpired, playWarning } from './notify'
 import type {
   AppSettings,
@@ -361,7 +361,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
         name: name?.trim() || `PS5 - ${nextSlot}`,
         status: 'free',
       })
-      if (error) return pushToast('danger', error.message)
+      if (error) return pushToast('danger', planErrorText(error.message))
       await loadLive()
     },
     [pushToast, loadLive],

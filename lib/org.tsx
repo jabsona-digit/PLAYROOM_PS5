@@ -43,6 +43,7 @@ interface OrgState {
   activeEmployee: ActiveEmployee | null
   activeRole: OrgRole | null // role of the PIN-authenticated employee (or currentRole if no employees)
   hasEmployees: boolean
+  plan: string // org subscription tier: 'trial' | 'pro' | 'enterprise'
   impersonating: boolean // platform admin viewing an org they're not a member of
   setCurrentOrg: (orgId: string) => void
   setCurrentVenue: (venueId: string) => void
@@ -51,6 +52,18 @@ interface OrgState {
   lockTerminal: () => void
   stopImpersonating: () => void
   refresh: () => Promise<void>
+}
+
+// Subscription-tier ranking + per-module minimum plan (mirrors billing.tsx and
+// the migration 0062 triggers). Modules not listed are available on every plan.
+export const PLAN_RANK: Record<string, number> = { trial: 0, pro: 1, enterprise: 2 }
+const FEATURE_MIN_PLAN: Partial<Record<ModuleKey, 'pro' | 'enterprise'>> = {
+  pos: 'pro', inventory: 'pro', customers: 'pro', accounting: 'pro', analytics: 'pro',
+}
+export function planAllowsModule(plan: string, key: ModuleKey): boolean {
+  const min = FEATURE_MIN_PLAN[key]
+  if (!min) return true
+  return (PLAN_RANK[plan] ?? 0) >= PLAN_RANK[min]
 }
 
 const MODULE_ROLES: Record<ModuleKey, OrgRole[]> = {
@@ -74,6 +87,16 @@ const MODULE_ROLES: Record<ModuleKey, OrgRole[]> = {
 }
 
 export function useModuleAccess(key: ModuleKey): boolean {
+  const { activeRole, isPlatformAdmin, plan } = useOrg()
+  if (isPlatformAdmin) return true
+  if (!activeRole) return false
+  if (!(MODULE_ROLES[key]?.includes(activeRole) ?? false)) return false
+  return planAllowsModule(plan, key)
+}
+
+// Role-only access (ignores plan). Lets the shell tell apart a ROLE block (jump
+// to another module) from a PLAN block (stay and show an upgrade notice).
+export function useModuleRoleAccess(key: ModuleKey): boolean {
   const { activeRole, isPlatformAdmin } = useOrg()
   if (isPlatformAdmin) return true
   if (!activeRole) return false
@@ -208,6 +231,10 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     () => memberRoles.find((m) => m.org_id === currentOrgId)?.role ?? null,
     [memberRoles, currentOrgId],
   )
+  const plan = useMemo(
+    () => orgs.find((o) => o.id === currentOrgId)?.plan ?? 'trial',
+    [orgs, currentOrgId],
+  )
   
   // Resolve the effective role driving module access:
   //  • a PIN-authenticated employee → that employee's role;
@@ -307,6 +334,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       activeEmployee,
       activeRole,
       hasEmployees,
+      plan,
       impersonating,
       setCurrentOrg: setOrgId,
       setCurrentVenue: setVenueId,
@@ -329,6 +357,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       activeEmployee,
       activeRole,
       hasEmployees,
+      plan,
       impersonating,
       signInWithPin,
       enterAsOwner,

@@ -52,6 +52,20 @@ export function gel(n: number) {
   return `${_currency}${n.toFixed(2)}`
 }
 
+// Translate the plan-enforcement errors raised by migration 0062 triggers into
+// friendly Georgian. Returns the original message for anything unrelated.
+export function planErrorText(msg: string): string {
+  if (!msg) return 'შეცდომა. სცადეთ თავიდან.'
+  if (msg.includes('plan_upgrade_required:enterprise')) return 'ეს ფუნქცია ENTERPRISE გეგმაშია — გადადი „გამოწერა"-ში.'
+  if (msg.includes('plan_upgrade_required')) return 'ეს ფუნქცია PRO გეგმიდან ხელმისაწვდომია — გადადი „გამოწერა"-ში.'
+  const lim = msg.match(/plan_limit_reached:(\w+):(\d+)/)
+  if (lim) {
+    const kind: Record<string, string> = { venues: 'ფილიალების', consoles: 'კონსოლების', employees: 'თანამშრომლების' }
+    return `მიღწეულია ${kind[lim[1]] ?? ''} ლიმიტი (${lim[2]}) თქვენი გეგმისთვის — გადადი უფრო მაღალ გეგმაზე.`
+  }
+  return msg
+}
+
 /** Local-time epoch for the start of today / this week (Mon) / this month. */
 export function startOfToday() {
   const d = new Date()

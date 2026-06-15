@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
 import { useOrg, useModuleAccess } from '@/lib/org'
 import { supabase } from '@/lib/supabase/client'
-import { dateLabel, timeOfDay, gel } from '@/lib/ui'
+import { dateLabel, timeOfDay, gel, planErrorText } from '@/lib/ui'
 import { ROLE_LABELS, type OrgRole, type Employee } from '@/lib/types'
 
 function PinPad() {
@@ -205,7 +205,7 @@ function EmployeeModal({
       onRefresh()
       onClose()
     } catch (err: any) {
-      pushToast('danger', err.message)
+      pushToast('danger', planErrorText(err.message))
     } finally {
       setLoading(false)
     }

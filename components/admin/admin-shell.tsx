@@ -5,7 +5,7 @@ import { Eye, LoaderCircle, Lock, Clock } from 'lucide-react'
 import type { Session as AuthSession } from '@supabase/supabase-js'
 import type { ModuleKey } from '@/lib/types'
 import { PlayroomProvider, usePlayroom } from '@/lib/store'
-import { OrgProvider, useOrg, useModuleAccess, firstAllowedModule } from '@/lib/org'
+import { OrgProvider, useOrg, useModuleAccess, useModuleRoleAccess, firstAllowedModule } from '@/lib/org'
 import { supabase } from '@/lib/supabase/client'
 import { Sidebar } from './sidebar'
 import { Topbar } from './topbar'
@@ -170,20 +170,46 @@ function ShiftBadge() {
   )
 }
 
+function PlanUpgradeNotice({ plan, onUpgrade }: { plan: string; onUpgrade: () => void }) {
+  const next = plan === 'trial' ? 'PRO' : 'ENTERPRISE'
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+      <div className="nm-inset flex size-16 items-center justify-center rounded-3xl">
+        <Lock className="size-7 text-primary" />
+      </div>
+      <div className="space-y-1">
+        <h2 className="text-xl font-black">ეს მოდული შენს გეგმაში არ შედის</h2>
+        <p className="mx-auto max-w-sm text-sm text-muted-foreground">
+          გასახსნელად გადადი <b>{next}</b> გეგმაზე.
+        </p>
+      </div>
+      <button
+        onClick={onUpgrade}
+        className="nm-daylight rounded-2xl px-6 py-3 text-sm font-bold text-primary transition-transform active:scale-95"
+      >
+        გეგმის ნახვა / გაუმჯობესება
+      </button>
+    </div>
+  )
+}
+
 function Workspace({ email }: { email?: string }) {
-  const { activeEmployee, hasEmployees, activeRole, isPlatformAdmin, impersonating, currentRole, currentVenueId } = useOrg()
+  const { activeEmployee, hasEmployees, activeRole, isPlatformAdmin, impersonating, currentRole, currentVenueId, plan } = useOrg()
   const [active, setActive] = useState<ModuleKey>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  // If the active module isn't allowed for this role, jump to the first one that is
-  // (e.g. an accountant has no dashboard → lands on accounting).
-  const canAccess = useModuleAccess(active)
+  // Two-axis gating: ROLE decides which modules exist for you; PLAN decides which
+  // of those your subscription unlocks. A role block jumps you to another module;
+  // a plan block keeps you here and shows an upgrade notice (see render below).
+  const canAccess = useModuleAccess(active)        // role AND plan
+  const roleAccess = useModuleRoleAccess(active)   // role only
+  const planBlocked = roleAccess && !canAccess     // role ok, plan too low
   useEffect(() => {
-    if (!canAccess && activeRole && !isPlatformAdmin) {
+    if (!roleAccess && activeRole && !isPlatformAdmin) {
       const fallback = firstAllowedModule(activeRole)
       if (fallback !== active) setActive(fallback)
     }
-  }, [canAccess, activeRole, active, isPlatformAdmin])
+  }, [roleAccess, activeRole, active, isPlatformAdmin])
 
   const logout = async () => {
     // Close the operator/cashier's own shift before signing out.
@@ -237,6 +263,8 @@ function Workspace({ email }: { email?: string }) {
               onBellClick={() => handleSelect('online_bookings')}
             />
             <div className="mt-8 animate-in slide-in-from-bottom-4 duration-500">
+              {planBlocked && <PlanUpgradeNotice plan={plan} onUpgrade={() => setActive('billing')} />}
+              {!planBlocked && <>
               {active === 'dashboard' && <Dashboard />}
               {active === 'pos' && <Pos />}
               {active === 'cashier' && <Cashier />}
@@ -256,6 +284,7 @@ function Workspace({ email }: { email?: string }) {
               {active === 'platform' && (
                 <PlatformConsole onViewAs={() => setActive('dashboard')} />
               )}
+              </>}
             </div>
           </main>
         </div>
