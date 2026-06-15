@@ -40,15 +40,17 @@ This document is the single source of truth for anyone (human or AI) joining the
                                     └────────────────┘
 ```
 
-| | Admin panel | Marketplace |
-|---|---|---|
-| Repo | `playroom-admin-panel` (this) | `martelounge-web` (sibling on Desktop; GitHub `jabsona-digit/PLAYROOM_PS5-REPO`) |
-| Domain | `martelounge.ge` (+ www) | `play.martelounge.ge` |
-| Rendering | `output: 'export'` — pure **static** SPA | **SSR** (SEO) via `@opennextjs/cloudflare` |
-| Host | Cloudflare **Pages** (project `playroom-ps5`) | Cloudflare **Worker** |
-| Deploy | push `main` → GitHub `jabsona-digit/PLAYROOM_PS5` → Pages auto-build (`npm run build` → `out`) | `npm run deploy` (wrangler, from the machine) |
-| Supabase access | staff session, org-scoped RLS | anon + customer session, public views/RPCs |
-| Audience | venue owners & staff | end customers (players) |
+> **3-domain split (LIVE 2026-06-15):** the apex now serves a **marketing site**; the admin moved to **app.martelounge.ge**. Old `martelounge.ge/app` & `/p` links 302-redirect to the app subdomain (marketing site `public/_redirects`). See `memory/marketing-site-and-domains.md`.
+
+| | Marketing site | Admin app (this repo) | Marketplace |
+|---|---|---|---|
+| Repo | `martelounge-site` (GitHub `jabsona-digit/martelounge-site`; local `Desktop/martelounge-website-redesign`) | `playroom-admin-panel` (GitHub `PLAYROOM_PS5`) | `martelounge-web` (GitHub `PLAYROOM_PS5-REPO`) |
+| Domain | **`martelounge.ge`** (+ www) | **`app.martelounge.ge`** | `play.martelounge.ge` |
+| Rendering | Next 14 **static export** (refined v0 redesign) | `output:'export'` static SPA | **SSR** via `@opennextjs/cloudflare` |
+| Host | Cloudflare **Pages** (`martelounge-site`) | Cloudflare **Pages** (`playroom-ps5`) | Cloudflare **Worker** |
+| Deploy | push `main` → Pages auto-build (`npm run build` → `out`; needs `.npmrc` legacy-peer-deps, no pnpm-lock) | push `main` → Pages auto-build (`out`) | `npm run deploy` (wrangler) |
+| SEO | public (robots/sitemap/GSC) | **noindex** (private app) | public views |
+| Audience | venue owners (marketing) | venue owners & staff (the product) | end customers (players) |
 
 **Media:** product/venue images go to **Cloudflare R2** (NOT Supabase Storage). Upload via the admin's
 `functions/api/upload.js` Pages Function (verifies the Supabase JWT, writes to R2 binding `MEDIA`,
@@ -493,8 +495,12 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
 
 ## 13. Deploy & ops
 
+- **Marketing site:** push `main` → GitHub `jabsona-digit/martelounge-site` → Cloudflare Pages `martelounge-site`
+  auto-builds (`npm run build` → `out`) → **`martelounge.ge`** (+ www). Refined v0 redesign; `.npmrc` legacy-peer-deps,
+  no pnpm-lock (else CF picks pnpm + fails frozen-lockfile); `public/_redirects` sends `/app` & `/p` → app.martelounge.ge.
 - **Admin:** push `main` → GitHub `jabsona-digit/PLAYROOM_PS5` → Cloudflare Pages `playroom-ps5` auto-builds
-  (`npm run build` → `out`) → `martelounge.ge` (+ www). Nameservers on Cloudflare (deborah/lennon.ns.cloudflare.com).
+  (`npm run build` → `out`) → **`app.martelounge.ge`** (noindexed; was the apex before the 2026-06-15 cutover).
+  Nameservers on Cloudflare (deborah/lennon.ns.cloudflare.com).
 - **Marketplace:** from `martelounge-web/`: `npx wrangler login` once, then **`npm run deploy`**
   (`opennextjs-cloudflare build && deploy`) → Worker at `play.martelounge.ge` (custom_domain auto-provisions DNS+SSL).
   Windows gotcha: if `.open-next` is EPERM-locked, stop workerd/wrangler + `Remove-Item -Recurse -Force .open-next` first.
@@ -533,7 +539,7 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
   one-tap actions; the *intelligence* moat, works from venue #1. See `memory/killer-features-pending.md`.
 - 🧾 **RS.GE Fiscal Phase C** — local hardware bridge.
 - 🧑‍💼 **External accountant read-only** — RLS redesign so `accountant` is truly read-only (split SELECT vs write).
-- 🌐 Optional: move marketplace to the apex (`martelounge.ge`) and admin → `app.martelounge.ge`.
+- 🌐 ✅ DONE (2026-06-15): admin → `app.martelounge.ge`, apex `martelounge.ge` = new marketing site (separate repo).
 
 > ✅ **Shipped since the 0036 revision:** tournaments (0037), capacity + typed-resource booking (0038/0039),
 > God-Mode tenant billing (0040), accounting fixes + COGS (0041/0042/0056), grant hardening (0044/0045),
