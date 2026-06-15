@@ -25,6 +25,7 @@ import { Modal } from './modal'
 import { MarketplaceSettings } from './marketplace-settings'
 import { PaymentSettings } from './payment-settings'
 import { TeamSettings } from './team-settings'
+import { HardwareSettings } from './hardware-settings'
 import { QrPrintModal } from './qr-print-modal'
 
 // Bookable resource types — a coupe/VIP is a separate capacity pool (0039).
@@ -560,6 +561,8 @@ export function Settings() {
       <MarketplaceSettings />
 
       <PaymentSettings />
+
+      <HardwareSettings />
 
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="ახალი კონსოლი">
         <div className="space-y-5">

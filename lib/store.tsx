@@ -17,6 +17,7 @@ import type {
   AppSettings,
   Bank,
   ConsoleStatus,
+  ConsoleHardware,
   ConsoleUnit,
   Employee,
   PaymentMethod,
@@ -56,6 +57,7 @@ interface PlayroomState {
   addConsole: (name?: string) => void
   renameConsole: (id: number, name: string) => void
   removeConsole: (id: number) => void
+  forceConsolePower: (consoleId: number, on: boolean) => Promise<void>
   updateSettings: (patch: Partial<AppSettings>) => void
   resetSettings: () => void
   startSession: (params: {
@@ -120,6 +122,19 @@ function mapSession(r: any): Session {
     created_by_user: r.created_by_user ?? null,
     portal_code: r.portal_code ?? null,
     extensions: (r.session_extensions ?? []).map(mapExtension),
+  }
+}
+
+function mapHardware(r: any): ConsoleHardware {
+  return {
+    control_mode: (r.control_mode ?? 'manual') as ConsoleHardware['control_mode'],
+    driver: r.driver ?? 'none',
+    target: (r.target ?? 'tv') as ConsoleHardware['target'],
+    is_active: r.is_active ?? true,
+    desired_state: (r.desired_state ?? null) as ConsoleHardware['desired_state'],
+    last_known_state: (r.last_known_state ?? 'unknown') as ConsoleHardware['last_known_state'],
+    last_seen_at: r.last_seen_at ?? null,
+    config: (r.config ?? {}) as Record<string, unknown>,
   }
 }
 
@@ -228,17 +243,21 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
   const loadLive = useCallback(async () => {
     const venue = venueRef.current
     if (!venue) return
-    const [{ data: cons }, { data: active }] = await Promise.all([
+    const [{ data: cons }, { data: active }, { data: hw }] = await Promise.all([
       supabase.from('consoles').select('*').eq('venue_id', venue).order('slot_number'),
       supabase
         .from('sessions')
         .select('*, session_extensions(*)')
         .eq('venue_id', venue)
         .eq('status', 'active'),
+      // console_hardware isn't in generated types until the post-deploy regen
+      (supabase.from('console_hardware' as never).select('*').eq('venue_id', venue) as unknown as Promise<{ data: any[] | null }>),
     ])
     if (!cons) return
     const byConsole = new Map<number, Session>()
     for (const s of active ?? []) byConsole.set(s.console_id, mapSession(s))
+    const hwByConsole = new Map<number, ConsoleHardware>()
+    for (const h of (hw ?? []) as any[]) hwByConsole.set(h.console_id, mapHardware(h))
     setConsoles(
       cons.map((c) => ({
         id: c.id,
@@ -246,6 +265,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
         name: c.name,
         status: (byConsole.has(c.id) ? c.status : 'free') as ConsoleStatus,
         active_session: byConsole.get(c.id),
+        hardware: hwByConsole.get(c.id),
       })),
     )
   }, [])
@@ -401,6 +421,19 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
     pushToast('info', 'პარამეტრები განულდა')
   }, [pushToast])
 
+  // Best-effort hardware power — fire-and-forget, never blocks the session flow.
+  const firePower = useCallback(
+    (consoleId: number, action: 'on' | 'off', triggeredBy: string, sessionId?: string | null) => {
+      ;(supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ error: unknown }>)(
+        'set_console_power',
+        { p_console_id: consoleId, p_action: action, p_session_id: sessionId ?? null, p_triggered_by: triggeredBy },
+      )
+        .then(() => loadLive())
+        .catch((e) => console.error('power', e))
+    },
+    [loadLive],
+  )
+
   const startSession: PlayroomState['startSession'] = useCallback(
     async ({ console_id, pricing_plan_id, duration_min, customer_name, payment_method, bank }) => {
       const target = consolesRef.current.find((c) => c.id === console_id)
@@ -415,8 +448,9 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
       if (error) return pushToast('danger', error.message)
       pushToast('success', `${target?.name ?? 'კონსოლი'} — სესია დაიწყო`)
       await refetchLive()
+      firePower(console_id, 'on', 'session_start')
     },
-    [pushToast, refetchLive],
+    [pushToast, refetchLive, firePower],
   )
 
   const startOpenSession: PlayroomState['startOpenSession'] = useCallback(
@@ -432,8 +466,9 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
       if (error) return pushToast('danger', error.message)
       pushToast('success', `${target?.name ?? 'კონსოლი'} — მიმდინარე სესია დაიწყო`)
       await refetchLive()
+      firePower(console_id, 'on', 'session_start')
     },
-    [pushToast, refetchLive],
+    [pushToast, refetchLive, firePower],
   )
 
   const extendSession: PlayroomState['extendSession'] = useCallback(
@@ -456,9 +491,27 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
       if (!sid) return
       const { error } = await supabase.rpc('end_session', { p_session_id: sid, p_tip: tip })
       if (error) return pushToast('danger', error.message)
+      firePower(console_id, 'off', 'session_end', sid)
       await refetchLive()
     },
-    [pushToast, refetchLive],
+    [pushToast, refetchLive, firePower],
+  )
+
+  const forceConsolePower = useCallback(
+    async (consoleId: number, on: boolean) => {
+      const { error } = await (
+        supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ error: { message: string } | null }>
+      )('set_console_power', {
+        p_console_id: consoleId,
+        p_action: on ? 'force_on' : 'force_off',
+        p_session_id: null,
+        p_triggered_by: 'admin_force',
+      })
+      if (error) return pushToast('danger', planErrorText(error.message))
+      pushToast('success', on ? 'ჩაირთო ✅' : 'გამოირთო')
+      await loadLive()
+    },
+    [pushToast, loadLive],
   )
 
   const endRef = useRef(endSession)
@@ -636,6 +689,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
       addConsole,
       renameConsole,
       removeConsole,
+      forceConsolePower,
       updateSettings,
       resetSettings,
       startSession,
@@ -665,6 +719,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
       addConsole,
       renameConsole,
       removeConsole,
+      forceConsolePower,
       updateSettings,
       resetSettings,
       startSession,

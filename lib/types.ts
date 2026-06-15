@@ -76,12 +76,24 @@ export interface Session {
   extensions: SessionExtension[]
 }
 
+export interface ConsoleHardware {
+  control_mode: 'manual' | 'cloud' | 'agent'
+  driver: string
+  target: 'tv' | 'console' | 'hdmi' | 'network'
+  is_active: boolean
+  desired_state: 'on' | 'off' | null
+  last_known_state: 'on' | 'off' | 'unknown'
+  last_seen_at: string | null
+  config: Record<string, unknown>
+}
+
 export interface ConsoleUnit {
   id: number
   slot_number: number
   name: string
   status: ConsoleStatus
   active_session?: Session
+  hardware?: ConsoleHardware
 }
 
 export interface Employee {

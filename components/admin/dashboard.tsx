@@ -14,6 +14,7 @@ import {
   Gamepad2,
   Landmark,
   Play,
+  Plug,
   Plus,
   QrCode,
   Square,
@@ -156,6 +157,24 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
               <p className="text-xs text-muted-foreground">
                 სლოტი #{unit.slot_number}
               </p>
+              {unit.hardware && (
+                <p
+                  className="mt-0.5 flex items-center gap-1 text-[10px] font-bold text-muted-foreground"
+                  title={`Hardware: ${unit.hardware.last_known_state} · ${unit.hardware.driver}`}
+                >
+                  <Plug
+                    className="size-3"
+                    style={{
+                      color:
+                        unit.hardware.last_known_state === 'on' ? 'var(--status-free)' :
+                        unit.hardware.last_known_state === 'unknown' ? 'var(--status-warning5)' :
+                        'var(--muted-foreground)',
+                    }}
+                  />
+                  {unit.hardware.last_known_state === 'on' ? 'ჩართული' :
+                   unit.hardware.last_known_state === 'off' ? 'გამორთული' : '—'}
+                </p>
+              )}
             </div>
           </div>
           <span
