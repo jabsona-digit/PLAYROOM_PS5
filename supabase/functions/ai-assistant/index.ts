@@ -61,9 +61,113 @@ const toolDeclarations = [
   { name: 'start_session', description: 'ფიქსირებული სესია კონსოლზე — მითითებული ხანგრძლივობით (duration_min). გამოიყენე როცა მომხმარებელი ასახელებს დროს (მაგ "1 საათი"). წინასწარ მოიძიე console_id და plan_id.', parameters: { type: 'object', properties: { console_id: { type: 'integer' }, plan_id: { type: 'integer' }, duration_min: { type: 'integer' }, customer_name: { type: 'string' }, payment_method: { type: 'string', enum: ['cash', 'card', 'transfer'] }, bank: { type: 'string', enum: ['TBC', 'BOG'] } }, required: ['console_id', 'plan_id', 'duration_min', 'payment_method'] } },
   { name: 'start_open_session', description: 'მიმდინარე (ღია) სესია — დრო წინ ითვლება, თანხა დასრულებისას ითვლება ნათამაშებ დროზე (5 წთ-მდე დამრგვალებით). გამოიყენე როცა მომხმარებელი არ უთითებს კონკრეტულ ხანგრძლივობას ("ღია", "მიმდინარე", "რამდენსაც ითამაშებს"). ხანგრძლივობა არ სჭირდება. წინასწარ მოიძიე console_id და plan_id.', parameters: { type: 'object', properties: { console_id: { type: 'integer' }, plan_id: { type: 'integer' }, customer_name: { type: 'string' }, payment_method: { type: 'string', enum: ['cash', 'card', 'transfer'] }, bank: { type: 'string', enum: ['TBC', 'BOG'] } }, required: ['console_id', 'plan_id', 'payment_method'] } },
   { name: 'end_session', description: 'აქტიური სესიის დასრულება. session_id list_consoles-დან.', parameters: { type: 'object', properties: { session_id: { type: 'string' }, tip: { type: 'number' } }, required: ['session_id'] } },
-  { name: 'create_bar_sale', description: 'ბარის გაყიდვა. items:[{product_id,qty}]. product_id list_bar_products-დან.', parameters: { type: 'object', properties: { items: { type: 'array', items: { type: 'object', properties: { product_id: { type: 'integer' }, qty: { type: 'integer' } }, required: ['product_id', 'qty'] } }, payment_method: { type: 'string', enum: ['cash', 'card', 'transfer'] }, bank: { type: 'string', enum: ['TBC', 'BOG'] }, tip: { type: 'number' }, session_id: { type: 'string' } }, required: ['items', 'payment_method'] } },
-  { name: 'restock_product', description: 'არსებული პროდუქტის მარაგის შევსება — ემატება მიმდინარე მარაგს. მხოლოდ უკვე არსებულ პროდუქტზე მუშაობს, ახალს ვერ ქმნის. product_id მოიძიე list_bar_products-დან.', parameters: { type: 'object', properties: { product_id: { type: 'integer' }, add_qty: { type: 'integer' }, product_name: { type: 'string' } }, required: ['product_id', 'add_qty'] } },
+  { name: 'create_bar_sale', description: 'ბარის გაყიდვა. items:[{product_name|product_id, qty}]. product_name შეიძლება ქართულად/ნაწილობრივ — სერვერი მოძებნის; product_id არასავალდებულოა.', parameters: { type: 'object', properties: { items: { type: 'array', items: { type: 'object', properties: { product_id: { type: 'integer' }, product_name: { type: 'string' }, qty: { type: 'integer' } }, required: ['qty'] } }, payment_method: { type: 'string', enum: ['cash', 'card', 'transfer'] }, bank: { type: 'string', enum: ['TBC', 'BOG'] }, tip: { type: 'number' }, session_id: { type: 'string' } }, required: ['items', 'payment_method'] } },
+  { name: 'restock_product', description: 'არსებული პროდუქტის მარაგის შევსება — ემატება მიმდინარე მარაგს. მხოლოდ უკვე არსებულ პროდუქტზე მუშაობს, ახალს ვერ ქმნის. გადაეცი product_name (ქართულად/ტრანსლიტერაციით/ნაწილობრივ — სერვერი თვითონ მოძებნის, მაგ. "ქემელი ბლუ"→"CAMEL BLUE"); product_id არასავალდებულოა.', parameters: { type: 'object', properties: { product_id: { type: 'integer' }, add_qty: { type: 'integer' }, product_name: { type: 'string' } }, required: ['add_qty'] } },
 ]
+
+// ── Georgian→Latin transliteration + fuzzy product matching ──────────────
+// Lets the assistant resolve a product the way the user actually typed it
+// ("ქემელი ბლუ" → "CAMEL BLUE"), so the model never needs an exact id.
+const KA2LAT: Record<string, string> = {
+  ა:'a',ბ:'b',გ:'g',დ:'d',ე:'e',ვ:'v',ზ:'z',თ:'t',ი:'i',კ:'k',ლ:'l',მ:'m',
+  ნ:'n',ო:'o',პ:'p',ჟ:'zh',რ:'r',ს:'s',ტ:'t',უ:'u',ფ:'f',ქ:'k',ღ:'gh',ყ:'q',
+  შ:'sh',ჩ:'ch',ც:'c',ძ:'dz',წ:'c',ჭ:'ch',ხ:'kh',ჯ:'j',ჰ:'h',
+}
+type Prod = { id: number; name: string; price?: number; stock_quantity?: number }
+
+const translit = (s: string) => (s ?? '').split('').map((c) => KA2LAT[c] ?? c).join('')
+const normName = (s: string) =>
+  translit((s ?? '').toLowerCase())
+    .replace(/[^a-z0-9 ]+/g, ' ')
+    .replace(/c/g, 'k')        // bridge the c/k sound ("camel" ↔ "ქემელ"→"kemel")
+    .replace(/\s+/g, ' ')
+    .trim()
+
+function lev(a: string, b: string): number {
+  const m = a.length, n = b.length
+  if (!m) return n
+  if (!n) return m
+  let prev = Array.from({ length: n + 1 }, (_, j) => j)
+  for (let i = 1; i <= m; i++) {
+    const cur = [i]
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+    }
+    prev = cur
+  }
+  return prev[n]
+}
+function tokenSim(a: string, b: string): number {
+  if (a === b) return 1
+  if (a.length >= 3 && b.length >= 3 && (a.startsWith(b) || b.startsWith(a))) return 0.85
+  return 1 - lev(a, b) / Math.max(a.length, b.length)
+}
+function scoreName(query: string, name: string): number {
+  const nq = normName(query), nn = normName(name)
+  if (!nq || !nn) return 0
+  if (nq === nn) return 1
+  if (nn.includes(nq) || nq.includes(nn)) return 0.9
+  const qt = nq.split(' ').filter(Boolean), nt = nn.split(' ').filter(Boolean)
+  if (!qt.length || !nt.length) return 0
+  let sum = 0
+  for (const q of qt) {
+    let best = 0
+    for (const t of nt) best = Math.max(best, tokenSim(q, t))
+    sum += best
+  }
+  return sum / qt.length
+}
+// Resolve a product by exact id (if valid) else fuzzy name. Returns one
+// confident match, OR a short candidate list to disambiguate, OR neither.
+function resolveProduct(query: string | undefined, products: Prod[], id?: unknown): { product?: Prod; candidates?: Prod[] } {
+  const pid = typeof id === 'number' ? id : (id != null && id !== '' ? Number(id) : NaN)
+  if (Number.isFinite(pid)) {
+    const byId = products.find((p) => p.id === pid)
+    if (byId) return { product: byId }
+  }
+  if (!query || !query.trim()) return {}
+  const scored = products
+    .map((p) => ({ p, s: scoreName(query, p.name) }))
+    .filter((x) => x.s >= 0.5)
+    .sort((a, b) => b.s - a.s)
+  if (scored.length === 0) return {}
+  if (scored.length === 1 || scored[0].s - scored[1].s >= 0.18) return { product: scored[0].p }
+  return { candidates: scored.slice(0, 4).map((x) => x.p) }
+}
+async function loadActiveProducts(db: SupabaseClient): Promise<Prod[]> {
+  const { data } = await db.from('bar_products').select('id, name, price, stock_quantity').eq('is_active', true)
+  return (data ?? []) as Prod[]
+}
+// Resolve product refs inside a proposed write action (mutates args in place).
+// Returns a functionResponse-style object to feed back to the model when a
+// reference is ambiguous/unknown, or null when everything resolved cleanly.
+async function resolveActionProducts(db: SupabaseClient, action: { name: string; args: Record<string, unknown> }): Promise<unknown | null> {
+  const a = action.args
+  if (action.name === 'restock_product') {
+    const products = await loadActiveProducts(db)
+    const r = resolveProduct(a.product_name as string | undefined, products, a.product_id)
+    if (r.product) { a.product_id = r.product.id; a.product_name = r.product.name; return null }
+    if (r.candidates) return { needs_clarification: true, candidates: r.candidates.map((p) => p.name) }
+    return { error: 'product_not_found', available: products.map((p) => p.name) }
+  }
+  if (action.name === 'create_bar_sale') {
+    const items = (a.items as { product_id?: unknown; product_name?: string; qty?: unknown }[]) ?? []
+    if (!items.length) return null
+    const products = await loadActiveProducts(db)
+    const ambiguous: { query: string; candidates: string[] }[] = []
+    const notFound: string[] = []
+    for (const it of items) {
+      const r = resolveProduct(it.product_name, products, it.product_id)
+      if (r.product) { it.product_id = r.product.id; it.product_name = r.product.name }
+      else if (r.candidates) ambiguous.push({ query: it.product_name ?? '', candidates: r.candidates.map((p) => p.name) })
+      else notFound.push(it.product_name ?? String(it.product_id ?? '?'))
+    }
+    if (ambiguous.length) return { needs_clarification: true, ambiguous }
+    if (notFound.length) return { error: 'product_not_found', not_found: notFound, available: products.map((p) => p.name) }
+    return null
+  }
+  return null
+}
 
 async function runTool(
   db: SupabaseClient,
@@ -150,14 +254,33 @@ async function runTool(
     }
     case 'create_bar_sale': {
       if (!venueId) return { error: 'venue not found' }
-      const { data, error } = await db.rpc('create_bar_sale', { p_venue_id: venueId, p_payment_method: args.payment_method, p_items: args.items, p_bank: args.payment_method === 'cash' ? null : (args.bank ?? null), p_session_id: args.session_id ?? null, p_tip: args.tip ?? 0 })
+      // resolve any name-only items to ids (Georgian/translit/fuzzy)
+      let items = (args.items as { product_id?: unknown; product_name?: string; qty: number }[]) ?? []
+      if (items.some((it) => (!it.product_id || it.product_id === '') && it.product_name)) {
+        const products = await loadActiveProducts(db)
+        items = items.map((it) => {
+          if ((!it.product_id || it.product_id === '') && it.product_name) {
+            const r = resolveProduct(it.product_name, products)
+            if (r.product) return { product_id: r.product.id, qty: it.qty }
+          }
+          return it
+        })
+      }
+      const cleanItems = items.map((it) => ({ product_id: it.product_id, qty: it.qty }))
+      const { data, error } = await db.rpc('create_bar_sale', { p_venue_id: venueId, p_payment_method: args.payment_method, p_items: cleanItems, p_bank: args.payment_method === 'cash' ? null : (args.bank ?? null), p_session_id: args.session_id ?? null, p_tip: args.tip ?? 0 })
       if (error) throw error
       return { sale_id: data }
     }
     case 'restock_product': {
-      const id = args.product_id
+      let id = args.product_id
       const add = Number(args.add_qty)
-      if (!id || !Number.isFinite(add) || add <= 0) return { error: 'invalid args' }
+      if (!Number.isFinite(add) || add <= 0) return { error: 'invalid args' }
+      // resolve by name if the id is missing/unknown (Georgian/translit/fuzzy)
+      if ((!id || id === '') && args.product_name) {
+        const r = resolveProduct(args.product_name as string, await loadActiveProducts(db))
+        if (r.product) id = r.product.id
+      }
+      if (!id) return { error: 'product_not_found' }
       // only existing products — single() fails if not found, so we never create new ones
       const { data: prod, error: e1 } = await db.from('bar_products').select('id, name, stock_quantity').eq('id', id).single()
       if (e1 || !prod) return { error: 'product_not_found' }
@@ -237,12 +360,12 @@ User role: ${role}${isPlatformAdmin ? ' + PLATFORM ADMIN (full cross-tenant acce
 
 Rules:
 - For data questions, call the relevant read function FIRST, then answer with live data.
-- Before any action, resolve the needed ids via list functions. Never invent an id or data.
+- Before any action, resolve the needed ids via list functions. Never invent an id or data. (Exception: for BAR PRODUCTS you may pass product_name directly — the server fuzzy-matches it; Georgian, transliterated or partial all work.)
 - To START A SESSION: FIRST call list_consoles (resolve the console id by position/name, e.g. "first console" = lowest slot_number) AND list_plans (resolve the plan id by name or price, e.g. "1 hour 5 GEL" = the plan priced 5/hour). Plans and consoles almost always exist — NEVER tell the user that plans/consoles are "not defined" without first calling these functions. THEN choose the session type:
   • If the user names a duration (e.g. "1 საათი", "30 წუთი") → call start_session with console_id, plan_id, duration_min, payment_method.
   • If the user does NOT name a duration and wants pay-as-you-go (e.g. "ღია სესია", "მიმდინარე", "რამდენ ხანსაც ითამაშებს", "open") → call start_open_session with console_id, plan_id, payment_method (NO duration_min). The price is settled when the session ends.
   If payment method is unstated assume cash.
-- When the user says "add/restock [product] N" (დაამატე/შეავსე) it means restock_product (increase stock of an EXISTING product), NOT creating a new product. ALWAYS call list_bar_products first and pick the closest name match, including partial/transliterated matches (e.g. "კლასიკი"≈"კლასიკური"≈"CLASSIC"). If several products match, ask the user which one. Only if nothing matches at all, say the product does not exist and must be added manually in Inventory first.
+- When the user says "add/restock [product] N" (დაამატე/შეავსე) it means restock_product (increase stock of an EXISTING product), NOT creating a new product. Call restock_product with product_name exactly as the user said it (Georgian/transliterated/partial is fine — the server matches it, e.g. "ქემელი ბლუ"→"CAMEL BLUE") and add_qty. If the tool returns needs_clarification, show the candidates and ask which one; if it returns product_not_found, tell the user it must be added in Inventory first. The same product_name matching works for create_bar_sale items.
 - Be action-oriented: once you have enough info, call the function instead of asking more questions. Actions are auto-confirmed by the UI.`
 }
 
@@ -442,6 +565,17 @@ Use the real numbers from the data (RevPACH, occupancy %, gold hour). Keep it un
       }
       if (WRITE_TOOLS.has(fnCall.name)) {
         const action = { name: fnCall.name, args: fnCall.args ?? {} }
+        // Resolve product references by name (Georgian/translit/fuzzy) up front.
+        // If ambiguous or unknown, hand the result back to the model so it can
+        // ask the user — instead of confirming a wrong/non-existent product.
+        if (action.name === 'restock_product' || action.name === 'create_bar_sale') {
+          const fb = await resolveActionProducts(db, action)
+          if (fb) {
+            contents.push({ role: 'model', parts: [{ functionCall: fnCall }] })
+            contents.push({ role: 'user', parts: [{ functionResponse: { name: fnCall.name, response: { result: fb } } }] })
+            continue
+          }
+        }
         await enrichAction(db, action)
         return json({ type: 'confirm', action, messages: body.messages ?? [] })
       }
