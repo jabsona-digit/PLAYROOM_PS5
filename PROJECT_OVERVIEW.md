@@ -12,8 +12,8 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
-> _Last updated **2026-06-15** — through migration **0061**. Since the previous (0036) revision:
-> tournaments, capacity/typed-resource booking, God-Mode tenant billing, payroll/RBAC hardening,
+> _Last updated **2026-06-15** — through migration **0062**. Since the previous (0036) revision:
+> tournaments, capacity/typed-resource booking, God-Mode tenant billing, **plan entitlements (0062)**, payroll/RBAC hardening,
 > team email-invites, operator shifts & attribution, shared cash drawer, abandoned sessions, bar COGS,
 > **In-Seat Ordering portal** (live-session + per-session PIN/QR access gate, 0060–0061),
 > **AI receipt OCR + anti-fraud audit**, **per-tenant online payments (Phase 1)**,
@@ -327,6 +327,9 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 0060  IN-SEAT gate: portal_place_order / portal_request_service now REQUIRE a live session (else no_active_session)
 0061  IN-SEAT per-session code: sessions.portal_code (6-digit; BEFORE-INSERT trigger) + portal_unlock (rate-limited);
       both write RPCs take p_code (typed PIN or QR &k=) — kills the static-QR replay edge (bad_code if mismatch)
+0062  PLAN ENTITLEMENTS: org_plan/plan_rank/require_plan/plan_limit + BEFORE triggers — PRO gates bar_sales/
+      bar_products/bar_categories/customers/expenses; ENTERPRISE gates venues.fiscal_enabled; limits venues
+      (1/3/∞), consoles/venue (4/8/∞), PIN employees (3/∞). Platform admins bypass; existing rows grandfathered.
 ```
 
 > **Schema-compat invariants:** no enum types (all `text + CHECK`); `consoles.id` & `pricing_plans.id`
@@ -496,6 +499,18 @@ bridge → Daisy/EFTS → RS.GE) is future.
 records a `platform_payments` row + extends `current_period_end`; overdue badge + MRR in `platform.tsx`.
 Subscription auto-billing (platform's own card flow) is future.
 
+**Plan entitlements (migration 0062 — ENFORCED, was cosmetic before):** `plan` now actually gates features.
+Helpers `org_plan(org)` / `plan_rank()` / `require_plan(org,min)` (raises `plan_upgrade_required:<min>`,
+**platform admins bypass**) / `plan_limit(plan,kind)`. The real boundary is **BEFORE triggers** on the tables
+(so every path — RPC or direct insert — is covered; `auth.uid()` still resolves the caller inside SECURITY
+DEFINER): PRO+ → `bar_sales`/`bar_products`/`bar_categories`/`customers`/`expenses`; ENTERPRISE →
+`venues.fiscal_enabled`; **limits** → venues 1/3/∞, consoles/venue 4/8/∞, PIN employees 3/∞
+(`employees.user_id IS NULL` only, so invited members/shift-on-login never break). Existing rows are
+grandfathered (triggers fire on new INSERT/UPDATE only). Frontend: `useOrg().plan` + `useModuleAccess`
+(role AND plan) hides gated modules; a plan-blocked module shows `PlanUpgradeNotice`; Settings RS.GE fiscal
+is locked to enterprise; `planErrorText` (lib/ui) gives friendly Georgian limit/upgrade messages. Module→plan
+map = `FEATURE_MIN_PLAN` in `lib/org.tsx` (mirror billing.tsx). See `memory/plan-entitlements.md`.
+
 **Customer payments (BYO-merchant, migration 0058 — Phase 1 LIVE):** each owner connects their OWN
 TBC/BOG merchant account in Settings → „ონლაინ გადახდები" (`payment-settings.tsx`); secrets live in
 **Supabase Vault**, never returned to the client, accessed only via is_org_admin-gated RPCs. Customers'
@@ -558,8 +573,8 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
 > AI rate-limit (0047), employees/PIN hardening (0048/0049), idempotent payroll (0050), team invites (0051),
 > operator shifts + attribution (0052/0053), shared cash drawer (0054), abandoned sessions (0055),
 > In-Seat Ordering (0057) + live-session/per-session PIN-QR access gate (0060/0061), per-tenant payments
-> Phase 1 (0058), RevPACH analytics + AI advisor (0059), AI receipt OCR + anti-fraud,
-> bot-safe SEO + ISR caching (both sites, GSC verified), PWA + camera scan.
+> Phase 1 (0058), RevPACH analytics + AI advisor (0059), plan entitlements / tier enforcement (0062),
+> AI receipt OCR + anti-fraud, bot-safe SEO + ISR caching (both sites, GSC verified), PWA + camera scan.
 
 > Living roadmap & decisions: `memory/roadmap-v3-marketplace.md`, `memory/marketplace-backend.md`,
 > `memory/marketplace-frontend.md`, `memory/media-r2-uploads.md`, `memory/admin-module-registration.md`.
