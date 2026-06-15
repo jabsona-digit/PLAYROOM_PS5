@@ -556,6 +556,113 @@ export type Database = {
           },
         ]
       }
+      console_hardware: {
+        Row: {
+          config: Json
+          console_id: number
+          control_mode: string
+          created_at: string
+          desired_state: string | null
+          driver: string
+          id: string
+          is_active: boolean
+          last_command: string | null
+          last_command_at: string | null
+          last_known_state: string
+          last_seen_at: string | null
+          org_id: string
+          secret_ref: string | null
+          target: string
+          venue_id: string
+        }
+        Insert: {
+          config?: Json
+          console_id: number
+          control_mode?: string
+          created_at?: string
+          desired_state?: string | null
+          driver?: string
+          id?: string
+          is_active?: boolean
+          last_command?: string | null
+          last_command_at?: string | null
+          last_known_state?: string
+          last_seen_at?: string | null
+          org_id: string
+          secret_ref?: string | null
+          target?: string
+          venue_id: string
+        }
+        Update: {
+          config?: Json
+          console_id?: number
+          control_mode?: string
+          created_at?: string
+          desired_state?: string | null
+          driver?: string
+          id?: string
+          is_active?: boolean
+          last_command?: string | null
+          last_command_at?: string | null
+          last_known_state?: string
+          last_seen_at?: string | null
+          org_id?: string
+          secret_ref?: string | null
+          target?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "console_hardware_console_id_fkey"
+            columns: ["console_id"]
+            isOneToOne: true
+            referencedRelation: "console_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "console_hardware_console_id_fkey"
+            columns: ["console_id"]
+            isOneToOne: true
+            referencedRelation: "consoles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "console_hardware_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "console_hardware_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "console_hardware_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "console_hardware_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "console_hardware_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consoles: {
         Row: {
           console_type: string
@@ -1543,6 +1650,98 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      power_events: {
+        Row: {
+          action: string
+          console_id: number
+          created_at: string
+          error_msg: string | null
+          id: number
+          operator_id: string | null
+          org_id: string
+          session_id: string | null
+          success: boolean
+          triggered_by: string
+          venue_id: string
+        }
+        Insert: {
+          action: string
+          console_id: number
+          created_at?: string
+          error_msg?: string | null
+          id?: number
+          operator_id?: string | null
+          org_id: string
+          session_id?: string | null
+          success?: boolean
+          triggered_by: string
+          venue_id: string
+        }
+        Update: {
+          action?: string
+          console_id?: number
+          created_at?: string
+          error_msg?: string | null
+          id?: number
+          operator_id?: string | null
+          org_id?: string
+          session_id?: string | null
+          success?: boolean
+          triggered_by?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "power_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "power_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "power_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_revenue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "power_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "power_events_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "power_events_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "power_events_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
             referencedColumns: ["id"]
           },
         ]
@@ -3033,6 +3232,15 @@ export type Database = {
         }
         Returns: Json
       }
+      get_ghost_power_events: {
+        Args: { p_from: string; p_to: string; p_venue_id: string }
+        Returns: {
+          console_id: number
+          operator_id: string
+          powered_on_at: string
+          triggered_by: string
+        }[]
+      }
       get_open_drawer: { Args: { p_venue_id: string }; Returns: Json }
       get_payment_settings: { Args: { p_org_id: string }; Returns: Json }
       get_vat_summary: {
@@ -3079,6 +3287,17 @@ export type Database = {
           p_venue_id: string
         }
         Returns: undefined
+      }
+      log_power_event: {
+        Args: {
+          p_action: string
+          p_console_id: number
+          p_error?: string
+          p_session_id?: string
+          p_success?: boolean
+          p_triggered_by: string
+        }
+        Returns: number
       }
       mark_tenant_paid: {
         Args: {
