@@ -12,10 +12,11 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
-> _Last updated **2026-06-14** — through migration **0059**. Since the previous (0036) revision:
+> _Last updated **2026-06-15** — through migration **0061**. Since the previous (0036) revision:
 > tournaments, capacity/typed-resource booking, God-Mode tenant billing, payroll/RBAC hardening,
 > team email-invites, operator shifts & attribution, shared cash drawer, abandoned sessions, bar COGS,
-> **In-Seat Ordering portal**, **AI receipt OCR + anti-fraud audit**, **per-tenant online payments (Phase 1)**,
+> **In-Seat Ordering portal** (live-session + per-session PIN/QR access gate, 0060–0061),
+> **AI receipt OCR + anti-fraud audit**, **per-tenant online payments (Phase 1)**,
 > **RevPACH analytics + AI advisor (0059)**, and **bot-safe SEO + ISR caching** on both sites._
 
 > Product was renamed **Playroom OS → Martelounge** (martel-**OU**-nge; domain bought 2026-06-08).
@@ -150,6 +151,7 @@ components/admin/
   fraud-audit.tsx       "🕵️ AI აუდიტი" tab in history — audit-log forensics + per-operator Trust Score
   service-inbox.tsx     floating realtime In-Seat inbox (order/battery/call) → fulfil → bar_sale
   qr-print-modal.tsx    print per-console QR codes for the In-Seat portal (qrcode.react)
+  inseat-access-modal.tsx  operator's per-session In-Seat PIN + QR (&k=) for a live console
   payment-settings.tsx  Settings: connect own TBC/BOG merchant (Vault-encrypted; BYO-merchant)
   team-settings.tsx     Settings: email-invite staff (each gets own login + role)
   tournaments.tsx       single-elim PS5 brackets + TV mode
@@ -322,6 +324,9 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
       save/get/set_active/delete_payment_credentials (BYO TBC/BOG merchant; secrets never reach the client)
 0059  RevPACH ANALYTICS: get_console_analytics(venue,from,to,daily_hours) — per-console occupancy/RevPACH,
       venue totals + 7×24 demand heatmap (Asia/Tbilisi); is_org_member-gated. Feeds the AI advisor (Path D).
+0060  IN-SEAT gate: portal_place_order / portal_request_service now REQUIRE a live session (else no_active_session)
+0061  IN-SEAT per-session code: sessions.portal_code (6-digit; BEFORE-INSERT trigger) + portal_unlock (rate-limited);
+      both write RPCs take p_code (typed PIN or QR &k=) — kills the static-QR replay edge (bad_code if mismatch)
 ```
 
 > **Schema-compat invariants:** no enum types (all `text + CHECK`); `consoles.id` & `pricing_plans.id`
@@ -338,7 +343,7 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 | `venues` | id, org_id, name, is_active, fiscal_* , **is_vat_registered**, + **public profile cols** (slug, is_published, description, address, city, public_phone, cover_image_url, gallery, amenities, opening_hours, lat, lng, avg_rating, review_count) |
 | `org_members` | org_id, user_id, role (6 roles) · `platform_admins` user_id |
 | `consoles` | id(int), org_id, venue_id, slot_number, name, status, deleted_at |
-| `sessions` | id(uuid), org_id, venue_id, console_id(int), pricing_plan_id(int), payment_method, bank, price_total, is_open, ends_at?, duration_min?, tip_amount, status |
+| `sessions` | id(uuid), org_id, venue_id, console_id(int), pricing_plan_id(int), payment_method, bank, price_total, is_open, ends_at?, duration_min?, tip_amount, status, **portal_code** (6-digit In-Seat PIN/QR, BEFORE-INSERT trigger) |
 | `pricing_plans` | id(int), org_id, name, type(standard/pro/premium/custom), price_per_hour, controllers |
 | `employees` | id, org_id, name, role, pin_hash, **salary_type, salary_amount** |
 | `shifts` | id, org_id, venue_id, employee_id, clock_in, clock_out, hours_worked |
@@ -402,9 +407,11 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 - `reply_to_review(p_id,p_reply)` — staff (`is_org_member`)
 - `slugify(text)`, `recompute_venue_rating()` (trigger)
 
-**In-Seat portal** (SECURITY DEFINER; the 4 portal_* RPCs granted to **anon**): `portal_get_menu(venue)`,
-`portal_get_session_status(console)`, `portal_place_order(venue,console,items)` (server-priced, anti-spam,
-suspension-aware), `portal_request_service(venue,console,kind)`; + `resolve_service_request(id,status,method?,bank?)`
+**In-Seat portal** (SECURITY DEFINER; portal_* RPCs granted to **anon**): `portal_get_menu(venue)`,
+`portal_get_session_status(console)`, `portal_unlock(venue,console,code)` (verifies the per-session code;
+rate-limited via `ratelimit.check`), `portal_place_order(venue,console,items,code)` (server-priced, anti-spam,
+suspension-aware), `portal_request_service(venue,console,kind,code)`. Every write requires a **live session**
++ matching `portal_code` (else `no_active_session` / `bad_code`). + `resolve_service_request(id,status,method?,bank?)`
 (operator-only → rings up `create_bar_sale`).
 
 **Payments / platform / tournaments:** `save_payment_credentials` / `get_payment_settings` /
@@ -436,7 +443,7 @@ is_org_admin-gated); `mark_tenant_paid(org,months,…)` (God-Mode billing); `see
 - Safe: `booking_id` is an unguessable uuid, the QR only appears in the owner's RLS-protected account,
   and lookup requires org-staff RLS.
 
-### In-Seat Ordering (live, migration 0057)
+### In-Seat Ordering (live, migrations 0057–0061)
 - Customer scans a per-console QR (printed from Settings via `qr-print-modal.tsx`) → opens the PUBLIC
   portal `app/p` (`/p?v=<venue>&c=<console>`, anon, no auth gate) → live bar menu + session countdown +
   order / call-staff / report-dead-joystick.
@@ -444,6 +451,11 @@ is_org_admin-gated); `mark_tenant_paid(org,months,…)` (God-Mode billing); `see
   anon SECURITY DEFINER RPCs (server-priced, ≤5 pending/console, suspension-aware). `service_requests` is in
   the realtime publication; `service-inbox.tsx` (floating, bottom-left) gives the operator a live inbox
   (beep + badge). Fulfilling an order → `resolve_service_request` rings up the real `create_bar_sale`.
+- **Per-session access gate (0060–0061):** the printed QR is static, so every write requires a *live* session
+  AND the session's rotating 6-digit `sessions.portal_code` (set by a BEFORE-INSERT trigger). A customer types
+  the PIN the operator gives, or scans a session QR carrying `&k=<code>`; `/p` auto-unlocks from `&k=` or a
+  sessionStorage-kept code and **re-locks** when the session ends or the code rotates. `portal_unlock` is
+  rate-limited. The operator reads the PIN off the live console card or shows the QR (`inseat-access-modal.tsx`).
 
 ---
 
@@ -545,8 +557,9 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
 > God-Mode tenant billing (0040), accounting fixes + COGS (0041/0042/0056), grant hardening (0044/0045),
 > AI rate-limit (0047), employees/PIN hardening (0048/0049), idempotent payroll (0050), team invites (0051),
 > operator shifts + attribution (0052/0053), shared cash drawer (0054), abandoned sessions (0055),
-> In-Seat Ordering (0057), per-tenant payments Phase 1 (0058), RevPACH analytics + AI advisor (0059),
-> AI receipt OCR + anti-fraud, bot-safe SEO + ISR caching (both sites, GSC verified), PWA + camera scan.
+> In-Seat Ordering (0057) + live-session/per-session PIN-QR access gate (0060/0061), per-tenant payments
+> Phase 1 (0058), RevPACH analytics + AI advisor (0059), AI receipt OCR + anti-fraud,
+> bot-safe SEO + ISR caching (both sites, GSC verified), PWA + camera scan.
 
 > Living roadmap & decisions: `memory/roadmap-v3-marketplace.md`, `memory/marketplace-backend.md`,
 > `memory/marketplace-frontend.md`, `memory/media-r2-uploads.md`, `memory/admin-module-registration.md`.
