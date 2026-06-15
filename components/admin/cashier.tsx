@@ -381,7 +381,7 @@ export function Cashier() {
               <p className="text-sm text-muted-foreground">{p.label}</p>
             </div>
             <p
-              className={`mt-4 font-mono text-3xl font-extrabold tracking-tight ${
+              className={`mt-4 font-mono text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums ${
                 p.highlight ? 'text-primary text-glow' : ''
               }`}
             >

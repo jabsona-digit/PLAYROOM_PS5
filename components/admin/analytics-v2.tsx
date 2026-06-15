@@ -70,7 +70,7 @@ function Kpi({ icon: Icon, label, value, hint }: { icon: typeof Gauge; label: st
         <Icon className="size-4 text-primary" />
         <span className="text-xs font-bold uppercase tracking-wider">{label}</span>
       </div>
-      <p className="mt-2 text-3xl font-black tracking-tight">{value}</p>
+      <p className="mt-2 text-2xl sm:text-3xl font-black tracking-tight tabular-nums break-words">{value}</p>
       {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   )

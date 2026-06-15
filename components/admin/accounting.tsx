@@ -514,7 +514,7 @@ export function Accounting() {
                 </div>
                 <div className="nm-daylight rounded-3xl p-6">
                   <p className="text-sm font-semibold mb-3 text-muted-foreground">სუფთა მოგება</p>
-                  <p className={cn("font-mono text-3xl font-extrabold", (pnl?.net_profit || 0) >= 0 ? "text-green-500" : "text-red-500")}>
+                  <p className={cn("font-mono text-2xl sm:text-3xl font-extrabold tabular-nums break-words", (pnl?.net_profit || 0) >= 0 ? "text-green-500" : "text-red-500")}>
                     {gel(pnl?.net_profit || 0)}
                   </p>
                 </div>
@@ -696,7 +696,7 @@ export function Accounting() {
                 </div>
                 <div className="nm-daylight rounded-3xl p-6 border border-white/50">
                   <p className="text-xs font-black uppercase text-primary mb-4 tracking-widest">Net VAT Payable</p>
-                  <p className="font-mono text-3xl font-black text-primary">{gel(vatSummary?.net_vat_payable || 0)}</p>
+                  <p className="font-mono text-2xl sm:text-3xl font-black text-primary tabular-nums break-words">{gel(vatSummary?.net_vat_payable || 0)}</p>
                   <p className="text-[10px] font-bold text-muted-foreground mt-2 uppercase">გადასახდელი დღგ</p>
                 </div>
               </div>

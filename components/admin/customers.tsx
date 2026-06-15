@@ -141,7 +141,7 @@ export function Customers() {
                         <p className="font-extrabold truncate">{c.name}</p>
                         <span className={cn('text-xs font-bold', tier.color)}>{tier.label}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
                         {c.phone && (
                           <span className="flex items-center gap-1">
                             <Phone className="size-3" />{c.phone}

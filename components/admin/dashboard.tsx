@@ -85,7 +85,7 @@ function StatCard({
         </div>
         <p className="text-sm text-muted-foreground">{label}</p>
       </div>
-      <p className="mt-4 font-mono text-3xl font-extrabold tracking-tight">
+      <p className="mt-4 font-mono text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums break-words">
         {displayValue}
       </p>
       {hint ? (
@@ -226,7 +226,7 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
                   გასული დრო • მიმდინარე
                 </p>
                 <p
-                  className="font-mono text-3xl font-extrabold tabular-nums"
+                  className="font-mono text-2xl sm:text-3xl font-extrabold tabular-nums"
                   style={{ color: meta.color }}
                 >
                   {formatClock(Math.max(0, elapsedMs))}
@@ -264,7 +264,7 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
               <div>
                 <p className="text-xs text-muted-foreground">დარჩენილი დრო</p>
                 <p
-                  className="font-mono text-3xl font-extrabold tabular-nums"
+                  className="font-mono text-2xl sm:text-3xl font-extrabold tabular-nums"
                   style={{ color: isWarning ? meta.color : undefined }}
                 >
                   {formatClock(Math.max(0, remainingMs))}

@@ -95,7 +95,7 @@ function PlanCard({ plan }: { plan: PricingPlan }) {
           <Minus className="size-4" />
         </button>
         <div className="text-center">
-          <p className="font-mono text-3xl font-extrabold text-primary">
+          <p className="font-mono text-2xl sm:text-3xl font-extrabold text-primary tabular-nums">
             {gel(draft)}
           </p>
           <p className="text-xs text-muted-foreground">საათში</p>

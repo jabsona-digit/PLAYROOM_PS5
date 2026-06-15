@@ -252,7 +252,7 @@ function Workspace({ email }: { email?: string }) {
             onClose={() => setSidebarOpen(false)}
           />
 
-          <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
+          <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-6 md:px-8 md:py-8">
             <ImpersonationBar onBack={() => setActive('platform')} />
             <div className="flex justify-end empty:hidden [&:not(:empty)]:mb-3">
               <ShiftBadge />
