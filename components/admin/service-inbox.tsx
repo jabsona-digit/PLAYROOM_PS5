@@ -72,12 +72,15 @@ export function ServiceInbox() {
 
   const refresh = useCallback(async () => {
     if (!currentVenueId) return
-    const { data } = await sb
+    const { data, error } = await sb
       .from('service_requests')
       .select('id, console_id, kind, items, total, created_at')
       .eq('venue_id', currentVenueId)
       .eq('status', 'pending')
       .order('created_at', { ascending: true })
+    // keep the current list on a transient auth blip (expired token mid-poll) —
+    // supabase-js auto-refreshes and the next poll recovers; don't flash empty.
+    if (error) return
     setRequests((data as ServiceRequest[]) ?? [])
   }, [currentVenueId])
 
