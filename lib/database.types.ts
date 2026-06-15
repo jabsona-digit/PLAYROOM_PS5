@@ -3114,7 +3114,10 @@ export type Database = {
         Args: { p_opening_cash?: number; p_venue_id: string }
         Returns: Json
       }
+      org_plan: { Args: { p_org: string }; Returns: string }
+      plan_limit: { Args: { p_kind: string; p_plan: string }; Returns: number }
       plan_monthly_price: { Args: { p_plan: string }; Returns: number }
+      plan_rank: { Args: { p: string }; Returns: number }
       portal_get_menu: { Args: { p_venue_id: string }; Returns: Json }
       portal_get_session_status: {
         Args: { p_console_id: number }
@@ -3174,6 +3177,10 @@ export type Database = {
       }
       report_match: {
         Args: { p_match: string; p_score1: number; p_score2: number }
+        Returns: undefined
+      }
+      require_plan: {
+        Args: { p_min: string; p_org: string }
         Returns: undefined
       }
       resolve_service_request: {
