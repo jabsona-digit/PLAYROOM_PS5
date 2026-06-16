@@ -570,6 +570,7 @@ export type Database = {
           last_command_at: string | null
           last_known_state: string
           last_seen_at: string | null
+          off_delay_seconds: number
           org_id: string
           secret_ref: string | null
           target: string
@@ -588,6 +589,7 @@ export type Database = {
           last_command_at?: string | null
           last_known_state?: string
           last_seen_at?: string | null
+          off_delay_seconds?: number
           org_id: string
           secret_ref?: string | null
           target?: string
@@ -606,6 +608,7 @@ export type Database = {
           last_command_at?: string | null
           last_known_state?: string
           last_seen_at?: string | null
+          off_delay_seconds?: number
           org_id?: string
           secret_ref?: string | null
           target?: string
@@ -665,6 +668,7 @@ export type Database = {
       }
       consoles: {
         Row: {
+          asset_label: string | null
           console_type: string
           controller_replaced_at: string | null
           created_at: string
@@ -681,6 +685,7 @@ export type Database = {
           venue_id: string
         }
         Insert: {
+          asset_label?: string | null
           console_type?: string
           controller_replaced_at?: string | null
           created_at?: string
@@ -697,6 +702,7 @@ export type Database = {
           venue_id: string
         }
         Update: {
+          asset_label?: string | null
           console_type?: string
           controller_replaced_at?: string | null
           created_at?: string
@@ -2840,6 +2846,8 @@ export type Database = {
           public_phone: string | null
           review_count: number
           slug: string | null
+          venue_config: Json
+          venue_type: string
         }
         Insert: {
           address?: string | null
@@ -2867,6 +2875,8 @@ export type Database = {
           public_phone?: string | null
           review_count?: number
           slug?: string | null
+          venue_config?: Json
+          venue_type?: string
         }
         Update: {
           address?: string | null
@@ -2894,6 +2904,8 @@ export type Database = {
           public_phone?: string | null
           review_count?: number
           slug?: string | null
+          venue_config?: Json
+          venue_type?: string
         }
         Relationships: [
           {
@@ -3124,6 +3136,7 @@ export type Database = {
           public_phone: string | null
           review_count: number | null
           slug: string | null
+          venue_type: string | null
         }
         Insert: {
           address?: string | null
@@ -3142,6 +3155,7 @@ export type Database = {
           public_phone?: string | null
           review_count?: number | null
           slug?: string | null
+          venue_type?: string | null
         }
         Update: {
           address?: string | null
@@ -3160,6 +3174,7 @@ export type Database = {
           public_phone?: string | null
           review_count?: number | null
           slug?: string | null
+          venue_type?: string | null
         }
         Relationships: []
       }
