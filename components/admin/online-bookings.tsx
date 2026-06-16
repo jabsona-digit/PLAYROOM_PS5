@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils'
 import { useOrg } from '@/lib/org'
 import { usePlayroom } from '@/lib/store'
 import { supabase } from '@/lib/supabase/client'
-import { gel } from '@/lib/ui'
+import { gel, consoleLabels, consoleTypeLabel } from '@/lib/ui'
 import { Modal } from './modal'
 
 const BarcodeScanner = dynamic(() => import('./barcode-scanner'), { ssr: false })
@@ -32,6 +32,7 @@ interface Booking {
   console_id: number | null
   customer_name: string
   customer_phone: string
+  console_type: string | null
   start_time: string
   duration_min: number
   controllers: number
@@ -99,6 +100,7 @@ function ScanResult({
         <Row k="კლიენტი" v={booking.customer_name} bold />
         <Row k="ტელეფონი" v={booking.customer_phone} />
         {booking.venues?.name ? <Row k="კლუბი" v={booking.venues.name} /> : null}
+        <Row k="ტიპი" v={`${consoleLabels(booking.console_type).icon} ${consoleTypeLabel(booking.console_type)}`} bold />
         <Row k="დრო" v={`${date} · ${time}`} />
         <Row k="ხანგრძლივობა" v={`${booking.duration_min} წთ`} />
         {booking.console_id ? <Row k="კონსოლი" v={`#${booking.console_id}`} /> : null}
@@ -278,7 +280,7 @@ export function OnlineBookings() {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     {/* Left: customer + when */}
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="font-bold">{b.customer_name}</span>
                         <a
                           href={`tel:${b.customer_phone}`}
@@ -287,6 +289,12 @@ export function OnlineBookings() {
                           <Phone className="size-3" />
                           {b.customer_phone}
                         </a>
+                        <span
+                          className="rounded-full px-2 py-0.5 text-xs font-bold"
+                          style={{ background: 'color-mix(in oklch, var(--primary) 14%, transparent)', color: 'var(--primary)' }}
+                        >
+                          {consoleLabels(b.console_type).icon} {consoleTypeLabel(b.console_type)}
+                        </span>
                       </div>
                       <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1.5">

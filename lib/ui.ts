@@ -84,7 +84,7 @@ export const ASSET_LABELS: Record<VenueType, {
 }
 
 /** Venue-level labels (header, add-button, analytics metric) from venues.venue_type. */
-export const venueLabels = (venueType?: string) =>
+export const venueLabels = (venueType?: string | null) =>
   ASSET_LABELS[(venueType as VenueType)] ?? ASSET_LABELS.playroom
 
 // Free-text console_type → its segment. PS5 variants are playroom; tables billiard.
@@ -92,13 +92,20 @@ const CONSOLE_CATEGORY: Record<string, VenueType> = {
   standard: 'playroom', coupe: 'playroom', vip: 'playroom',
   billiard: 'billiard', snooker: 'billiard',
 }
-export const consoleCategory = (consoleType?: string): VenueType =>
+export const consoleCategory = (consoleType?: string | null): VenueType =>
   CONSOLE_CATEGORY[consoleType ?? ''] ?? 'playroom'
 
 /** Per-asset labels (dashboard card icon + word) from consoles.console_type — so a
     mixed venue shows 🎮 კონსოლი and 🎱 მაგიდა side by side. */
-export const consoleLabels = (consoleType?: string) =>
+export const consoleLabels = (consoleType?: string | null) =>
   ASSET_LABELS[consoleCategory(consoleType)]
+
+// Exact console_type → display label (PS5 variants + billiard) for chips/badges.
+export const CONSOLE_TYPE_LABEL: Record<string, string> = {
+  standard: 'PS5', coupe: 'კუპე', vip: 'VIP', billiard: 'ბილიარდი', snooker: 'სნუკერი',
+}
+export const consoleTypeLabel = (consoleType?: string | null) =>
+  CONSOLE_TYPE_LABEL[consoleType ?? ''] ?? (consoleType || 'PS5')
 
 /** Local-time epoch for the start of today / this week (Mon) / this month. */
 export function startOfToday() {
