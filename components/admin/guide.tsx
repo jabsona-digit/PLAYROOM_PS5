@@ -121,6 +121,30 @@ export function Guide() {
       ),
     },
     {
+      category: 'sessions',
+      title: 'დინამიური ფასი — Happy Hour / Surge ⚡',
+      content: (
+        <div className="space-y-3">
+          <p>
+            ფასი დროისა და დატვირთვის მიხედვით ავტომატურად იცვლება (სასტუმროების yield management). მართვა: ტარიფები → „დინამიური ფასი".
+          </p>
+          <ul className="list-disc space-y-1 pl-4">
+            <li><b>Happy Hour 🟢</b> — მკვდარ საათებში ფასდაკლება (მაგ. სამშ. 14:00 −25%) → ცარიელი კონსოლები ივსება.</li>
+            <li><b>Surge 🔥</b> — პიკზე ფასის აწევა (მაგ. პარ. საღამო +20%).</li>
+          </ul>
+          <p>
+            წესში უთითებ დღეებს, საათებსა და %-ს. სესიის დაწყებისას ოპერატორი ხედავს ეფექტურ ფასს + ⚡ badge-ს; ფასი <b>server-ზე</b> ითვლება (გვერდის ავლა შეუძლებელია).
+          </p>
+          <div className="rounded-2xl p-4 text-sm" style={{ background: 'color-mix(in oklch, var(--status-free) 12%, transparent)' }}>
+            <div className="flex items-start gap-2">
+              <Lightbulb className="size-5 shrink-0" style={{ color: 'var(--status-free)' }} />
+              <p>Surge ნაგულისხმევად გამორთულია — მთავარი ძალა Happy Hour-ია (მკვდარი საათების შევსება). +15-30% შემოსავალი ერთი ახალი კლიენტის გარეშე.</p>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
       category: 'pos',
       title: 'პროდუქტების გაყიდვა',
       content: (
@@ -245,6 +269,23 @@ export function Guide() {
               <p>
                 <b>AI რჩევები:</b> ღილაკი „AI რეკომენდაციები" აანალიზებს მონაცემს და გაძლევთ კონკრეტულ ნაბიჯებს — რომელ საათებში გაუშვათ აქცია, რომელი კონსოლი გადააფასოთ ან გადააადგილოთ და სად კარგავთ შემოსავალს. მაჩვენებელი ეფუძნება <b>სესიების</b> შემოსავალს (ბარისა და დაბრუნებების გარეშე).
               </p>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      category: 'analytics',
+      title: 'Martelounge Pulse — საჯარო ცოცხალი გვერდი 📡',
+      content: (
+        <div className="space-y-3">
+          <p>
+            <b>play.martelounge.ge/live</b> — საჯარო, real-time გვერდი: „რამდენი ადამიანი თამაშობს ახლა საქართველოში", ქალაქების დატვირთვა და ლაუნჯები (occupancy-ით ანათებენ). შენი გამოქვეყნებული ფილიალი ავტომატურად ჩნდება.
+          </p>
+          <div className="rounded-2xl p-4 text-sm" style={{ background: 'color-mix(in oklch, var(--primary) 12%, transparent)' }}>
+            <div className="flex items-start gap-2">
+              <Info className="size-5 shrink-0" style={{ color: 'var(--primary)' }} />
+              <p>მხოლოდ აგრეგირებული მონაცემია — კლიენტების პერსონალური ინფო არ ჩანს. უფასო რეკლამა: შენი კლუბის სახელი რუკაზე, მწვანედ ანათებს როცა აქტიურია. გასაჯაროებისთვის — პარამეტრები → მარკეტფლეისი.</p>
             </div>
           </div>
         </div>
@@ -440,6 +481,28 @@ export function Guide() {
             <div className="flex items-start gap-2">
               <AlertTriangle className="size-5 shrink-0" style={{ color: 'var(--status-warning5)' }} />
               <p>ჩართვამდე დარწმუნდი, რომ ყველა აქტიურ კონსოლს hardware აქვს დაყენებული — თორემ მათზე სესიის დაწყება დაიბლოკება.</p>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      category: 'hardware',
+      title: 'ცვეთა და მოვლა (Predictive Maintenance) 🔧',
+      content: (
+        <div className="space-y-3">
+          <p>
+            სისტემა ითვლის თითო კონსოლის ცვეთას (სესიები + ნათამაშები საათები) და გაფრთხილებს, სანამ ჯოისტიკი გაფუჭდება (DualSense drift ~400-600სთ).
+          </p>
+          <ul className="list-disc space-y-1 pl-4">
+            <li><b>ჯანმრთელობის ქულა</b> — 95% → 75% → 50% → 20% ცვეთის ზრდასთან ერთად.</li>
+            <li>მთავარ ეკრანზე კონსოლის ბარათზე — 🔧 „მოვლა რეკომენდებულია" badge, როცა ჯანმრთელობა ≤50%.</li>
+            <li>პარამეტრები → 🔌 Hardware — თითო კონსოლზე ჯანმრთელობა % + სესიები + ღილაკი <b>„ჯოისტიკი შევცვალე"</b> (ცვეთის მრიცხველს ნულავს).</li>
+          </ul>
+          <div className="rounded-2xl p-4 text-sm" style={{ background: 'color-mix(in oklch, var(--status-warning5) 12%, transparent)' }}>
+            <div className="flex items-start gap-2">
+              <Info className="size-5 shrink-0" style={{ color: 'var(--status-warning5)' }} />
+              <p>პროაქტიული მოვლა — დამტვრეული ჯოისტიკი აღარ ხვდება კლიენტს ხელში. ხარჯს გეგმავ, ავარიას არ ელოდები.</p>
             </div>
           </div>
         </div>

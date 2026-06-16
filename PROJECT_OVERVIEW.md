@@ -12,12 +12,13 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
-> _Last updated **2026-06-16** — through migration **0066**. Since the previous (0036) revision:
+> _Last updated **2026-06-16** — through migration **0069**. Since the previous (0036) revision:
 > tournaments, capacity/typed-resource booking, God-Mode tenant billing, **plan entitlements (0062)**, payroll/RBAC hardening,
 > team email-invites, operator shifts & attribution, shared cash drawer, abandoned sessions, bar COGS,
 > **In-Seat Ordering portal** (live-session + per-session PIN/QR access gate, 0060–0061),
 > **AI receipt OCR + anti-fraud audit** (+ Georgian↔Latin fuzzy product resolution), **per-tenant online payments (Phase 1)**,
 > **RevPACH analytics + AI advisor (0059)**, **hardware console control** (vendor-agnostic power/TV gating, 0063–0066),
+> **dynamic pricing — Happy Hour/Surge (0067)**, **predictive hardware maintenance (0068)**, **public real-time "Pulse" page (0069)**,
 > **mobile-responsive admin**, and **bot-safe SEO + ISR caching** on both sites._
 
 > Product was renamed **Playroom OS → Martelounge** (martel-**OU**-nge; domain bought 2026-06-08).
@@ -340,6 +341,13 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 0065  HARDWARE cloud creds: hardware_credentials (Vault auth_key) + save/get_settings/delete + get_hardware_secret
       (service_role ONLY) → edge `hardware-control` Shelly Cloud driver (cloud→cloud, no on-site agent)
 0066  venues.hardware_required + enforce_hardware_required trigger (OPT-IN: block session if console has no hw)
+─ revenue · ops · community (roadmap-v2) ───────────────────────────────────────────────────────────────
+0067  DYNAMIC PRICING: dynamic_pricing_rules (day/time/occupancy → multiplier, priority) + dynamic_price_quote
+      + BEFORE-INSERT trigger on sessions (server-authoritative Happy Hour / Surge). Default off = no change.
+0068  HARDWARE MAINTENANCE: consoles wear cols + GENERATED hardware_health_score + bump_console_usage trigger
+      (accrues played hours on completion, capped 24h) + mark_controller_serviced (admin reset). Backfilled.
+0069  PULSE: get_pulse_stats() — anon aggregated public census (players now, per-city/venue occupancy, month
+      sessions/hours) over published non-suspended venues → marketplace /live page.
 ```
 
 > **Schema-compat invariants:** no enum types (all `text + CHECK`); `consoles.id` & `pricing_plans.id`
@@ -397,6 +405,8 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 | `power_events` | console on/off audit (uuid session_id; **triggered_by**; success/error). Ghost partial index → anti-fraud read |
 | `hardware_credentials` | per-venue cloud account (**provider** shelly/tuya, server, **secret_ref** → Vault auth_key). RLS admin; key readable only by `service_role` |
 | `venues.hardware_required` | bool (default false) — opt-in gate: block starting a session on a console with no active hardware |
+| `dynamic_pricing_rules` | org/venue, name, rule_type (happy_hour/surge), days_of_week[], time_from/to, occupancy band, **multiplier**, priority. A sessions BEFORE-INSERT trigger applies the rate; `dynamic_price_quote` serves UI + trigger |
+| `consoles.*` (maintenance) | **total_sessions_count**, total_hours_played, **hours_since_service** (resets on service) + GENERATED **hardware_health_score** (95/75/50/20). `bump_console_usage` accrues on session completion |
 
 > Secrets policy: payment credentials use **Supabase Vault** (`vault.create_secret`/`decrypted_secrets`),
 > decryptable server-side only. PIN hashes (`employees.pin_hash`) have column SELECT revoked (0049).
@@ -436,6 +446,8 @@ suspension-aware), `portal_request_service(venue,console,kind,code)`. Every writ
 **Payments / platform / tournaments:** `save_payment_credentials` / `get_payment_settings` /
 `set_payment_provider_active` / `delete_payment_credentials` (per-tenant BYO merchant, Vault-backed,
 is_org_admin-gated); `mark_tenant_paid(org,months,…)` (God-Mode billing); `seed_tournament` / `report_match`.
+
+**Dynamic pricing / Pulse / maintenance:** `dynamic_price_quote(venue, base, when)` → effective rate + which rule applied (UI badge + the sessions trigger use it); `get_pulse_stats()` — **anon**, aggregated public census for `/live` (players now, per-city/venue occupancy, month sessions/hours; published non-suspended venues only, no PII); `mark_controller_serviced(console)` (admin) resets the wear clock.
 
 **Analytics:** `get_console_analytics(venue, from, to, daily_hours)` — per-console occupancy + RevPACH +
 7×24 demand heatmap (is_org_member-gated; pure SQL over `sessions`). Consumed by `analytics-v2.tsx` and the AI advisor.
@@ -611,7 +623,8 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
 > operator shifts + attribution (0052/0053), shared cash drawer (0054), abandoned sessions (0055),
 > In-Seat Ordering (0057) + live-session/per-session PIN-QR access gate (0060/0061), per-tenant payments
 > Phase 1 (0058), RevPACH analytics + AI advisor (0059), plan entitlements / tier enforcement (0062),
-> hardware console control + Shelly Cloud (0063–0066), AI receipt OCR + anti-fraud + fuzzy product resolution,
+> hardware console control + Shelly Cloud (0063–0066), dynamic pricing (0067), predictive maintenance (0068),
+> public real-time Pulse page (0069), AI receipt OCR + anti-fraud + fuzzy product resolution,
 > mobile-responsive admin, bot-safe SEO + ISR caching (both sites, GSC verified), PWA + camera scan.
 
 > Living roadmap & decisions: `memory/roadmap-v3-marketplace.md`, `memory/marketplace-backend.md`,
