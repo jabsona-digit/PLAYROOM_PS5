@@ -21,6 +21,8 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
+import { useOrg } from '@/lib/org'
+import { supabase } from '@/lib/supabase/client'
 import { formatClock, gel, openBillableMinutes, paymentMethodLabel, statusMeta } from '@/lib/ui'
 import type { Bank, ConsoleUnit, PaymentMethod } from '@/lib/types'
 import { Modal } from './modal'
@@ -440,6 +442,7 @@ function StartSessionModal({
   consoleId: number
 }) {
   const { plans, startSession, startOpenSession } = usePlayroom()
+  const { currentVenueId } = useOrg()
   const activePlans = plans.filter((p) => p.is_active)
   const [planId, setPlanId] = useState(activePlans[0]?.id ?? 1)
   const [mode, setMode] = useState<'fixed' | 'open'>('fixed')
@@ -449,7 +452,22 @@ function StartSessionModal({
   const [bank, setBank] = useState<Bank>('TBC')
 
   const plan = plans.find((p) => p.id === planId)
-  const total = plan ? (duration / 60) * plan.price_per_hour : 0
+
+  // Live dynamic-price quote for the selected plan (matches the server-side trigger).
+  const [dyn, setDyn] = useState<{ price: number; multiplier: number; rule_name?: string } | null>(null)
+  useEffect(() => {
+    if (!open || !plan || !currentVenueId) { setDyn(null); return }
+    let alive = true
+    ;(supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: any }>)(
+      'dynamic_price_quote',
+      { p_venue_id: currentVenueId, p_base: plan.price_per_hour, p_when: new Date().toISOString() },
+    ).then(({ data }) => { if (alive) setDyn(data ?? null) })
+    return () => { alive = false }
+  }, [open, planId, currentVenueId, plan?.price_per_hour])
+
+  const effRate = dyn?.price ?? plan?.price_per_hour ?? 0
+  const dynActive = !!dyn && Number(dyn.multiplier) !== 1
+  const total = (duration / 60) * effRate
 
   const durations = [30, 60, 90, 120]
 
@@ -594,12 +612,24 @@ function StartSessionModal({
           ) : null}
         </div>
 
+        {dynActive && (
+          <div
+            className="flex items-center justify-between rounded-2xl px-4 py-2 text-xs font-bold"
+            style={{
+              background: `color-mix(in oklch, ${dyn!.multiplier < 1 ? 'var(--status-free)' : 'var(--status-expired)'} 14%, transparent)`,
+              color: dyn!.multiplier < 1 ? 'var(--status-free)' : 'var(--status-expired)',
+            }}
+          >
+            <span>⚡ {dyn!.rule_name ?? 'დინამიური ფასი'}</span>
+            <span className="tabular-nums">{plan ? gel(plan.price_per_hour) : ''} → {gel(effRate)}/სთ</span>
+          </div>
+        )}
         <div className="nm-inset flex items-center justify-between rounded-2xl px-4 py-3">
           <span className="text-sm text-muted-foreground">
             {mode === 'fixed' ? 'სულ ღირებულება' : 'სავარაუდო ფასი'}
           </span>
           <span className="font-mono text-xl font-extrabold text-primary">
-            {mode === 'fixed' ? gel(total) : `${plan ? gel(plan.price_per_hour) : '—'}/სთ`}
+            {mode === 'fixed' ? gel(total) : `${gel(effRate)}/სთ`}
           </span>
         </div>
 

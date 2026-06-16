@@ -7,6 +7,7 @@ import { usePlayroom } from '@/lib/store'
 import { gel } from '@/lib/ui'
 import type { PricingPlan } from '@/lib/types'
 import { Modal } from './modal'
+import { DynamicPricing } from './dynamic-pricing'
 
 function PlanCard({ plan }: { plan: PricingPlan }) {
   const { updatePlanPrice, togglePlanActive, removePlan } = usePlayroom()
@@ -254,6 +255,8 @@ export function Pricing() {
           <span className="text-sm font-bold">ახალი ტარიფის დამატება</span>
         </button>
       </div>
+
+      <DynamicPricing />
 
       <AddPlanModal open={addOpen} onClose={() => setAddOpen(false)} />
     </>
