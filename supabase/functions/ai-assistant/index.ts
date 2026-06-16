@@ -427,6 +427,7 @@ Deno.serve(async (req) => {
     to?: string
     venue_id?: string
     daily_hours?: number
+    date?: string
   }
   try {
     body = await req.json()
@@ -507,6 +508,36 @@ Use the real numbers from the data (RevPACH, occupancy %, gold hour). Keep it un
     } catch (e) {
       console.error('REVPACH_ADVISOR_ERROR', (e as Error).message)
       return json({ type: 'error', text: 'რეკომენდაციის შეცდომა.' })
+    }
+  }
+
+  // ---- Path E: AI Closing Brief (the owner's daily executive report) ----
+  if (body.action === 'run_daily_brief') {
+    const vId = body.venue_id ?? venueId
+    if (!vId) return json({ error: 'venue not found' }, 400)
+    try {
+      const args: Record<string, unknown> = { p_venue_id: vId }
+      if (body.date) args.p_date = body.date
+      const { data, error } = await db.rpc('get_daily_brief_data', args)
+      if (error) throw error
+
+      const briefSys = `You are the AI manager of a Georgian PS5 gaming lounge, briefing the OWNER on today.
+You get a JSON snapshot (revenue today vs yesterday in GEL, sessions, hours, top_console, idle_consoles,
+peak_hour_tbilisi 0-23, cancels/voids/refunds today, low_stock[], hardware_warnings[]).
+
+Write a SHORT, warm, sharp end-of-day brief in GEORGIAN markdown:
+1. one punchy headline line + a letter grade for the day (A+/A/B/C/D) based on revenue vs yesterday & activity.
+2. **✅ კარგი იყო** — 1-2 bullets (use real numbers: revenue, top console, peak hour).
+3. **⚠️ ყურადღება** — ONLY if relevant: idle consoles, fraud flags (cancels/voids/refunds), low stock, hardware health. Skip if all clean.
+4. **🎯 ხვალ** — exactly 3 concrete actions (e.g. Happy Hour for the idle/dead hours, restock X, service controller Y, watch operator voids).
+Use the REAL numbers. Compare today vs yesterday explicitly. Under ~170 words. No preamble, do not echo the JSON.`
+
+      const g = await callGemini(briefSys, [{ role: 'user', parts: [{ text: JSON.stringify(data) }] }])
+      const text = g?.candidates?.[0]?.content?.parts?.find((p: { text?: string }) => p.text)?.text ?? 'ანგარიში ვერ მომზადდა.'
+      return json({ type: 'text', text })
+    } catch (e) {
+      console.error('DAILY_BRIEF_ERROR', (e as Error).message)
+      return json({ type: 'error', text: 'ანგარიშის შეცდომა.' })
     }
   }
 

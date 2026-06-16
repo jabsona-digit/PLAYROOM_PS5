@@ -29,6 +29,7 @@ import type { Bank, ConsoleUnit, PaymentMethod } from '@/lib/types'
 import { Modal } from './modal'
 import { Analytics } from './analytics'
 import { InSeatAccessModal } from './inseat-access-modal'
+import { DailyBrief } from './daily-brief'
 import { useFiscal } from '@/lib/fiscal'
 
 const METHOD_ICON: Record<PaymentMethod, typeof Banknote> = {
@@ -745,6 +746,9 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <DailyBrief />
+      </div>
       {staleOpen.length > 0 && (
         <div
           className="flex items-start gap-3 rounded-2xl px-4 py-3"
