@@ -3427,6 +3427,7 @@ export type Database = {
       get_hardware_settings: { Args: { p_venue_id: string }; Returns: Json }
       get_open_drawer: { Args: { p_venue_id: string }; Returns: Json }
       get_payment_settings: { Args: { p_org_id: string }; Returns: Json }
+      get_pulse_stats: { Args: never; Returns: Json }
       get_vat_summary: {
         Args: { p_from: string; p_to: string; p_venue_id: string }
         Returns: Json
