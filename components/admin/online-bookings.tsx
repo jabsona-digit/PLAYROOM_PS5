@@ -354,9 +354,10 @@ export function OnlineBookings() {
                       )}
                       {b.status === 'confirmed' && (
                         <button
-                          disabled={isBusy}
+                          disabled={isBusy || !paid}
                           onClick={() => complete(b.id)}
-                          className="nm-btn flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-muted-foreground"
+                          title={!paid ? 'ჯერ დააფიქსირე გადახდა — „გადახდილია"' : ''}
+                          className="nm-btn flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <CircleCheck className="size-3.5" /> დასრულდა
                         </button>
