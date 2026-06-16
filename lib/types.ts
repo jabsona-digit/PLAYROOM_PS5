@@ -94,6 +94,9 @@ export interface ConsoleUnit {
   status: ConsoleStatus
   active_session?: Session
   hardware?: ConsoleHardware
+  health_score?: number          // 0-100, derived from hours_since_service (0068)
+  total_sessions_count?: number  // lifetime completed sessions
+  hours_since_service?: number   // played hours since last controller service
 }
 
 export interface Employee {

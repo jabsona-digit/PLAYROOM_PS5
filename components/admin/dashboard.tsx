@@ -18,6 +18,7 @@ import {
   Plus,
   QrCode,
   Square,
+  Wrench,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
@@ -177,6 +178,16 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
                   />
                   {unit.hardware.last_known_state === 'on' ? 'ჩართული' :
                    unit.hardware.last_known_state === 'off' ? 'გამორთული' : '—'}
+                </p>
+              )}
+              {typeof unit.health_score === 'number' && unit.health_score <= 50 && (
+                <p
+                  className="mt-0.5 flex items-center gap-1 text-[10px] font-bold"
+                  title={`ჯანმრთელობა ${unit.health_score}% · ${unit.total_sessions_count ?? 0} სესია`}
+                  style={{ color: unit.health_score <= 20 ? 'var(--status-expired)' : 'var(--status-warning5)' }}
+                >
+                  <Wrench className="size-3" />
+                  მოვლა რეკომენდებულია
                 </p>
               )}
             </div>

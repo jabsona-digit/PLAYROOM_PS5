@@ -270,6 +270,10 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
         status: (byConsole.has(c.id) ? c.status : 'free') as ConsoleStatus,
         active_session: byConsole.get(c.id),
         hardware: hwByConsole.get(c.id),
+        health_score: (c as { hardware_health_score?: number }).hardware_health_score ?? undefined,
+        total_sessions_count: (c as { total_sessions_count?: number }).total_sessions_count ?? undefined,
+        hours_since_service: (c as { hours_since_service?: number }).hours_since_service != null
+          ? Number((c as { hours_since_service?: number }).hours_since_service) : undefined,
       })),
     )
   }, [])

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plug, Power, Settings2, Zap, AlertTriangle, Cloud } from 'lucide-react'
+import { Plug, Power, Settings2, Zap, AlertTriangle, Cloud, Wrench } from 'lucide-react'
 import { Modal } from './modal'
 import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
@@ -148,9 +148,16 @@ function ShellyAccountCard() {
 }
 
 export function HardwareSettings() {
-  const { consoles, forceConsolePower } = usePlayroom()
+  const { consoles, forceConsolePower, refreshLive, pushToast } = usePlayroom()
   const [editId, setEditId] = useState<number | null>(null)
   const editUnit = consoles.find((c) => c.id === editId) ?? null
+
+  const service = async (id: number) => {
+    const { error } = await (supabase.rpc as any)('mark_controller_serviced', { p_console_id: id })
+    if (error) return pushToast('danger', error.message)
+    pushToast('success', 'ჯოისტიკი გამოცვლილად მონიშნულია — ცვეთა განულდა 🔧')
+    await refreshLive()
+  }
 
   return (
     <section className="nm-raised rounded-3xl p-6 lg:col-span-2">
@@ -183,6 +190,14 @@ export function HardwareSettings() {
                     ? `${MODE_LABEL[c.hardware.control_mode] ?? c.hardware.control_mode} · ${c.hardware.driver} · ${TARGET_LABEL[c.hardware.target] ?? c.hardware.target}`
                     : 'არ არის კონფიგურირებული'}
                 </p>
+                {typeof c.health_score === 'number' && (
+                  <p
+                    className="mt-0.5 text-[11px] font-bold"
+                    style={{ color: c.health_score <= 20 ? 'var(--status-expired)' : c.health_score <= 50 ? 'var(--status-warning5)' : 'var(--muted-foreground)' }}
+                  >
+                    🔧 ჯანმრთელობა {c.health_score}% · {c.total_sessions_count ?? 0} სესია
+                  </p>
+                )}
               </div>
               <StatusDot unit={c} />
               <div className="flex items-center gap-2">
@@ -199,6 +214,13 @@ export function HardwareSettings() {
                   title="Force OFF"
                 >
                   <Power className="size-4" />
+                </button>
+                <button
+                  onClick={() => service(c.id)}
+                  className="nm-btn rounded-xl px-3 py-2 text-xs font-bold text-muted-foreground active:scale-95"
+                  title="ჯოისტიკი შევცვალე (ცვეთის განულება)"
+                >
+                  <Wrench className="size-4" />
                 </button>
                 <button
                   onClick={() => setEditId(c.id)}
