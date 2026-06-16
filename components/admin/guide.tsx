@@ -509,6 +509,28 @@ export function Guide() {
       ),
     },
     {
+      category: 'hardware',
+      title: 'ბილიარდის მაგიდის კონტროლი — შუქი 🎱',
+      content: (
+        <div className="space-y-3">
+          <p>
+            Martelounge მხოლოდ PS5-ისთვის არ არის — <b>ბილიარდის სახლსაც</b> ემსახურება. მაგიდა იქმნება ჩვეულებრივ კონსოლივით (ტიპი „ბილიარდი" / „სნუკერი"), კონტროლის ბერკეტი კი მაგიდის <b>ჭერის ლამპაა</b>.
+          </p>
+          <ul className="list-disc space-y-1.5 pl-4">
+            <li><b>სტარტზე</b> — სესიის დაწყებისას შუქი <b>ავტომატურად ინთება</b> (smart relay-ით, ისევე როგორც PS5-ის TV).</li>
+            <li><b>ბოლოს</b> — სესიის დასრულებისას შუქი ქრება <b>grace</b>-ის შემდეგ (60–90წმ — კლიენტი ასწრებს გადახდას/მაგიდის აწყობას), მერე მაგიდა ბნელდება.</li>
+            <li><b>ანტი-თაღლითობა</b> — შუქი მხოლოდ ფასიანი სესიის დროს ანთია; ოპერატორი ვერ აანთებს მას სესიის გახსნის გარეშე (relay სისტემას ეკუთვნის, არა კედლის ჩამრთველს).</li>
+          </ul>
+          <div className="rounded-2xl p-4 text-sm" style={{ background: 'color-mix(in oklch, var(--status-free) 12%, transparent)' }}>
+            <div className="flex items-start gap-2">
+              <Info className="size-5 shrink-0" style={{ color: 'var(--status-free)' }} />
+              <p>დაყენება: პარამეტრები → 🔌 Hardware → მაგიდა → „რას თიშავს" = <b>შუქი</b>, შემდეგ მიუთითე <b>Grace</b> (წამები). ლამპა უსაფრთხოა — SSD-ის რისკი არ აქვს, პირდაპირ ვთიშავთ.</p>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
       category: 'billing',
       title: 'გამოწერა (SaaS)',
       content: (

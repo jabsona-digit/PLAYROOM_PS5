@@ -79,7 +79,8 @@ export interface Session {
 export interface ConsoleHardware {
   control_mode: 'manual' | 'cloud' | 'agent'
   driver: string
-  target: 'tv' | 'console' | 'hdmi' | 'network'
+  target: 'tv' | 'console' | 'hdmi' | 'network' | 'light'
+  off_delay_seconds?: number   // grace before OFF after session_end (billiard lamp); 0 = instant
   is_active: boolean
   desired_state: 'on' | 'off' | null
   last_known_state: 'on' | 'off' | 'unknown'

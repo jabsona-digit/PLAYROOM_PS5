@@ -131,6 +131,7 @@ function mapHardware(r: any): ConsoleHardware {
     control_mode: (r.control_mode ?? 'manual') as ConsoleHardware['control_mode'],
     driver: r.driver ?? 'none',
     target: (r.target ?? 'tv') as ConsoleHardware['target'],
+    off_delay_seconds: r.off_delay_seconds ?? 0,
     is_active: r.is_active ?? true,
     desired_state: (r.desired_state ?? null) as ConsoleHardware['desired_state'],
     last_known_state: (r.last_known_state ?? 'unknown') as ConsoleHardware['last_known_state'],
@@ -434,21 +435,34 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
   // mode:'cloud' and we invoke the hardware-control edge fn to hit the vendor API.
   const firePower = useCallback(
     (consoleId: number, action: 'on' | 'off', triggeredBy: string, sessionId?: string | null) => {
-      ;(supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: { mode?: string } | null }>)(
-        'set_console_power',
-        { p_console_id: consoleId, p_action: action, p_session_id: sessionId ?? null, p_triggered_by: triggeredBy },
-      )
-        .then(({ data }) => {
-          if (data?.mode === 'cloud') {
-            return supabase.functions.invoke('hardware-control', {
-              body: { console_id: consoleId, action, session_id: sessionId ?? null, triggered_by: triggeredBy },
-            })
-          }
-        })
-        .then(() => loadLive())
-        .catch((e) => console.error('power', e))
+      const dispatch = () => {
+        ;(supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: { mode?: string } | null }>)(
+          'set_console_power',
+          { p_console_id: consoleId, p_action: action, p_session_id: sessionId ?? null, p_triggered_by: triggeredBy },
+        )
+          .then(({ data }) => {
+            if (data?.mode === 'cloud') {
+              return supabase.functions.invoke('hardware-control', {
+                body: { console_id: consoleId, action, session_id: sessionId ?? null, triggered_by: triggeredBy },
+              })
+            }
+          })
+          .then(() => loadLive())
+          .catch((e) => console.error('power', e))
+      }
+      // Auto + grace: on session end, keep a billiard lamp on for off_delay_seconds
+      // before cutting it (customer is paying / racking up). 0 = instant (PS5/TV).
+      // Best-effort timer (operator app open); harmless if missed — next start re-ons.
+      const unit = consolesRef.current.find((c) => c.id === consoleId)
+      const grace = action === 'off' && triggeredBy === 'session_end' ? (unit?.hardware?.off_delay_seconds ?? 0) : 0
+      if (grace > 0) {
+        pushToast('info', `${unit?.name ?? 'მაგიდა'} — შუქი ${grace} წმ-ში ჩაქრება`)
+        setTimeout(dispatch, grace * 1000)
+      } else {
+        dispatch()
+      }
     },
-    [loadLive],
+    [loadLive, pushToast],
   )
 
   const startSession: PlayroomState['startSession'] = useCallback(

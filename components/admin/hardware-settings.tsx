@@ -14,7 +14,7 @@ import type { ConsoleUnit } from '@/lib/types'
 const hwTable = () => supabase.from('console_hardware' as never) as any
 
 const MODE_LABEL: Record<string, string> = { manual: 'Manual', cloud: 'Cloud', agent: 'Agent' }
-const TARGET_LABEL: Record<string, string> = { tv: 'TV', hdmi: 'HDMI', console: 'კონსოლი', network: 'ქსელი' }
+const TARGET_LABEL: Record<string, string> = { tv: 'TV', hdmi: 'HDMI', console: 'კონსოლი', network: 'ქსელი', light: 'შუქი' }
 // driver options per control mode
 const DRIVERS: Record<string, { v: string; t: string }[]> = {
   manual: [{ v: 'none', t: 'მოწყობილობის გარეშე (მხოლოდ აღრიცხვა)' }],
@@ -249,6 +249,7 @@ function HardwareEditModal({ unit, onClose }: { unit: ConsoleUnit; onClose: () =
   const [mode, setMode] = useState<string>(hw?.control_mode ?? 'manual')
   const [driver, setDriver] = useState<string>(hw?.driver ?? 'none')
   const [target, setTarget] = useState<string>(hw?.target ?? 'tv')
+  const [graceSec, setGraceSec] = useState<string>(hw?.off_delay_seconds != null ? String(hw.off_delay_seconds) : '')
   const [ip, setIp] = useState<string>((cfg.ip as string) ?? '')
   const [port, setPort] = useState<string>(cfg.port != null ? String(cfg.port) : '')
   const [channel, setChannel] = useState<string>(cfg.channel != null ? String(cfg.channel) : '')
@@ -264,6 +265,11 @@ function HardwareEditModal({ unit, onClose }: { unit: ConsoleUnit; onClose: () =
     setDriver((DRIVERS[m] ?? DRIVERS.manual)[0].v) // reset driver to a valid one for the mode
   }
 
+  const onTargetChange = (t: string) => {
+    setTarget(t)
+    if (t === 'light' && !graceSec) setGraceSec('90') // sensible default grace for a billiard lamp
+  }
+
   const save = async () => {
     if (!currentOrgId || !currentVenueId) return
     setSaving(true)
@@ -276,6 +282,7 @@ function HardwareEditModal({ unit, onClose }: { unit: ConsoleUnit; onClose: () =
         driver,
         target,
         is_active: true,
+        off_delay_seconds: Number(graceSec) || 0,
         config: {
           ...(ip ? { ip } : {}),
           ...(port ? { port: Number(port) } : {}),
@@ -315,12 +322,13 @@ function HardwareEditModal({ unit, onClose }: { unit: ConsoleUnit; onClose: () =
 
         <label className="block">
           <span className="text-xs font-bold text-muted-foreground">რას თიშავს</span>
-          <select value={target} onChange={(e) => setTarget(e.target.value)}
+          <select value={target} onChange={(e) => onTargetChange(e.target.value)}
             className="nm-inset mt-1.5 w-full rounded-xl px-3 py-2.5 text-sm font-semibold outline-none">
             <option value="tv">TV — ტელევიზორის კვება (რეკომ.)</option>
             <option value="hdmi">HDMI — სიგნალი</option>
             <option value="network">ქსელი — MAC block</option>
             <option value="console">კონსოლი — პირდაპირ კვება</option>
+            <option value="light">შუქი — ბილიარდის ლამპა 🎱</option>
           </select>
         </label>
 
@@ -330,6 +338,23 @@ function HardwareEditModal({ unit, onClose }: { unit: ConsoleUnit; onClose: () =
             <AlertTriangle className="size-4 shrink-0" />
             კონსოლის პირდაპირ გამორთვამ შეიძლება SSD დააზიანოს — სჯობს TV ან HDMI.
           </div>
+        )}
+
+        {target === 'light' && (
+          <>
+            <div className="flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs font-bold"
+              style={{ background: 'color-mix(in oklch, var(--status-free) 12%, transparent)', color: 'var(--status-free)' }}>
+              <Zap className="size-4 shrink-0" />
+              ბილიარდის ლამპა — სტარტზე ავტომატურად ინთება, სესიის ბოლოს ქრება. ლამპა უსაფრთხოა, პირდაპირ ვთიშავთ (SSD-ის რისკი არ არის).
+            </div>
+            <label className="block">
+              <span className="text-xs font-bold text-muted-foreground">Grace — შუქი ქრება სესიის დასრულებიდან (წამი)</span>
+              <input value={graceSec} onChange={(e) => setGraceSec(e.target.value.replace(/\D/g, ''))} placeholder="90"
+                inputMode="numeric"
+                className="nm-inset mt-1.5 w-full rounded-xl px-3 py-2.5 text-sm font-mono outline-none" />
+              <span className="mt-1 block text-[11px] text-muted-foreground">0 = მყისიერი. რეკომ. 60–90წმ (გადახდა/მაგიდის აწყობა).</span>
+            </label>
+          </>
         )}
 
         {(needsNet || needsDevice) && (

@@ -12,13 +12,14 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
-> _Last updated **2026-06-16** — through migration **0070**. Since the previous (0036) revision:
+> _Last updated **2026-06-16** — through migration **0072**. Since the previous (0036) revision:
 > tournaments, capacity/typed-resource booking, God-Mode tenant billing, **plan entitlements (0062)**, payroll/RBAC hardening,
 > team email-invites, operator shifts & attribution, shared cash drawer, abandoned sessions, bar COGS,
 > **In-Seat Ordering portal** (live-session + per-session PIN/QR access gate, 0060–0061),
 > **AI receipt OCR + anti-fraud audit** (+ Georgian↔Latin fuzzy product resolution), **per-tenant online payments (Phase 1)**,
 > **RevPACH analytics + AI advisor (0059)**, **hardware console control** (vendor-agnostic power/TV gating, 0063–0066),
 > **dynamic pricing — Happy Hour/Surge (0067)**, **predictive hardware maintenance (0068)**, **public real-time "Pulse" page (0069)**,
+> **AI Closing Brief (0070)**, **multi-venue-type / Entertainment Venue OS — billiard (0071) + lamp control with grace (0072)**,
 > **mobile-responsive admin**, and **bot-safe SEO + ISR caching** on both sites._
 
 > Product was renamed **Playroom OS → Martelounge** (martel-**OU**-nge; domain bought 2026-06-08).
@@ -350,6 +351,13 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
       sessions/hours) over published non-suspended venues → marketplace /live page.
 0070  AI CLOSING BRIEF: get_daily_brief_data(venue,date) — one daily snapshot (revenue vs yesterday, top/idle
       consoles, peak hour, fraud counts, low stock, hardware health) → ai-assistant Path E run_daily_brief.
+─ multi-venue-type · "Entertainment Venue OS" (billiard first) ──────────────────────────────────────────
+0071  MULTI-VENUE-TYPE: venues.venue_type (playroom|billiard|karaoke|vr|mixed, CHECK, default playroom) +
+      venues.venue_config jsonb + consoles.asset_label (custom name). console_hardware.target += 'light'.
+      public_venues + get_pulse_stats expose venue_type (marketplace /live category tabs). NOTE: console_type
+      stays FREE-TEXT (typed capacity pools, 0039) — billiard tables = console_type 'ბილიარდი'/'სნუკერი', no rename.
+0072  HARDWARE GRACE: console_hardware.off_delay_seconds (0–600). Billiard lamp (target='light') auto-on at
+      session start, OFF after a grace delay on session_end (customer pays/racks up). 0 = instant (PS5/TV default).
 ```
 
 > **Schema-compat invariants:** no enum types (all `text + CHECK`); `consoles.id` & `pricing_plans.id`
