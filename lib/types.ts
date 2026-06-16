@@ -92,6 +92,7 @@ export interface ConsoleUnit {
   id: number
   slot_number: number
   name: string
+  console_type?: string          // capacity pool / segment key (standard|coupe|vip|billiard|snooker…)
   status: ConsoleStatus
   active_session?: Session
   hardware?: ConsoleHardware

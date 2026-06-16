@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
 import { supabase } from '@/lib/supabase/client'
-import { formatClock, gel, openBillableMinutes, paymentMethodLabel, statusMeta } from '@/lib/ui'
+import { formatClock, gel, openBillableMinutes, paymentMethodLabel, statusMeta, consoleLabels, consoleCategory, venueLabels } from '@/lib/ui'
 import type { Bank, ConsoleUnit, PaymentMethod } from '@/lib/types'
 import { Modal } from './modal'
 import { Analytics } from './analytics'
@@ -156,7 +156,9 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
-              <Gamepad2 className="size-5 text-primary" />
+              {consoleCategory(unit.console_type) === 'playroom'
+                ? <Gamepad2 className="size-5 text-primary" />
+                : <span className="text-2xl leading-none">{consoleLabels(unit.console_type).icon}</span>}
             </div>
             <div>
               <p className="font-bold leading-tight">{unit.name}</p>
@@ -216,7 +218,7 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
             <p className="text-sm text-muted-foreground">
               {hwBlocked
                 ? 'სესიის დასაწყებად ჯერ დააკონფიგურირე Hardware (პარამეტრები → 🔌).'
-                : 'კონსოლი თავისუფალია — დაიწყე ახალი სესია.'}
+                : `${consoleLabels(unit.console_type).singular} თავისუფალია — დაიწყე ახალი სესია.`}
             </p>
             <button
               type="button"
@@ -714,7 +716,8 @@ function ExtendModal({
 
 export function Dashboard() {
   const now = useNow()
-  const { consoles, addConsole } = usePlayroom()
+  const { consoles, addConsole, venueType } = usePlayroom()
+  const vl = venueLabels(venueType)
   const [addOpen, setAddOpen] = useState(false)
   const [newName, setNewName] = useState('')
 
@@ -771,7 +774,7 @@ export function Dashboard() {
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div style={{ animation: 'slide-in-up 0.4s ease-out 0s both' }}>
-          <StatCard icon={Activity} label="აქტიური სესია" value={String(stats.active)} countup={stats.active} hint={`${consoles.length} კონსოლიდან`} />
+          <StatCard icon={Activity} label="აქტიური სესია" value={String(stats.active)} countup={stats.active} hint={`სულ ${consoles.length} ${vl.singular}`} />
         </div>
         <div style={{ animation: 'slide-in-up 0.4s ease-out 0.09s both' }}>
           <StatCard icon={CircleDot} label="თავისუფალი" value={String(stats.free)} countup={stats.free} hint="მზადაა ახალი სესიისთვის" />
@@ -786,8 +789,10 @@ export function Dashboard() {
 
       <div className="flex items-center justify-between gap-4">
         <h2 className="flex items-center gap-2 text-lg font-extrabold tracking-tight">
-          <Gamepad2 className="size-5 text-primary" />
-          კონსოლები
+          {venueType === 'playroom'
+            ? <Gamepad2 className="size-5 text-primary" />
+            : <span className="text-xl leading-none">{vl.icon}</span>}
+          {vl.plural}
         </h2>
         <button
           type="button"
@@ -798,7 +803,7 @@ export function Dashboard() {
           className="nm-btn flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary"
         >
           <Plus className="size-4" />
-          კონსოლის დამატება
+          {vl.genitive} დამატება
         </button>
       </div>
 
@@ -820,21 +825,21 @@ export function Dashboard() {
           <span className="nm-inset flex size-14 items-center justify-center rounded-2xl">
             <Plus className="size-6 text-primary" />
           </span>
-          <span className="text-sm font-bold">ახალი კონსოლი</span>
+          <span className="text-sm font-bold">ახალი {vl.singular}</span>
         </button>
       </div>
 
       <Analytics />
 
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="ახალი კონსოლი">
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={`ახალი ${vl.singular}`}>
         <div className="space-y-5">
           <label className="block">
-            <span className="text-sm text-muted-foreground">კონსოლის სახელი</span>
+            <span className="text-sm text-muted-foreground">{vl.genitive} სახელი</span>
             <input
               autoFocus
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder={`PS5 - ${consoles.length + 1}`}
+              placeholder={venueType === 'playroom' ? `PS5 - ${consoles.length + 1}` : `${vl.singular} ${consoles.length + 1}`}
               className="nm-inset mt-2 w-full rounded-xl px-4 py-2.5 text-sm font-semibold outline-none placeholder:text-muted-foreground"
             />
           </label>

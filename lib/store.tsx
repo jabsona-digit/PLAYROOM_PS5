@@ -46,6 +46,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 interface PlayroomState {
   consoles: ConsoleUnit[]
   hardwareRequired: boolean
+  venueType: string
   plans: PricingPlan[]
   employees: Employee[]
   shifts: Shift[]
@@ -158,6 +159,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
 
   const [consoles, setConsoles] = useState<ConsoleUnit[]>([])
   const [hardwareRequired, setHardwareRequired] = useState(false)
+  const [venueType, setVenueType] = useState<string>('playroom')
   const [plans, setPlans] = useState<PricingPlan[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [shifts, setShifts] = useState<Shift[]>([])
@@ -255,9 +257,10 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
         .eq('status', 'active'),
       // console_hardware / venues.hardware_required aren't in generated types until the post-deploy regen
       (supabase.from('console_hardware' as never).select('*').eq('venue_id', venue) as unknown as Promise<{ data: any[] | null }>),
-      (supabase.from('venues').select('hardware_required').eq('id', venue).maybeSingle() as unknown as Promise<{ data: { hardware_required?: boolean } | null }>),
+      (supabase.from('venues').select('hardware_required, venue_type').eq('id', venue).maybeSingle() as unknown as Promise<{ data: { hardware_required?: boolean; venue_type?: string } | null }>),
     ])
     setHardwareRequired(!!ven?.hardware_required)
+    setVenueType(ven?.venue_type ?? 'playroom')
     if (!cons) return
     const byConsole = new Map<number, Session>()
     for (const s of active ?? []) byConsole.set(s.console_id, mapSession(s))
@@ -268,6 +271,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
         id: c.id,
         slot_number: c.slot_number,
         name: c.name,
+        console_type: (c as { console_type?: string }).console_type ?? 'standard',
         status: (byConsole.has(c.id) ? c.status : 'free') as ConsoleStatus,
         active_session: byConsole.get(c.id),
         hardware: hwByConsole.get(c.id),
@@ -717,6 +721,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
     () => ({
       consoles,
       hardwareRequired,
+      venueType,
       plans,
       employees,
       shifts,
@@ -748,6 +753,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
     [
       consoles,
       hardwareRequired,
+      venueType,
       plans,
       employees,
       shifts,

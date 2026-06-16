@@ -6,7 +6,8 @@ import {
   Lightbulb, LoaderCircle, Clock, Sparkles,
 } from 'lucide-react'
 import { useOrg } from '@/lib/org'
-import { gel } from '@/lib/ui'
+import { usePlayroom } from '@/lib/store'
+import { gel, venueLabels } from '@/lib/ui'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase/client'
 
@@ -78,6 +79,8 @@ function Kpi({ icon: Icon, label, value, hint }: { icon: typeof Gauge; label: st
 
 export function RevpachAnalytics() {
   const { currentVenueId } = useOrg()
+  const { venueType } = usePlayroom()
+  const vl = venueLabels(venueType)
   const [preset, setPreset] = useState<Preset>('30d')
   const [dailyHours, setDailyHours] = useState(12)
   const [data, setData] = useState<Analytics | null>(null)
@@ -160,8 +163,8 @@ export function RevpachAnalytics() {
             <BarChart3 className="size-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-lg font-extrabold tracking-tight">კონსოლების ინტელექტი</h2>
-            <p className="text-xs text-muted-foreground">RevPACH — შემოსავალი თითო ხელმისაწვდომ კონსოლ-საათზე</p>
+            <h2 className="text-lg font-extrabold tracking-tight">{vl.plural} · ინტელექტი</h2>
+            <p className="text-xs text-muted-foreground">{vl.metric} — შემოსავალი თითო ხელმისაწვდომ {vl.singular}-საათზე</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -204,10 +207,10 @@ export function RevpachAnalytics() {
         <>
           {/* KPIs */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Kpi icon={TrendingUp} label="RevPACH" value={gel(data.revpach)} hint="თითო კონსოლ-საათზე" />
+            <Kpi icon={TrendingUp} label={vl.metric} value={gel(data.revpach)} hint={`თითო ${vl.singular}-საათზე`} />
             <Kpi icon={Gauge} label="დატვირთვა" value={`${data.occupancy_pct}%`} hint={`${data.total_occupied_hours} / ${data.available_console_hours} სთ`} />
             <Kpi icon={Coins} label="შემოსავალი" value={gel(data.total_revenue)} hint={`${data.days} დღე`} />
-            <Kpi icon={Gamepad2} label="კონსოლები" value={String(data.console_count)} hint={`${data.daily_hours} სთ/დღე`} />
+            <Kpi icon={Gamepad2} label={vl.plural} value={String(data.console_count)} hint={`${data.daily_hours} სთ/დღე`} />
           </div>
 
           {/* Insights */}
@@ -263,11 +266,11 @@ export function RevpachAnalytics() {
           {/* Console matrix */}
           <div className="nm-raised overflow-hidden rounded-3xl">
             <div className="hidden grid-cols-12 gap-3 border-b border-border px-6 py-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground md:grid">
-              <span className="col-span-3">კონსოლი</span>
+              <span className="col-span-3">{vl.singular}</span>
               <span className="col-span-2">სტატუსი</span>
               <span className="col-span-3">დატვირთვა</span>
               <span className="col-span-2 text-right">სესიები</span>
-              <span className="col-span-2 text-right">RevPACH</span>
+              <span className="col-span-2 text-right">{vl.metric}</span>
             </div>
             <ul>
               {data.consoles.map((c) => {
@@ -342,7 +345,7 @@ export function RevpachAnalytics() {
           </div>
 
           <p className="text-center text-[11px] text-muted-foreground">
-            RevPACH = შემოსავალი ÷ (კონსოლები × სამუშაო საათები). მონაცემი სესიებიდან, ბარისა და დაბრუნებების გარეშე.
+            {vl.metric} = შემოსავალი ÷ ({vl.plural} × სამუშაო საათები). მონაცემი სესიებიდან, ბარისა და დაბრუნებების გარეშე.
           </p>
         </>
       )}

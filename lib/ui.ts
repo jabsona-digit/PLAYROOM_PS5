@@ -67,6 +67,39 @@ export function planErrorText(msg: string): string {
   return msg
 }
 
+// ── Venue-type / asset labels (multi-venue-type, migrations 0071/0072) ──────
+// One source of truth for the words + icon + analytics metric per segment, so a
+// billiard venue reads "მაგიდა / RevPATH / 🎱" instead of "კონსოლი / RevPACH / 🎮".
+// Georgian declension: we keep singular + genitive (for "X-ის დამატება") + plural.
+export type VenueType = 'playroom' | 'billiard' | 'karaoke' | 'vr' | 'mixed'
+
+export const ASSET_LABELS: Record<VenueType, {
+  singular: string; genitive: string; plural: string; metric: string; icon: string
+}> = {
+  playroom: { singular: 'კონსოლი', genitive: 'კონსოლის', plural: 'კონსოლები', metric: 'RevPACH', icon: '🎮' },
+  billiard: { singular: 'მაგიდა',  genitive: 'მაგიდის',  plural: 'მაგიდები',  metric: 'RevPATH', icon: '🎱' },
+  karaoke:  { singular: 'ოთახი',   genitive: 'ოთახის',   plural: 'ოთახები',   metric: 'RevPARH', icon: '🎤' },
+  vr:       { singular: 'სადგური', genitive: 'სადგურის', plural: 'სადგურები', metric: 'RevPASH', icon: '🥽' },
+  mixed:    { singular: 'ერთეული', genitive: 'ერთეულის', plural: 'ერთეულები', metric: 'RevPACH', icon: '🎯' },
+}
+
+/** Venue-level labels (header, add-button, analytics metric) from venues.venue_type. */
+export const venueLabels = (venueType?: string) =>
+  ASSET_LABELS[(venueType as VenueType)] ?? ASSET_LABELS.playroom
+
+// Free-text console_type → its segment. PS5 variants are playroom; tables billiard.
+const CONSOLE_CATEGORY: Record<string, VenueType> = {
+  standard: 'playroom', coupe: 'playroom', vip: 'playroom',
+  billiard: 'billiard', snooker: 'billiard',
+}
+export const consoleCategory = (consoleType?: string): VenueType =>
+  CONSOLE_CATEGORY[consoleType ?? ''] ?? 'playroom'
+
+/** Per-asset labels (dashboard card icon + word) from consoles.console_type — so a
+    mixed venue shows 🎮 კონსოლი and 🎱 მაგიდა side by side. */
+export const consoleLabels = (consoleType?: string) =>
+  ASSET_LABELS[consoleCategory(consoleType)]
+
 /** Local-time epoch for the start of today / this week (Mon) / this month. */
 export function startOfToday() {
   const d = new Date()
