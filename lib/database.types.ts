@@ -3364,6 +3364,7 @@ export type Database = {
       }
       create_marketplace_booking: {
         Args: {
+          p_console_id?: number
           p_console_type?: string
           p_controllers?: number
           p_customer_name: string
@@ -3461,6 +3462,15 @@ export type Database = {
           busy: Json
           capacity: number
           console_type: string
+        }[]
+      }
+      get_venue_consoles: {
+        Args: { p_date: string; p_slug: string }
+        Returns: {
+          busy: Json
+          console_id: number
+          console_type: string
+          name: string
         }[]
       }
       get_venue_pnl: {
