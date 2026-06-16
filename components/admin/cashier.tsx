@@ -30,6 +30,9 @@ import {
   startOfToday,
   startOfWeek,
   timeOfDay,
+  consoleCategory,
+  ASSET_LABELS,
+  type VenueType,
 } from '@/lib/ui'
 import type { PaymentMethod } from '@/lib/types'
 
@@ -134,6 +137,11 @@ export function Cashier() {
     const byConsole = new Map<string, number>()
     for (const c of consoles) byConsole.set(c.name, 0)
 
+    // today's session revenue split by category (🎮 playroom vs 🎱 billiard …)
+    const catByName = new Map<string, VenueType>()
+    for (const c of consoles) catByName.set(c.name, consoleCategory(c.console_type))
+    const byCategory: Record<string, number> = {}
+
     // today's revenue by payment channel + bank
     const byMethod: Record<PaymentMethod, number> = { cash: 0, card: 0, transfer: 0 }
     const byBank = { TBC: 0, BOG: 0 }
@@ -152,6 +160,8 @@ export function Cashier() {
         todayTip += tip
         todayCount += 1
         byConsole.set(s.console_name, (byConsole.get(s.console_name) ?? 0) + amt)
+        const cat = catByName.get(s.console_name) ?? 'playroom'
+        byCategory[cat] = (byCategory[cat] ?? 0) + amt
         byMethod[s.payment_method] = (byMethod[s.payment_method] ?? 0) + amt
         if (s.bank) byBank[s.bank] = (byBank[s.bank] ?? 0) + amt
       }
@@ -160,11 +170,12 @@ export function Cashier() {
     const consoleRows = [...byConsole.entries()].map(([name, value]) => ({
       name,
       value,
+      category: catByName.get(name) ?? ('playroom' as VenueType),
     }))
     const max = Math.max(1, ...consoleRows.map((r) => r.value))
     const avg = todayCount ? today / todayCount : 0
 
-    return { today, week, month, all, todayCount, avg, consoleRows, max, byMethod, byBank, todayTip, weekTip, monthTip, allTip }
+    return { today, week, month, all, todayCount, avg, consoleRows, max, byMethod, byBank, todayTip, weekTip, monthTip, allTip, byCategory }
   }, [completed, consoles])
 
   const barData = useMemo(() => {
@@ -466,13 +477,29 @@ export function Cashier() {
       <div className="grid gap-6 lg:grid-cols-5">
         {/* bar chart by console — today */}
         <div className="nm-raised rounded-3xl p-6 lg:col-span-3">
-          <h3 className="text-base font-extrabold">შემოსავალი კონსოლებით</h3>
+          <h3 className="text-base font-extrabold">შემოსავალი ერთეულებით</h3>
           <p className="mt-1 text-sm text-muted-foreground">დღევანდელი სესიების მიხედვით</p>
+
+          {/* category split — billiard separate from PS5 (only when mixed) */}
+          {Object.keys(data.byCategory).length > 1 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {Object.entries(data.byCategory)
+                .sort((a, b) => b[1] - a[1])
+                .map(([cat, val]) => (
+                  <span key={cat} className="nm-inset rounded-full px-3 py-1.5 text-xs font-bold">
+                    {ASSET_LABELS[cat as VenueType]?.icon ?? '🎮'} {ASSET_LABELS[cat as VenueType]?.plural ?? cat} · {gel(val)}
+                  </span>
+                ))}
+            </div>
+          )}
+
           <div className="mt-6 space-y-4">
             {data.consoleRows.map((row) => (
               <div key={row.name} className="flex items-center gap-3">
                 <span className="flex w-20 items-center gap-2 text-sm font-semibold">
-                  <Gamepad2 className="size-4 text-muted-foreground" />
+                  {row.category === 'playroom'
+                    ? <Gamepad2 className="size-4 text-muted-foreground" />
+                    : <span className="text-sm leading-none">{ASSET_LABELS[row.category]?.icon}</span>}
                   {row.name}
                 </span>
                 <div className="nm-inset h-7 flex-1 overflow-hidden rounded-full">
