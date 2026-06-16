@@ -28,9 +28,13 @@ import { TeamSettings } from './team-settings'
 import { HardwareSettings } from './hardware-settings'
 import { QrPrintModal } from './qr-print-modal'
 
-// Bookable resource types — a coupe/VIP is a separate capacity pool (0039).
-const CTYPES = ['standard', 'coupe', 'vip']
-const CTYPE_LABEL: Record<string, string> = { standard: 'PS5', coupe: 'კუპე', vip: 'VIP' }
+// Bookable resource types — each is its own capacity pool (0039). Latin keys keep
+// future console_type→category mapping clean (standard/coupe/vip = playroom,
+// billiard/snooker = billiard). console_type is free-text in the DB.
+const CTYPES = ['standard', 'coupe', 'vip', 'billiard', 'snooker']
+const CTYPE_LABEL: Record<string, string> = {
+  standard: 'PS5', coupe: 'კუპე', vip: 'VIP', billiard: 'ბილიარდი', snooker: 'სნუკერი',
+}
 
 function Toggle({
   checked,
@@ -177,7 +181,7 @@ function ConsoleRow({ unit }: { unit: ConsoleUnit }) {
           <button
             type="button"
             onClick={cycleType}
-            title="ტიპის შეცვლა (PS5 / კუპე / VIP)"
+            title="ტიპის შეცვლა (PS5 / კუპე / VIP / ბილიარდი / სნუკერი)"
             className={cn(
               'nm-btn rounded-xl px-2.5 py-1.5 text-xs font-bold',
               ctype === 'standard' ? 'text-muted-foreground' : 'text-primary',
