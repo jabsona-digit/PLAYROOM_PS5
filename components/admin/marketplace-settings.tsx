@@ -23,6 +23,7 @@ interface VenuePublic {
   name: string
   slug: string
   is_published: boolean
+  venue_type: string
   description: string
   city: string
   address: string
@@ -36,6 +37,7 @@ const EMPTY: VenuePublic = {
   name: '',
   slug: '',
   is_published: false,
+  venue_type: 'playroom',
   description: '',
   city: '',
   address: '',
@@ -44,6 +46,15 @@ const EMPTY: VenuePublic = {
   gallery: [],
   amenities: [],
 }
+
+// venue_type → category/labels (mirrors /live VENUE_META + lib ASSET_LABELS)
+const VENUE_TYPES: { v: string; icon: string; label: string }[] = [
+  { v: 'playroom', icon: '🎮', label: 'ფლეირუმი' },
+  { v: 'billiard', icon: '🎱', label: 'ბილიარდი' },
+  { v: 'karaoke', icon: '🎤', label: 'კარაოკე' },
+  { v: 'vr', icon: '🥽', label: 'VR' },
+  { v: 'mixed', icon: '🎯', label: 'გაერთიანებული' },
+]
 
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
@@ -83,7 +94,7 @@ export function MarketplaceSettings() {
     if (!currentVenueId) return
     const { data } = await (supabase.from('venues') as any)
       .select(
-        'name, slug, is_published, description, city, address, public_phone, cover_image_url, gallery, amenities',
+        'name, slug, is_published, venue_type, description, city, address, public_phone, cover_image_url, gallery, amenities',
       )
       .eq('id', currentVenueId)
       .single()
@@ -92,6 +103,7 @@ export function MarketplaceSettings() {
         name: data.name ?? '',
         slug: data.slug ?? '',
         is_published: !!data.is_published,
+        venue_type: data.venue_type ?? 'playroom',
         description: data.description ?? '',
         city: data.city ?? '',
         address: data.address ?? '',
@@ -135,6 +147,7 @@ export function MarketplaceSettings() {
     const { error } = await (supabase.from('venues') as any)
       .update({
         slug,
+        venue_type: form.venue_type,
         description: form.description.trim() || null,
         city: form.city.trim() || null,
         address: form.address.trim() || null,
@@ -227,6 +240,32 @@ export function MarketplaceSettings() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
+        {/* Venue type */}
+        <div className="block sm:col-span-2">
+          <span className="text-sm text-muted-foreground">ფილიალის ტიპი</span>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {VENUE_TYPES.map((t) => {
+              const active = form.venue_type === t.v
+              return (
+                <button
+                  key={t.v}
+                  type="button"
+                  onClick={() => set('venue_type', t.v)}
+                  className={cn(
+                    'rounded-xl px-4 py-2.5 text-sm font-bold transition-colors',
+                    active ? 'nm-daylight text-primary' : 'nm-inset text-muted-foreground',
+                  )}
+                >
+                  {t.icon} {t.label}
+                </button>
+              )
+            })}
+          </div>
+          <span className="mt-1.5 block text-xs text-muted-foreground">
+            განსაზღვრავს კატეგორიას marketplace/Pulse-ზე (🎮/🎱) და აპის ტერმინებს. „გაერთიანებული" = რამდენიმე ტიპი ერთ ფილიალში. შემდეგ დააჭირე <b>შენახვას</b>.
+          </span>
+        </div>
+
         {/* Slug */}
         <label className="block sm:col-span-2">
           <span className="text-sm text-muted-foreground">მისამართი (slug)</span>
