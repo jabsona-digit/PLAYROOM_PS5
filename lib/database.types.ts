@@ -3411,6 +3411,10 @@ export type Database = {
         }
         Returns: Json
       }
+      get_daily_brief_data: {
+        Args: { p_date?: string; p_venue_id: string }
+        Returns: Json
+      }
       get_ghost_power_events: {
         Args: { p_from: string; p_to: string; p_venue_id: string }
         Returns: {
