@@ -542,6 +542,23 @@ export function Guide() {
     },
     {
       category: 'ai',
+      title: 'ღამის ანგარიში — AI Closing Brief 🌙',
+      content: (
+        <div className="space-y-3">
+          <p>
+            მთავარ ეკრანზე ღილაკი <b>„🌙 ღამის ანგარიში"</b> — ერთი დაჭერით AI კითხულობს მთელ დღეს და გიწერს მოკლე ბრიფს ქართულად: დღის შეფასება (ქულა), რა იყო კარგი, რას მიაქციო ყურადღება და <b>3 კონკრეტული ნაბიჯი ხვალისთვის</b>.
+          </p>
+          <div className="rounded-2xl p-4 text-sm" style={{ background: 'color-mix(in oklch, var(--primary) 12%, transparent)' }}>
+            <div className="flex items-start gap-2">
+              <Sparkles className="size-5 shrink-0" style={{ color: 'var(--primary)' }} />
+              <p>აერთიანებს ყველაფერს: შემოსავალი (vs გუშინ), ტოპ/უქმე კონსოლი, პიკის საათი, საეჭვო ქმედებები, დაბალი მარაგი და კონსოლების ჯანმრთელობა — ერთ ჭკვიან ტექსტში. დილის ყავასთან წასაკითხად. ☕</p>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      category: 'ai',
       title: 'ჩეკის სკანერი (OCR) 📸',
       content: (
         <p>

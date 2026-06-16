@@ -12,7 +12,7 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
-> _Last updated **2026-06-16** — through migration **0069**. Since the previous (0036) revision:
+> _Last updated **2026-06-16** — through migration **0070**. Since the previous (0036) revision:
 > tournaments, capacity/typed-resource booking, God-Mode tenant billing, **plan entitlements (0062)**, payroll/RBAC hardening,
 > team email-invites, operator shifts & attribution, shared cash drawer, abandoned sessions, bar COGS,
 > **In-Seat Ordering portal** (live-session + per-session PIN/QR access gate, 0060–0061),
@@ -348,6 +348,8 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
       (accrues played hours on completion, capped 24h) + mark_controller_serviced (admin reset). Backfilled.
 0069  PULSE: get_pulse_stats() — anon aggregated public census (players now, per-city/venue occupancy, month
       sessions/hours) over published non-suspended venues → marketplace /live page.
+0070  AI CLOSING BRIEF: get_daily_brief_data(venue,date) — one daily snapshot (revenue vs yesterday, top/idle
+      consoles, peak hour, fraud counts, low stock, hardware health) → ai-assistant Path E run_daily_brief.
 ```
 
 > **Schema-compat invariants:** no enum types (all `text + CHECK`); `consoles.id` & `pricing_plans.id`
@@ -532,6 +534,9 @@ Client (ai-assistant.tsx) → supabase.functions.invoke('ai-assistant',{messages
 - **RevPACH advisor (Path D)** — `action:'run_revpach_advisor'` calls `get_console_analytics` under the
   caller's JWT → Gemini returns short, specific Georgian recommendations (fill dead zones, weak/idle
   consoles, a pricing insight). UI: "✨ AI რჩევები" in the `analytics` module.
+- **AI Closing Brief (Path E)** — `action:'run_daily_brief'` (+optional `date`) calls `get_daily_brief_data`
+  (one consolidated snapshot) → Gemini writes the owner's plain-Georgian end-of-day brief (grade + what went
+  well + what to watch + 3 next actions). UI: "🌙 ღამის ანგარიში" button on the dashboard (`daily-brief.tsx`).
 
 ---
 
