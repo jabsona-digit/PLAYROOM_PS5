@@ -12,7 +12,7 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
-> _Last updated **2026-06-16** — through migration **0073**. Since the previous (0036) revision:
+> _Last updated **2026-06-16** — through migration **0074**. Since the previous (0036) revision:
 > tournaments, capacity/typed-resource booking, God-Mode tenant billing, **plan entitlements (0062)**, payroll/RBAC hardening,
 > team email-invites, operator shifts & attribution, shared cash drawer, abandoned sessions, bar COGS,
 > **In-Seat Ordering portal** (live-session + per-session PIN/QR access gate, 0060–0061),
@@ -360,12 +360,15 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
       session start, OFF after a grace delay on session_end (customer pays/racks up). 0 = instant (PS5/TV default).
 0073  PORTAL BILLIARD: portal_get_session_status/portal_unlock now return console_type; portal_request_service
       accepts 'equipment' (service_requests.kind widened). /p shows "ინვენტარი" for billiard instead of battery.
+0074  TARIFF CATEGORY: pricing_plans.category (playroom|billiard|karaoke|vr, null=all) + on public_venue_plans.
+      Start-session modal + marketplace booking list only tariffs matching the asset's category. Tariffs editor
+      gets a "ვისთვის" picker. Backward compatible (untagged tariffs show everywhere).
 ```
 
 > **Multi-venue-type frontend (no migration):** dynamic labels via `lib/ui.ts` ASSET_LABELS (🎮 კონსოლი / 🎱
 > მაგიდა, RevPACH→RevPATH) on dashboard + analytics; venue_type selector in Marketplace profile; billiard/snooker
 > in the console-type cycler; cashier splits session revenue by category; marketplace booking hides controllers
-> for billiard. ⏳ TODO: tie pricing_plans → console_type so a billiard booking only lists billiard tariffs.
+> for billiard + filters tariffs by category (0074).
 
 > **Schema-compat invariants:** no enum types (all `text + CHECK`); `consoles.id` & `pricing_plans.id`
 > are **integer** (not uuid) → marketplace FKs to them are integer; `sessions.id`/`customers.id` ARE uuid.
