@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Bot, Send, Sparkles, X, Check, Ban, LoaderCircle, Mic } from 'lucide-react'
+import { Bot, Send, Sparkles, X, Check, Ban, LoaderCircle, Mic, Volume2, VolumeX } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase/client'
 import { usePlayroom } from '@/lib/store'
@@ -51,6 +51,9 @@ export function AiAssistant() {
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState<PendingAction | null>(null)
   const [listening, setListening] = useState(false)
+  const [voiceOn, setVoiceOn] = useState(false)
+  const [speaking, setSpeaking] = useState(false)
+  const voiceOnRef = useRef(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null)
@@ -58,6 +61,39 @@ export function AiAssistant() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, pending, busy])
+
+  // restore the voice-output preference; stop any speech when the panel closes
+  useEffect(() => {
+    const v = typeof window !== 'undefined' && localStorage.getItem('ml_ai_voice') === '1'
+    setVoiceOn(v); voiceOnRef.current = v
+  }, [])
+  useEffect(() => { if (!open) { window.speechSynthesis?.cancel(); setSpeaking(false) } }, [open])
+
+  // Text-to-speech (Web Speech API, Georgian) — the AI reads its replies aloud.
+  const speak = (text: string) => {
+    const synth = typeof window !== 'undefined' ? window.speechSynthesis : null
+    if (!synth || !text) return
+    synth.cancel()
+    const u = new SpeechSynthesisUtterance(text)
+    u.lang = 'ka-GE'
+    const ka = synth.getVoices().find((v) => v.lang?.toLowerCase().startsWith('ka'))
+    if (ka) u.voice = ka
+    u.onstart = () => setSpeaking(true)
+    u.onend = () => setSpeaking(false)
+    u.onerror = () => setSpeaking(false)
+    synth.speak(u)
+  }
+  const stopSpeak = () => { window.speechSynthesis?.cancel(); setSpeaking(false) }
+  const toggleVoice = () => {
+    setVoiceOn((on) => {
+      const next = !on
+      voiceOnRef.current = next
+      try { localStorage.setItem('ml_ai_voice', next ? '1' : '0') } catch { /* ignore */ }
+      if (next) pushToast('info', '🔊 ხმოვანი პასუხები ჩაირთო — AI ახლა ხმითაც გიპასუხებს')
+      else stopSpeak()
+      return next
+    })
+  }
 
   const callFn = async (
     body: Record<string, unknown>,
@@ -72,6 +108,7 @@ export function AiAssistant() {
 
   const send = async (text: string) => {
     if (!text.trim() || busy) return
+    stopSpeak()
     const next = [...messages, { role: 'user' as Role, text: text.trim() }]
     setMessages(next)
     setInput('')
@@ -84,6 +121,7 @@ export function AiAssistant() {
       setPending(res.action)
     } else if (res.text) {
       setMessages((m) => [...m, { role: 'model', text: res.text! }])
+      if (voiceOnRef.current) speak(res.text)
     }
   }
 
@@ -95,7 +133,10 @@ export function AiAssistant() {
     const res = await callFn({ messages, confirmedAction: action })
     setBusy(false)
     if (!res) return
-    if (res.text) setMessages((m) => [...m, { role: 'model', text: res.text! }])
+    if (res.text) {
+      setMessages((m) => [...m, { role: 'model', text: res.text! }])
+      if (voiceOnRef.current) speak(res.text)
+    }
     // reflect any data change in the live dashboard
     await refreshLive()
     pushToast('success', 'შესრულდა')
@@ -170,6 +211,23 @@ export function AiAssistant() {
               <p className="font-extrabold leading-tight">AI დამხმარე</p>
               <p className="text-[11px] text-muted-foreground">Playroom-ის ასისტენტი</p>
             </div>
+            <button
+              type="button"
+              onClick={toggleVoice}
+              aria-label="ხმოვანი პასუხი"
+              title={voiceOn ? 'ხმა ჩართულია — გამორთვა' : 'AI წაიკითხოს პასუხები ხმით'}
+              className={cn(
+                'nm-btn ml-auto flex size-9 shrink-0 items-center justify-center rounded-xl',
+                voiceOn ? 'text-primary' : 'text-muted-foreground',
+              )}
+              style={
+                voiceOn
+                  ? { boxShadow: '0 0 0 1px color-mix(in oklch, var(--primary) 50%, transparent), 0 0 14px 1px color-mix(in oklch, var(--primary) 40%, transparent)' }
+                  : undefined
+              }
+            >
+              {voiceOn ? <Volume2 className={cn('size-4', speaking && 'animate-pulse')} /> : <VolumeX className="size-4" />}
+            </button>
           </div>
 
           {/* messages */}
@@ -208,6 +266,16 @@ export function AiAssistant() {
                   )}
                 >
                   {m.text}
+                  {m.role === 'model' && (
+                    <button
+                      type="button"
+                      onClick={() => (speaking ? stopSpeak() : speak(m.text))}
+                      className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary"
+                      aria-label="მოსმენა"
+                    >
+                      <Volume2 className="size-3" /> {speaking ? 'გაჩერება' : 'მოსმენა'}
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
