@@ -666,35 +666,50 @@ export type Database = {
       consoles: {
         Row: {
           console_type: string
+          controller_replaced_at: string | null
           created_at: string
           deleted_at: string | null
+          hardware_health_score: number | null
+          hours_since_service: number
           id: number
           name: string
           org_id: string
           slot_number: number
           status: string
+          total_hours_played: number
+          total_sessions_count: number
           venue_id: string
         }
         Insert: {
           console_type?: string
+          controller_replaced_at?: string | null
           created_at?: string
           deleted_at?: string | null
+          hardware_health_score?: number | null
+          hours_since_service?: number
           id?: number
           name: string
           org_id: string
           slot_number: number
           status?: string
+          total_hours_played?: number
+          total_sessions_count?: number
           venue_id: string
         }
         Update: {
           console_type?: string
+          controller_replaced_at?: string | null
           created_at?: string
           deleted_at?: string | null
+          hardware_health_score?: number | null
+          hours_since_service?: number
           id?: number
           name?: string
           org_id?: string
           slot_number?: number
           status?: string
+          total_hours_played?: number
+          total_sessions_count?: number
           venue_id?: string
         }
         Relationships: [
@@ -3467,6 +3482,10 @@ export type Database = {
           p_triggered_by: string
         }
         Returns: number
+      }
+      mark_controller_serviced: {
+        Args: { p_console_id: number }
+        Returns: undefined
       }
       mark_tenant_paid: {
         Args: {
