@@ -1922,6 +1922,7 @@ export type Database = {
       }
       pricing_plans: {
         Row: {
+          category: string | null
           controllers: number
           id: number
           is_active: boolean
@@ -1932,6 +1933,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          category?: string | null
           controllers?: number
           id?: number
           is_active?: boolean
@@ -1942,6 +1944,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          category?: string | null
           controllers?: number
           id?: number
           is_active?: boolean
@@ -3108,6 +3111,7 @@ export type Database = {
       }
       public_venue_plans: {
         Row: {
+          category: string | null
           controllers: number | null
           name: string | null
           plan_id: number | null
