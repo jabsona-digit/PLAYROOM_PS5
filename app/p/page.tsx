@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useSearchParams } from 'next/navigation'
-import { Gamepad2, Clock, Coffee, Plus, Minus, Send, CheckCircle2, Bell, BatteryWarning, AlertTriangle, KeyRound, ScanLine } from 'lucide-react'
+import { Gamepad2, Clock, Coffee, Plus, Minus, Send, CheckCircle2, Bell, BatteryWarning, AlertTriangle, KeyRound, ScanLine, Boxes } from 'lucide-react'
 import { gel } from '@/lib/ui'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase/client'
@@ -36,13 +36,14 @@ function PortalApp() {
 
   // session
   const [consoleName, setConsoleName] = useState<string | null>(null)
+  const [consoleType, setConsoleType] = useState<string | null>(null)
   const [sessionActive, setSessionActive] = useState(false)
   const [endsAt, setEndsAt] = useState<string | null>(null)
   const [planName, setPlanName] = useState<string | null>(null)
 
   const [cart, setCart] = useState<CartItem[]>([])
   const [busy, setBusy] = useState(false)
-  const [successType, setSuccessType] = useState<'order' | 'battery' | 'call' | null>(null)
+  const [successType, setSuccessType] = useState<'order' | 'battery' | 'call' | 'equipment' | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   // per-session access gate — proves this device holds the CURRENT session's
@@ -67,6 +68,7 @@ function PortalApp() {
     const { data, error } = await rpc('portal_get_session_status', { p_console_id: Number(consoleId) })
     if (error || !data || data.error) return
     setConsoleName(data.console_name ?? null)
+    setConsoleType(data.console_type ?? null)
     const active = !!data.active
     setSessionActive(active)
     setEndsAt(active ? data.ends_at : null)
@@ -96,6 +98,7 @@ function PortalApp() {
     setUnlocked(true)
     setCode(candidate)
     setConsoleName(data.console_name ?? null)
+    setConsoleType(data.console_type ?? null)
     setSessionActive(true)
     setEndsAt(data.ends_at ?? null)
     setPlanName(data.plan_name ?? null)
@@ -200,7 +203,7 @@ function PortalApp() {
     setTimeout(() => setSuccessType(null), 3500)
   }
 
-  const handleServiceRequest = async (kind: 'battery' | 'call') => {
+  const handleServiceRequest = async (kind: 'battery' | 'call' | 'equipment') => {
     if (!venueId || !consoleId) return
     if (!unlocked || !code) { flashError(orderErrorText('no_active_session')); return }
     setBusy(true)
@@ -298,7 +301,7 @@ function PortalApp() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              შეკვეთა, ჯოისტიკის გამოცვლა და სტაფის გამოძახება ხელმისაწვდომია მხოლოდ აქტიური სესიის დროს.
+              შეკვეთა, დახმარება და სტაფის გამოძახება ხელმისაწვდომია მხოლოდ აქტიური სესიის დროს.
               თამაშის დასაწყებად მიმართეთ ოპერატორს.
             </p>
           )}
@@ -339,16 +342,29 @@ function PortalApp() {
         {/* Quick Service Actions — only once the session code is verified */}
         {unlocked && (
           <div className="grid grid-cols-2 gap-3 mt-3">
-            <button
-              onClick={() => handleServiceRequest('battery')}
-              disabled={busy}
-              className="nm-raised flex flex-col items-center justify-center p-3 rounded-2xl active:scale-95 transition-transform disabled:opacity-40 disabled:active:scale-100"
-            >
-              <BatteryWarning className="size-5 text-red-500 mb-1.5" />
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-tight text-center">
-                ჯოისტიკი დაჯდა
-              </span>
-            </button>
+            {consoleType === 'billiard' || consoleType === 'snooker' ? (
+              <button
+                onClick={() => handleServiceRequest('equipment')}
+                disabled={busy}
+                className="nm-raised flex flex-col items-center justify-center p-3 rounded-2xl active:scale-95 transition-transform disabled:opacity-40 disabled:active:scale-100"
+              >
+                <Boxes className="size-5 text-[var(--status-warning5)] mb-1.5" />
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-tight text-center">
+                  ინვენტარი (ცარცი/ბურთები)
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={() => handleServiceRequest('battery')}
+                disabled={busy}
+                className="nm-raised flex flex-col items-center justify-center p-3 rounded-2xl active:scale-95 transition-transform disabled:opacity-40 disabled:active:scale-100"
+              >
+                <BatteryWarning className="size-5 text-red-500 mb-1.5" />
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-tight text-center">
+                  ჯოისტიკი დაჯდა
+                </span>
+              </button>
+            )}
             <button
               onClick={() => handleServiceRequest('call')}
               disabled={busy}
@@ -490,6 +506,13 @@ function PortalApp() {
                 <BatteryWarning className="size-16 text-red-500 mb-4" />
                 <h2 className="text-xl font-black mb-2">მოთხოვნა გაიგზავნა!</h2>
                 <p className="text-sm text-muted-foreground">ოპერატორმა მიიღო შეტყობინება და მალე გამოგიცვლით ჯოისტიკს.</p>
+              </>
+            )}
+            {successType === 'equipment' && (
+              <>
+                <Boxes className="size-16 text-[var(--status-warning5)] mb-4" />
+                <h2 className="text-xl font-black mb-2">მოთხოვნა გაიგზავნა!</h2>
+                <p className="text-sm text-muted-foreground">ოპერატორმა მიიღო შეტყობინება და მალე მოგიტანთ ინვენტარს (ცარცი/ბურთები/კიი).</p>
               </>
             )}
             {successType === 'call' && (

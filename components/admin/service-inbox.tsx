@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bell, BatteryWarning, ShoppingBag, X, Check, Ban, ConciergeBell } from 'lucide-react'
+import { Bell, BatteryWarning, ShoppingBag, X, Check, Ban, ConciergeBell, Boxes } from 'lucide-react'
 import { useOrg } from '@/lib/org'
 import { usePlayroom } from '@/lib/store'
 import { supabase } from '@/lib/supabase/client'
@@ -16,7 +16,7 @@ interface ReqItem { product_id: number; name: string; unit_price: number; qty: n
 interface ServiceRequest {
   id: string
   console_id: number
-  kind: 'order' | 'battery' | 'call'
+  kind: 'order' | 'battery' | 'call' | 'equipment'
   items: ReqItem[]
   total: number
   created_at: string
@@ -49,6 +49,7 @@ const KIND = {
   order: { label: 'შეკვეთა', Icon: ShoppingBag, color: 'var(--primary)' },
   battery: { label: 'ჯოისტიკი დაჯდა', Icon: BatteryWarning, color: 'var(--status-expired)' },
   call: { label: 'სტაფის გამოძახება', Icon: ConciergeBell, color: 'var(--status-free)' },
+  equipment: { label: 'ინვენტარი (ბილიარდი)', Icon: Boxes, color: 'var(--status-warning5)' },
 } as const
 
 export function ServiceInbox() {
