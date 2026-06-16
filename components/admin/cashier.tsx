@@ -157,6 +157,7 @@ type OrgOverviewData = {
     sessions_today: number
   }[]
   totals: { today: number; week: number; month: number; all: number }
+  payments?: { cash: number; card: number; transfer: number }
 }
 
 // OWNER "all venues combined" view. The cashier below is single-venue; this top
@@ -197,6 +198,7 @@ function OrgOverview() {
     { key: 'month', label: 'ეს თვე' },
     { key: 'all', label: 'სულ' },
   ]
+  const pay = data.payments
 
   return (
     <div className="nm-raised rounded-3xl p-6">
@@ -225,6 +227,28 @@ function OrgOverview() {
               </div>
             ))}
           </div>
+
+          {pay && (
+            <div className="mt-4">
+              <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                გადახდის არხები — დღეს (ყველა ფილიალი)
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                {(['cash', 'card', 'transfer'] as PaymentMethod[]).map((m) => {
+                  const Icon = METHOD_ICON[m]
+                  return (
+                    <div key={m} className="nm-inset flex items-center gap-2 rounded-2xl px-3 py-2.5">
+                      <Icon className="size-4 shrink-0 text-primary" />
+                      <div className="min-w-0">
+                        <p className="truncate text-[10px] text-muted-foreground">{paymentMethodLabel[m]}</p>
+                        <p className="font-mono text-sm font-extrabold">{gel(pay[m])}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="mt-5 space-y-3">
             {data.venues.map((v) => {
