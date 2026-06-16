@@ -62,7 +62,7 @@ const PLANS: PlanDef[] = [
   {
     key: 'pro',
     label: 'PRO',
-    price: 45,
+    price: 50,
     badge: 'პოპულარული',
     features: [
       { text: '3 ფილიალი', included: true },
@@ -78,7 +78,7 @@ const PLANS: PlanDef[] = [
   {
     key: 'enterprise',
     label: 'ENTERPRISE',
-    price: 65,
+    price: 70,
     features: [
       { text: 'Unlimited ფილიალი', included: true },
       { text: 'Unlimited კონსოლი', included: true },

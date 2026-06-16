@@ -367,6 +367,9 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
       shows a mixed venue only under the tabs it truly offers, not every one. venue_type stays as the card badge.
 0076  SPECIFIC-UNIT BOOKING: get_venue_consoles (per-console busy) + create_marketplace_booking p_console_id
       (optional). Customer can pin a specific PS5/table or keep "any"; pool capacity check still prevents oversell.
+0077  SELF-SERVE VENUES + PRICE BUMP: create_venue(org,name,venue_type) owner-gated (is_org_admin), plan cap via
+      enforce_venue_limit. Owner adds a venue from Settings ("ფილიალები") → 2nd cash register = 2nd venue (own
+      Z-Report/bar/P&L for free). plan_monthly_price raised Pro 45→50 / Enterprise 65→70.
 ```
 
 > **Multi-venue-type frontend (no migration):** dynamic labels via `lib/ui.ts` ASSET_LABELS (🎮 კონსოლი / 🎱
@@ -568,8 +571,8 @@ Client (ai-assistant.tsx) → supabase.functions.invoke('ai-assistant',{messages
 `window.print()` 80mm; receipt no `next_fiscal_receipt_no()` → `GE-YYYYMMDD-XXXXXX`. Phase C (hardware
 bridge → Daisy/EFTS → RS.GE) is future.
 
-**Plans** (`plan_monthly_price()` is the DB source of truth): trial (₾0, 14d) · **pro (₾45/mo)** ·
-**enterprise (₾65/mo**, RS.GE fiscal+API). God-Mode billing (migration 0040) is LIVE: `mark_tenant_paid`
+**Plans** (`plan_monthly_price()` is the DB source of truth): trial (₾0, 14d) · **pro (₾50/mo)** ·
+**enterprise (₾70/mo**, RS.GE fiscal+API). God-Mode billing (migration 0040) is LIVE: `mark_tenant_paid`
 records a `platform_payments` row + extends `current_period_end`; overdue badge + MRR in `platform.tsx`.
 Subscription auto-billing (platform's own card flow) is future.
 

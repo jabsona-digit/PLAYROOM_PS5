@@ -379,6 +379,178 @@ function FiscalSettings() {
   )
 }
 
+// Venue types an owner can register a new venue as (mirrors VenueType in lib/ui).
+const VENUE_TYPES: { key: string; label: string }[] = [
+  { key: 'billiard', label: '🎱 ბილიარდი' },
+  { key: 'playroom', label: '🎮 კონსოლები' },
+  { key: 'karaoke', label: '🎤 კარაოკე' },
+  { key: 'vr', label: '🥽 VR' },
+  { key: 'mixed', label: '🎯 შერეული' },
+]
+// Plan venue caps mirror plan_limit('venues') (migration 0062).
+const VENUE_CAP: Record<string, string> = { trial: '1', pro: '3', enterprise: '∞' }
+
+// Owner/admin self-serve venue management. A club running billiard on a SECOND
+// physical cash register registers it here as its own venue → separate cash drawer,
+// Z-Report, bar and P&L for free (see migration 0077 / create_venue).
+function VenuesSettings() {
+  const { currentOrgId, currentVenueId, currentRole, venues, setCurrentVenue, refresh, plan } =
+    useOrg()
+  const { pushToast } = usePlayroom()
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [vtype, setVtype] = useState('billiard')
+  const [busy, setBusy] = useState(false)
+
+  if (currentRole !== 'owner' && currentRole !== 'admin') return null
+
+  const create = async () => {
+    if (!currentOrgId || busy) return
+    const clean = name.trim()
+    if (!clean) {
+      pushToast('warning', 'შეიყვანე ფილიალის სახელი')
+      return
+    }
+    setBusy(true)
+    const { data, error } = await supabase.rpc('create_venue', {
+      p_org_id: currentOrgId,
+      p_name: clean,
+      p_venue_type: vtype,
+    })
+    setBusy(false)
+    if (error) {
+      const m = error.message || ''
+      pushToast(
+        'danger',
+        m.includes('plan_limit_reached')
+          ? 'ფილიალების ლიმიტი ამოიწურა — გადადი PRO/ENTERPRISE-ზე მეტი ფილიალისთვის'
+          : m.includes('unauthorized')
+            ? 'მხოლოდ მფლობელს შეუძლია ფილიალის დამატება'
+            : m,
+      )
+      return
+    }
+    await refresh()
+    const created = data as { id?: string } | null
+    if (created?.id) setCurrentVenue(created.id)
+    pushToast('success', `ფილიალი „${clean}" დაემატა`)
+    setName('')
+    setVtype('billiard')
+    setOpen(false)
+  }
+
+  return (
+    <section className="nm-raised rounded-3xl p-6">
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
+            <Building2 className="size-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-lg font-extrabold tracking-tight">ფილიალები</h2>
+            <p className="text-xs text-muted-foreground">
+              {venues.length} ფილიალი • ლიმიტი: {VENUE_CAP[plan] ?? '1'} ({plan.toUpperCase()})
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setName('')
+            setVtype('billiard')
+            setOpen(true)
+          }}
+          className="nm-btn flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary"
+        >
+          <Plus className="size-4" />
+          <span className="hidden sm:inline">ფილიალის დამატება</span>
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {venues.map((v) => {
+          const active = v.id === currentVenueId
+          return (
+            <button
+              key={v.id}
+              type="button"
+              onClick={() => setCurrentVenue(v.id)}
+              className={cn(
+                'flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left transition',
+                active ? 'nm-daylight' : 'nm-inset',
+              )}
+            >
+              <span className="truncate text-sm font-bold">{v.name}</span>
+              <span
+                className={cn(
+                  'ml-3 shrink-0 text-[11px] font-bold',
+                  active ? 'text-primary' : 'text-muted-foreground',
+                )}
+              >
+                {active ? 'მიმდინარე' : 'გადართვა'}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      <p className="mt-4 text-xs text-muted-foreground text-pretty">
+        2 ფიზიკური კასა? დაარეგისტრირე ბილიარდი ცალკე ფილიალად — მიიღებ ცალკე Z-რეპორტს, ბარსა და ანგარიშგებას.
+      </p>
+
+      <Modal open={open} onClose={() => setOpen(false)} title="ახალი ფილიალი">
+        <div className="space-y-5">
+          <label className="block">
+            <span className="text-sm text-muted-foreground">ფილიალის სახელი</span>
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="ბილიარდი"
+              className="nm-inset mt-2 w-full rounded-xl px-4 py-2.5 text-sm font-semibold outline-none placeholder:text-muted-foreground"
+            />
+          </label>
+          <div>
+            <span className="text-sm text-muted-foreground">ტიპი</span>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {VENUE_TYPES.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setVtype(t.key)}
+                  className={cn(
+                    'rounded-xl px-3 py-2 text-sm font-bold transition',
+                    vtype === t.key ? 'nm-daylight text-primary' : 'nm-inset text-muted-foreground',
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="nm-btn flex-1 rounded-2xl px-4 py-3 text-sm font-bold text-muted-foreground"
+            >
+              გაუქმება
+            </button>
+            <button
+              type="button"
+              onClick={create}
+              disabled={busy}
+              className="nm-daylight flex-1 rounded-2xl px-4 py-3 text-sm font-bold text-primary disabled:opacity-50"
+            >
+              {busy ? '...' : 'დამატება'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </section>
+  )
+}
+
 export function Settings() {
   const { settings, updateSettings, consoles, addConsole, resetSettings } =
     usePlayroom()
@@ -507,6 +679,8 @@ export function Settings() {
           </div>
         </div>
       </section>
+
+      <VenuesSettings />
 
       {/* Console management */}
       <section className="nm-raised rounded-3xl p-6">

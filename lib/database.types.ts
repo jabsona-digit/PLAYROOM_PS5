@@ -3399,6 +3399,44 @@ export type Database = {
         }
         Returns: string
       }
+      create_venue: {
+        Args: { p_name: string; p_org_id: string; p_venue_type?: string }
+        Returns: {
+          address: string | null
+          amenities: Json
+          avg_rating: number
+          city: string | null
+          cover_image_url: string | null
+          created_at: string
+          description: string | null
+          fiscal_address: string | null
+          fiscal_business_name: string | null
+          fiscal_enabled: boolean
+          fiscal_tin: string | null
+          gallery: Json
+          hardware_required: boolean
+          id: string
+          is_active: boolean
+          is_published: boolean
+          is_vat_registered: boolean
+          lat: number | null
+          lng: number | null
+          name: string
+          opening_hours: Json | null
+          org_id: string
+          public_phone: string | null
+          review_count: number
+          slug: string | null
+          venue_config: Json
+          venue_type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "venues"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       delete_console: { Args: { p_console_id: number }; Returns: undefined }
       delete_customer: { Args: { p_customer_id: string }; Returns: undefined }
       delete_expense: { Args: { p_expense_id: string }; Returns: undefined }
@@ -3450,6 +3488,15 @@ export type Database = {
       }
       get_hardware_settings: { Args: { p_venue_id: string }; Returns: Json }
       get_open_drawer: { Args: { p_venue_id: string }; Returns: Json }
+      get_org_overview: {
+        Args: {
+          p_month: string
+          p_org_id: string
+          p_today: string
+          p_week: string
+        }
+        Returns: Json
+      }
       get_payment_settings: { Args: { p_org_id: string }; Returns: Json }
       get_pulse_stats: { Args: never; Returns: Json }
       get_vat_summary: {

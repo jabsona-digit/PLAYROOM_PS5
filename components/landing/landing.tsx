@@ -80,8 +80,8 @@ const CONTACTS = [
 
 const PLANS = [
   { name: 'Trial', price: '₾0', sub: '14 დღე', feats: ['1 ფილიალი', '4 კონსოლი', 'ძირითადი მოდულები'], cta: 'უფასო ცდა', highlight: false },
-  { name: 'Pro', price: '₾45', sub: '/ თვე', feats: ['3 ფილიალი', 'ბარი + საწყობი', 'ბუღალტერია + ტურნირები', 'ონლაინ ჯავშნები'], cta: 'დაიწყე', highlight: true },
-  { name: 'Enterprise', price: '₾65', sub: '/ თვე', feats: ['ულიმიტო', 'RS.GE ფისკალი', 'API + პრიორიტეტი'], cta: 'დაგვიკავშირდი', highlight: false },
+  { name: 'Pro', price: '₾50', sub: '/ თვე', feats: ['3 ფილიალი', 'ბარი + საწყობი', 'ბუღალტერია + ტურნირები', 'ონლაინ ჯავშნები'], cta: 'დაიწყე', highlight: true },
+  { name: 'Enterprise', price: '₾70', sub: '/ თვე', feats: ['ულიმიტო', 'RS.GE ფისკალი', 'API + პრიორიტეტი'], cta: 'დაგვიკავშირდი', highlight: false },
 ]
 
 const VALUE = [

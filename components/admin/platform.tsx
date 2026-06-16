@@ -22,8 +22,8 @@ import { gel } from '@/lib/ui'
 
 // Plan prices — single source of truth is plan_monthly_price() in the DB (see
 // migration 0040). These mirror it only for the plan-dropdown labels. Keep in
-// sync with billing.tsx (Trial free / Pro ₾45 / Enterprise ₾65).
-const PLAN_PRICE: Record<string, number> = { trial: 0, pro: 45, enterprise: 65 }
+// sync with billing.tsx (Trial free / Pro ₾50 / Enterprise ₾70).
+const PLAN_PRICE: Record<string, number> = { trial: 0, pro: 50, enterprise: 70 }
 const PLANS = ['trial', 'pro', 'enterprise'] as const
 const PAY_MONTHS = [1, 3, 6, 12] as const
 

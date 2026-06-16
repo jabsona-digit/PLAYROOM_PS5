@@ -4,8 +4,10 @@ import { useMemo, useState, useEffect, useCallback } from 'react'
 import {
   ArrowLeftRight,
   Banknote,
+  Building2,
   CalendarDays,
   CalendarRange,
+  ChevronDown,
   Coins,
   CreditCard,
   Gamepad2,
@@ -34,7 +36,7 @@ import {
   ASSET_LABELS,
   type VenueType,
 } from '@/lib/ui'
-import type { PaymentMethod } from '@/lib/types'
+import type { PaymentMethod, Bank } from '@/lib/types'
 
 interface BarSaleRow {
   id: string
@@ -53,10 +55,224 @@ const METHOD_ICON: Record<PaymentMethod, typeof Banknote> = {
   transfer: ArrowLeftRight,
 }
 
+// Owner-view tab labels per category (owner's wording; icons come from ASSET_LABELS).
+const CATEGORY_TAB: Partial<Record<VenueType, string>> = {
+  playroom: 'კონსოლები',
+  billiard: 'ბილიარდი',
+  karaoke: 'კარაოკე',
+  vr: 'VR',
+}
+// Stable display order for the filter tabs.
+const CATEGORY_ORDER: VenueType[] = ['playroom', 'billiard', 'karaoke', 'vr', 'mixed']
+
+type StatSession = {
+  console_name: string
+  price_total: number
+  tip_amount: number
+  payment_method: PaymentMethod
+  bank?: Bank | null
+  ended_at?: string
+  ends_at?: string | null
+  started_at: string
+}
+type StatConsole = { name: string; console_type?: string }
+
+// Pure session aggregation — extracted so we can compute it twice: once for the
+// owner's category-filtered view (the cards) and once whole-venue (the physical
+// Z-Report / drawer, which is NOT filtered — that's one shared cash drawer).
+function computeSessionStats(sessions: StatSession[], consoleList: StatConsole[]) {
+  const t0 = startOfToday()
+  const w0 = startOfWeek()
+  const m0 = startOfMonth()
+
+  let today = 0
+  let week = 0
+  let month = 0
+  let all = 0
+  let todayCount = 0
+
+  let todayTip = 0
+  let weekTip = 0
+  let monthTip = 0
+  let allTip = 0
+
+  // today's revenue per console (spec §9)
+  const byConsole = new Map<string, number>()
+  for (const c of consoleList) byConsole.set(c.name, 0)
+
+  // today's session revenue split by category (🎮 playroom vs 🎱 billiard …)
+  const catByName = new Map<string, VenueType>()
+  for (const c of consoleList) catByName.set(c.name, consoleCategory(c.console_type))
+  const byCategory: Record<string, number> = {}
+
+  // today's revenue by payment channel + bank
+  const byMethod: Record<PaymentMethod, number> = { cash: 0, card: 0, transfer: 0 }
+  const byBank: Record<Bank, number> = { TBC: 0, BOG: 0 }
+
+  for (const s of sessions) {
+    const ts = new Date(s.ended_at ?? s.ends_at ?? s.started_at).getTime()
+    const amt = s.price_total
+    const tip = s.tip_amount
+
+    all += amt
+    allTip += tip
+    if (ts >= m0) { month += amt; monthTip += tip }
+    if (ts >= w0) { week += amt; weekTip += tip }
+    if (ts >= t0) {
+      today += amt
+      todayTip += tip
+      todayCount += 1
+      byConsole.set(s.console_name, (byConsole.get(s.console_name) ?? 0) + amt)
+      const cat = catByName.get(s.console_name) ?? 'playroom'
+      byCategory[cat] = (byCategory[cat] ?? 0) + amt
+      byMethod[s.payment_method] = (byMethod[s.payment_method] ?? 0) + amt
+      if (s.bank) byBank[s.bank] = (byBank[s.bank] ?? 0) + amt
+    }
+  }
+
+  const consoleRows = [...byConsole.entries()].map(([name, value]) => ({
+    name,
+    value,
+    category: catByName.get(name) ?? ('playroom' as VenueType),
+  }))
+  const max = Math.max(1, ...consoleRows.map((r) => r.value))
+  const avg = todayCount ? today / todayCount : 0
+
+  return {
+    today, week, month, all, todayCount, avg, consoleRows, max,
+    byMethod, byBank, todayTip, weekTip, monthTip, allTip, byCategory,
+    count: sessions.length,
+  }
+}
+
+type OrgOverviewData = {
+  venues: {
+    venue_id: string
+    name: string
+    venue_type: string
+    today: number
+    week: number
+    month: number
+    all: number
+    sessions_today: number
+  }[]
+  totals: { today: number; week: number; month: number; all: number }
+}
+
+// OWNER "all venues combined" view. The cashier below is single-venue; this top
+// panel rolls up revenue (sessions + bar) across every venue of the org via the
+// get_org_overview RPC (0078). Owner/admin only, and only when the org has >1 venue.
+// Click a venue row to jump to its cashier.
+function OrgOverview() {
+  const { currentOrgId, currentVenueId, currentRole, venues, setCurrentVenue } = useOrg()
+  const [data, setData] = useState<OrgOverviewData | null>(null)
+  const [open, setOpen] = useState(true)
+
+  const isOwner = currentRole === 'owner' || currentRole === 'admin'
+  const multiVenue = venues.length > 1
+
+  useEffect(() => {
+    if (!currentOrgId || !isOwner || !multiVenue) return
+    let alive = true
+    supabase
+      .rpc('get_org_overview', {
+        p_org_id: currentOrgId,
+        p_today: new Date(startOfToday()).toISOString(),
+        p_week: new Date(startOfWeek()).toISOString(),
+        p_month: new Date(startOfMonth()).toISOString(),
+      })
+      .then(({ data, error }) => {
+        if (alive && !error && data) setData(data as unknown as OrgOverviewData)
+      })
+    return () => {
+      alive = false
+    }
+  }, [currentOrgId, isOwner, multiVenue])
+
+  if (!isOwner || !multiVenue || !data) return null
+
+  const periods: { key: 'today' | 'week' | 'month' | 'all'; label: string }[] = [
+    { key: 'today', label: 'დღეს' },
+    { key: 'week', label: 'ეს კვირა' },
+    { key: 'month', label: 'ეს თვე' },
+    { key: 'all', label: 'სულ' },
+  ]
+
+  return (
+    <div className="nm-raised rounded-3xl p-6">
+      <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
+            <Building2 className="size-5 text-primary" />
+          </div>
+          <div className="text-left">
+            <h2 className="text-lg font-extrabold">ყველა ფილიალი — ჯამური</h2>
+            <p className="text-sm text-muted-foreground">{data.venues.length} ფილიალი • OWNER ხედი</p>
+          </div>
+        </div>
+        <ChevronDown className={`size-5 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <>
+          <div className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {periods.map((p, i) => (
+              <div key={p.key} className={i === 0 ? 'nm-daylight rounded-2xl p-4' : 'nm-inset rounded-2xl p-4'}>
+                <p className="text-xs text-muted-foreground">{p.label}</p>
+                <p className={`mt-1 font-mono text-xl font-extrabold ${i === 0 ? 'text-primary text-glow' : ''}`}>
+                  {gel(data.totals[p.key])}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {data.venues.map((v) => {
+              const active = v.venue_id === currentVenueId
+              const icon = ASSET_LABELS[v.venue_type as VenueType]?.icon ?? '🎮'
+              return (
+                <button
+                  key={v.venue_id}
+                  type="button"
+                  onClick={() => setCurrentVenue(v.venue_id)}
+                  className={`flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left transition ${
+                    active ? 'nm-daylight' : 'nm-inset'
+                  }`}
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="text-base leading-none">{icon}</span>
+                    <span className="truncate text-sm font-bold">{v.name}</span>
+                    {active && <span className="shrink-0 text-[11px] font-bold text-primary">• მიმდინარე</span>}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-4">
+                    <span className="hidden text-right sm:block">
+                      <span className="block text-[10px] text-muted-foreground">ეს თვე</span>
+                      <span className="font-mono text-xs font-bold">{gel(v.month)}</span>
+                    </span>
+                    <span className="text-right">
+                      <span className="block text-[10px] text-muted-foreground">დღეს</span>
+                      <span className="font-mono text-sm font-extrabold text-primary">{gel(v.today)}</span>
+                    </span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">დააკლიკე ფილიალს მის კასაზე გადასართავად.</p>
+        </>
+      )}
+    </div>
+  )
+}
+
 export function Cashier() {
   const { completed, consoles, pushToast } = usePlayroom()
   const { currentVenueId } = useOrg()
   const [barSales, setBarSales] = useState<BarSaleRow[]>([])
+
+  // Owner view filter: which category's revenue to show. 'all' = combined club total.
+  // This is an ANALYTICAL lens only — it never touches the physical drawer / Z-Report.
+  const [vt, setVt] = useState<VenueType | 'all'>('all')
 
   const [shiftOpen, setShiftOpen] = useState(false)
   const [shiftModalMode, setShiftModalMode] = useState<'open' | 'close'>('open')
@@ -117,66 +333,39 @@ export function Cashier() {
     fetchBarSales()
   }, [currentVenueId])
 
-  const data = useMemo(() => {
-    const t0 = startOfToday()
-    const w0 = startOfWeek()
-    const m0 = startOfMonth()
+  // console name → category, and which categories actually exist in this venue.
+  const catByName = useMemo(() => {
+    const m = new Map<string, VenueType>()
+    for (const c of consoles) m.set(c.name, consoleCategory(c.console_type))
+    return m
+  }, [consoles])
 
-    let today = 0
-    let week = 0
-    let month = 0
-    let all = 0
-    let todayCount = 0
+  const presentCats = useMemo(() => {
+    const set = new Set<VenueType>()
+    for (const c of consoles) set.add(consoleCategory(c.console_type))
+    return [...set].sort((a, b) => CATEGORY_ORDER.indexOf(a) - CATEGORY_ORDER.indexOf(b))
+  }, [consoles])
 
-    let todayTip = 0
-    let weekTip = 0
-    let monthTip = 0
-    let allTip = 0
+  // The owner filter only matters when the venue mixes categories (e.g. PS5 + billiard).
+  const showTabs = presentCats.length > 1
+  const activeVt: VenueType | 'all' = showTabs ? vt : 'all'
 
-    // today's revenue per console (spec §9)
-    const byConsole = new Map<string, number>()
-    for (const c of consoles) byConsole.set(c.name, 0)
+  const filteredCompleted = useMemo(
+    () =>
+      activeVt === 'all'
+        ? completed
+        : completed.filter((s) => (catByName.get(s.console_name) ?? 'playroom') === activeVt),
+    [completed, catByName, activeVt],
+  )
+  const filteredConsoles = useMemo(
+    () => (activeVt === 'all' ? consoles : consoles.filter((c) => consoleCategory(c.console_type) === activeVt)),
+    [consoles, activeVt],
+  )
 
-    // today's session revenue split by category (🎮 playroom vs 🎱 billiard …)
-    const catByName = new Map<string, VenueType>()
-    for (const c of consoles) catByName.set(c.name, consoleCategory(c.console_type))
-    const byCategory: Record<string, number> = {}
-
-    // today's revenue by payment channel + bank
-    const byMethod: Record<PaymentMethod, number> = { cash: 0, card: 0, transfer: 0 }
-    const byBank = { TBC: 0, BOG: 0 }
-
-    for (const s of completed) {
-      const ts = new Date(s.ended_at ?? s.ends_at ?? s.started_at).getTime()
-      const amt = s.price_total
-      const tip = s.tip_amount
-      
-      all += amt
-      allTip += tip
-      if (ts >= m0) { month += amt; monthTip += tip; }
-      if (ts >= w0) { week += amt; weekTip += tip; }
-      if (ts >= t0) {
-        today += amt
-        todayTip += tip
-        todayCount += 1
-        byConsole.set(s.console_name, (byConsole.get(s.console_name) ?? 0) + amt)
-        const cat = catByName.get(s.console_name) ?? 'playroom'
-        byCategory[cat] = (byCategory[cat] ?? 0) + amt
-        byMethod[s.payment_method] = (byMethod[s.payment_method] ?? 0) + amt
-        if (s.bank) byBank[s.bank] = (byBank[s.bank] ?? 0) + amt
-      }
-    }
-
-    const consoleRows = [...byConsole.entries()].map(([name, value]) => ({
-      name,
-      value,
-      category: catByName.get(name) ?? ('playroom' as VenueType),
-    }))
-    const max = Math.max(1, ...consoleRows.map((r) => r.value))
-    const avg = todayCount ? today / todayCount : 0
-
-    return { today, week, month, all, todayCount, avg, consoleRows, max, byMethod, byBank, todayTip, weekTip, monthTip, allTip, byCategory }
-  }, [completed, consoles])
+  // `data`    → filtered (drives the owner revenue cards)
+  // `dataAll` → whole-venue (drives the physical Z-Report, never filtered)
+  const data = useMemo(() => computeSessionStats(filteredCompleted, filteredConsoles), [filteredCompleted, filteredConsoles])
+  const dataAll = useMemo(() => computeSessionStats(completed, consoles), [completed, consoles])
 
   const barData = useMemo(() => {
     const t0 = startOfToday()
@@ -239,6 +428,12 @@ export function Cashier() {
 
   const nonCashToday = data.byMethod.card + data.byMethod.transfer
 
+  // Under a category filter, bar revenue can't be attributed to PS5 vs billiard,
+  // so the bar report + combined "session + bar" total only make sense in "ყველა".
+  const showBar = activeVt === 'all'
+  const catIcon = activeVt === 'all' ? null : ASSET_LABELS[activeVt]?.icon ?? '🎮'
+  const catLabel = activeVt === 'all' ? null : CATEGORY_TAB[activeVt] ?? ASSET_LABELS[activeVt]?.plural ?? activeVt
+
   const periods = [
     {
       label: 'დღეს',
@@ -252,13 +447,45 @@ export function Cashier() {
     {
       label: 'სულ ყველა დრო',
       value: data.all,
-      hint: `${completed.length} სესია`,
+      hint: `${data.count} სესია`,
       icon: InfinityIcon,
     },
   ]
 
+  const summary = [
+    { label: 'დღეს', rev: data.today + (showBar ? barData.todayRev : 0), tip: data.todayTip + (showBar ? barData.todayTip : 0), profit: data.today + (showBar ? barData.todayProfit : 0), highlight: true },
+    { label: 'ეს კვირა', rev: data.week + (showBar ? barData.weekRev : 0), tip: data.weekTip + (showBar ? barData.weekTip : 0), profit: data.week + (showBar ? barData.weekProfit : 0) },
+    { label: 'ეს თვე', rev: data.month + (showBar ? barData.monthRev : 0), tip: data.monthTip + (showBar ? barData.monthTip : 0), profit: data.month + (showBar ? barData.monthProfit : 0) },
+    { label: 'სულ', rev: data.all + (showBar ? barData.allRev : 0), tip: data.allTip + (showBar ? barData.allTip : 0), profit: data.all + (showBar ? barData.allProfit : 0) },
+  ]
+
   return (
     <div className="space-y-6">
+
+      {/* OWNER: all venues combined (org-level rollup, only when >1 venue) */}
+      <OrgOverview />
+
+      {/* Owner view: category filter tabs (only when the venue mixes categories) */}
+      {showTabs && (
+        <div className="nm-raised flex gap-2 rounded-3xl p-2">
+          {[...presentCats.map((c) => ({ key: c as VenueType | 'all', icon: ASSET_LABELS[c]?.icon ?? '🎮', label: CATEGORY_TAB[c] ?? ASSET_LABELS[c]?.plural ?? c })),
+            { key: 'all' as const, icon: '🧮', label: 'ყველა' }].map((tab) => {
+            const active = activeVt === tab.key
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setVt(tab.key)}
+                className={`flex-1 rounded-2xl px-4 py-2.5 text-sm font-bold transition ${
+                  active ? 'nm-daylight text-primary' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <span className="mr-1.5">{tab.icon}</span>
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* Მთლიანი ჯამი (სესია + ბარი) */}
       <div className="nm-raised flex flex-col gap-4 rounded-3xl p-6">
@@ -267,17 +494,16 @@ export function Cashier() {
             <Landmark className="size-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-lg font-extrabold">ჯამური მაჩვენებლები</h2>
-            <p className="text-sm text-muted-foreground">სესია + ბარი</p>
+            <h2 className="text-lg font-extrabold">
+              {showBar ? 'ჯამური მაჩვენებლები' : `${catIcon} ${catLabel}`}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {showBar ? 'სესია + ბარი' : 'მხოლოდ სესიების შემოსავალი'}
+            </p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {[
-            { label: 'დღეს', rev: data.today + barData.todayRev, tip: data.todayTip + barData.todayTip, profit: data.today + barData.todayProfit, highlight: true },
-            { label: 'ეს კვირა', rev: data.week + barData.weekRev, tip: data.weekTip + barData.weekTip, profit: data.week + barData.weekProfit },
-            { label: 'ეს თვე', rev: data.month + barData.monthRev, tip: data.monthTip + barData.monthTip, profit: data.month + barData.monthProfit },
-            { label: 'სულ', rev: data.all + barData.allRev, tip: data.allTip + barData.allTip, profit: data.all + barData.allProfit },
-          ].map(p => (
+          {summary.map(p => (
             <div key={p.label} className={p.highlight ? 'nm-daylight rounded-2xl p-4' : 'nm-inset rounded-2xl p-4'}>
               <p className="text-sm font-semibold">{p.label}</p>
               <div className="mt-3 space-y-2">
@@ -299,7 +525,7 @@ export function Cashier() {
         </div>
       </div>
 
-      {/* Shift Controls */}
+      {/* Shift Controls — physical cash drawer is whole-venue (one shared drawer) */}
       <div className="nm-raised flex flex-col gap-4 rounded-3xl p-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <div className="nm-inset flex size-12 items-center justify-center rounded-2xl">
@@ -308,6 +534,7 @@ export function Cashier() {
           <div>
             <p className="font-extrabold">
               {currentShiftStart ? `ცვლა გახსნილია` : 'ცვლა დახურულია'}
+              <span className="ml-2 text-xs font-semibold text-muted-foreground">· მთლიანი ფილიალი</span>
             </p>
             <p className="text-xs text-muted-foreground">
               {currentShiftStart
@@ -346,29 +573,30 @@ export function Cashier() {
         </div>
       </div>
 
-      {/* Z-Report */}
+      {/* Z-Report — whole-venue (one physical drawer); not affected by the owner filter */}
       {zReportVisible && currentShiftStart && (
         <div className="nm-raised rounded-3xl p-6 space-y-4">
           <div className="flex items-center gap-3">
             <Receipt className="size-5 text-primary" />
             <h3 className="text-lg font-extrabold">Z-Report — {new Date().toLocaleDateString('ka-GE')}</h3>
+            <span className="text-xs font-semibold text-muted-foreground">· მთლიანი ფილიალი</span>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div className="nm-inset rounded-2xl p-4">
               <p className="text-xs text-muted-foreground">ნაღდი</p>
-              <p className="font-mono text-xl font-extrabold">{gel(data.byMethod.cash + barData.byMethod.cash)}</p>
+              <p className="font-mono text-xl font-extrabold">{gel(dataAll.byMethod.cash + barData.byMethod.cash)}</p>
             </div>
             <div className="nm-inset rounded-2xl p-4">
               <p className="text-xs text-muted-foreground">ბარათი</p>
-              <p className="font-mono text-xl font-extrabold">{gel(data.byMethod.card + barData.byMethod.card)}</p>
+              <p className="font-mono text-xl font-extrabold">{gel(dataAll.byMethod.card + barData.byMethod.card)}</p>
             </div>
             <div className="nm-inset rounded-2xl p-4">
               <p className="text-xs text-muted-foreground">გადარიცხვა</p>
-              <p className="font-mono text-xl font-extrabold">{gel(data.byMethod.transfer + barData.byMethod.transfer)}</p>
+              <p className="font-mono text-xl font-extrabold">{gel(dataAll.byMethod.transfer + barData.byMethod.transfer)}</p>
             </div>
             <div className="nm-daylight rounded-2xl p-4">
               <p className="text-xs text-muted-foreground">სულ დღეს</p>
-              <p className="font-mono text-xl font-extrabold text-primary">{gel(data.today + barData.todayRev)}</p>
+              <p className="font-mono text-xl font-extrabold text-primary">{gel(dataAll.today + barData.todayRev)}</p>
             </div>
           </div>
           <div className="nm-inset flex items-center justify-between rounded-2xl px-5 py-4">
@@ -527,7 +755,7 @@ export function Cashier() {
         <div className="nm-raised rounded-3xl p-6 lg:col-span-2">
           <h3 className="text-base font-extrabold">ბოლო ჩეკები</h3>
           <ul className="mt-4 space-y-3">
-            {completed.slice(0, 6).map((s) => (
+            {filteredCompleted.slice(0, 6).map((s) => (
               <li
                 key={s.id}
                 className="nm-inset flex items-center justify-between rounded-2xl px-4 py-3"
@@ -546,7 +774,7 @@ export function Cashier() {
                 </span>
               </li>
             ))}
-            {completed.length === 0 ? (
+            {filteredCompleted.length === 0 ? (
               <li className="py-8 text-center text-sm text-muted-foreground">
                 ჯერ არ არის ჩეკები
               </li>
@@ -555,7 +783,8 @@ export function Cashier() {
         </div>
       </div>
 
-      {/* --- ბარი --- */}
+      {/* --- ბარი --- (whole-venue; bar isn't split by category in the owner filter) */}
+      {showBar && (
       <div className="nm-raised rounded-3xl p-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
@@ -617,6 +846,7 @@ export function Cashier() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Shift modal */}
 
