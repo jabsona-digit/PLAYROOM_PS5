@@ -146,7 +146,7 @@ function ScanResult({
 
 export function OnlineBookings() {
   const { currentOrgId } = useOrg()
-  const { pushToast } = usePlayroom()
+  const { pushToast, consoles } = usePlayroom()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [filter, setFilter] = useState<Filter>('pending')
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -305,8 +305,8 @@ export function OnlineBookings() {
                         </span>
                         {b.venues?.name && <span>{b.venues.name}</span>}
                         {b.console_id && (
-                          <span className="flex items-center gap-1.5">
-                            <Gamepad2 className="size-3.5" /> #{b.console_id}
+                          <span className="flex items-center gap-1.5 font-semibold text-foreground">
+                            <Gamepad2 className="size-3.5" /> {consoles.find((c) => c.id === b.console_id)?.name ?? `#${b.console_id}`}
                           </span>
                         )}
                       </div>
