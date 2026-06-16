@@ -83,7 +83,8 @@ interface PlayroomState {
   tick: () => void
   updatePlanPrice: (id: number, price: number) => void
   togglePlanActive: (id: number) => void
-  addPlan: (params: { name: string; controllers: number; price_per_hour: number }) => Promise<void>
+  updatePlanCategory: (id: number, category: string | null) => void
+  addPlan: (params: { name: string; controllers: number; price_per_hour: number; category?: string | null }) => Promise<void>
   removePlan: (id: number) => Promise<void>
   clockToggle: (pin: string) => Promise<{ ok: boolean; message: string }>
   refreshStaff: () => Promise<void>
@@ -146,6 +147,7 @@ function mapPlan(r: any): PricingPlan {
     id: r.id,
     name: r.name,
     type: r.type,
+    category: r.category ?? null,
     controllers: r.controllers,
     price_per_hour: num(r.price_per_hour),
     is_active: r.is_active,
@@ -588,7 +590,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
   )
 
   const addPlan: PlayroomState['addPlan'] = useCallback(
-    async ({ name, controllers, price_per_hour }) => {
+    async ({ name, controllers, price_per_hour, category }) => {
       const org = orgRef.current
       if (!org) return
       const clean = name.trim()
@@ -598,16 +600,30 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
         controllers === 2 ? 'standard' :
         controllers === 3 ? 'pro' :
         controllers === 4 ? 'premium' : 'custom'
-      const { error } = await supabase.from('pricing_plans').insert({
+      // pricing_plans.category (0074) isn't in the generated types until the
+      // post-deploy regen — loose-cast the insert.
+      const { error } = await (supabase.from('pricing_plans') as any).insert({
         org_id: org,
         name: clean,
         type,
+        category: category ?? null,
         controllers,
         price_per_hour,
       })
       if (error) return pushToast('danger', error.message)
       await loadPlans()
       pushToast('success', `ტარიფი „${clean}" დაემატა`)
+    },
+    [pushToast, loadPlans],
+  )
+
+  const updatePlanCategory: PlayroomState['updatePlanCategory'] = useCallback(
+    async (id, category) => {
+      const { error } = await (supabase.from('pricing_plans') as any)
+        .update({ category })
+        .eq('id', id)
+      if (error) return pushToast('danger', error.message)
+      await loadPlans()
     },
     [pushToast, loadPlans],
   )
@@ -745,6 +761,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
       tick,
       updatePlanPrice,
       togglePlanActive,
+      updatePlanCategory,
       addPlan,
       removePlan,
       clockToggle,
@@ -777,6 +794,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
       tick,
       updatePlanPrice,
       togglePlanActive,
+      updatePlanCategory,
       addPlan,
       removePlan,
       clockToggle,

@@ -38,6 +38,7 @@ export interface PricingPlan {
   id: number
   name: string
   type: 'standard' | 'pro' | 'premium' | 'custom'
+  category: string | null    // asset category this tariff applies to; null = all (0074)
   controllers: number
   price_per_hour: number
   is_active: boolean

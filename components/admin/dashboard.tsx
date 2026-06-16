@@ -336,6 +336,7 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
         open={startOpen}
         onClose={() => setStartOpen(false)}
         consoleId={unit.id}
+        consoleType={unit.console_type}
       />
       <ExtendModal
         open={extendOpen}
@@ -450,14 +451,20 @@ function StartSessionModal({
   open,
   onClose,
   consoleId,
+  consoleType,
 }: {
   open: boolean
   onClose: () => void
   consoleId: number
+  consoleType?: string
 }) {
   const { plans, startSession, startOpenSession } = usePlayroom()
   const { currentVenueId } = useOrg()
-  const activePlans = plans.filter((p) => p.is_active)
+  // only tariffs for this asset's category (or untagged = all); fall back to all if none match
+  const cat = consoleCategory(consoleType)
+  const allActive = plans.filter((p) => p.is_active)
+  const matched = allActive.filter((p) => p.category == null || p.category === cat)
+  const activePlans = matched.length ? matched : allActive
   const [planId, setPlanId] = useState(activePlans[0]?.id ?? 1)
   const [mode, setMode] = useState<'fixed' | 'open'>('fixed')
   const [duration, setDuration] = useState(60)
@@ -505,7 +512,7 @@ function StartSessionModal({
               >
                 {p.name}
                 <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
-                  {gel(p.price_per_hour)}/სთ • {p.controllers} ჯოისტიკი
+                  {gel(p.price_per_hour)}/სთ{cat === 'playroom' ? ` • ${p.controllers} ჯოისტიკი` : ''}
                 </span>
               </button>
             ))}

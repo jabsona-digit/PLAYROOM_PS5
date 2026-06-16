@@ -9,8 +9,17 @@ import type { PricingPlan } from '@/lib/types'
 import { Modal } from './modal'
 import { DynamicPricing } from './dynamic-pricing'
 
+// which asset category a tariff applies to (null = all). Matches consoleCategory.
+const PLAN_CATS: { v: string | null; label: string }[] = [
+  { v: null, label: 'ყველა' },
+  { v: 'playroom', label: '🎮 ფლეირუმი' },
+  { v: 'billiard', label: '🎱 ბილიარდი' },
+  { v: 'karaoke', label: '🎤 კარაოკე' },
+  { v: 'vr', label: '🥽 VR' },
+]
+
 function PlanCard({ plan }: { plan: PricingPlan }) {
-  const { updatePlanPrice, togglePlanActive, removePlan } = usePlayroom()
+  const { updatePlanPrice, togglePlanActive, updatePlanCategory, removePlan } = usePlayroom()
   const [draft, setDraft] = useState(plan.price_per_hour)
   const [confirmDel, setConfirmDel] = useState(false)
   const dirty = draft !== plan.price_per_hour
@@ -86,7 +95,29 @@ function PlanCard({ plan }: { plan: PricingPlan }) {
         </div>
       </div>
 
-      <div className="nm-inset mt-6 flex items-center justify-between rounded-2xl px-3 py-3">
+      <div className="mt-5">
+        <p className="mb-1.5 text-xs font-semibold text-muted-foreground">ვისთვის (ერთეულის ტიპი)</p>
+        <div className="flex flex-wrap gap-1.5">
+          {PLAN_CATS.map((c) => {
+            const active = (plan.category ?? null) === c.v
+            return (
+              <button
+                key={c.label}
+                type="button"
+                onClick={() => updatePlanCategory(plan.id, c.v)}
+                className={cn(
+                  'rounded-lg px-2.5 py-1 text-xs font-bold transition-colors',
+                  active ? 'nm-daylight text-primary' : 'nm-btn text-muted-foreground',
+                )}
+              >
+                {c.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="nm-inset mt-4 flex items-center justify-between rounded-2xl px-3 py-3">
         <button
           type="button"
           aria-label="ფასის შემცირება"
@@ -135,11 +166,13 @@ function AddPlanModal({ open, onClose }: { open: boolean; onClose: () => void })
   const [name, setName] = useState('')
   const [controllers, setControllers] = useState(2)
   const [price, setPrice] = useState(5)
+  const [category, setCategory] = useState<string | null>(null)
 
   const reset = () => {
     setName('')
     setControllers(2)
     setPrice(5)
+    setCategory(null)
   }
 
   return (
@@ -155,6 +188,25 @@ function AddPlanModal({ open, onClose }: { open: boolean; onClose: () => void })
             className="nm-inset mt-1.5 w-full rounded-2xl px-4 py-3 text-sm font-semibold outline-none placeholder:text-muted-foreground"
           />
         </label>
+
+        <div>
+          <p className="mb-2 text-sm font-semibold text-muted-foreground">ვისთვის (ერთეულის ტიპი)</p>
+          <div className="flex flex-wrap gap-1.5">
+            {PLAN_CATS.map((c) => (
+              <button
+                key={c.label}
+                type="button"
+                onClick={() => setCategory(c.v)}
+                className={cn(
+                  'rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors',
+                  (category ?? null) === c.v ? 'nm-daylight text-primary' : 'nm-btn text-muted-foreground',
+                )}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div>
           <p className="mb-2 text-sm font-semibold text-muted-foreground">ჯოისტიკების რაოდენობა</p>
@@ -220,7 +272,7 @@ function AddPlanModal({ open, onClose }: { open: boolean; onClose: () => void })
             type="button"
             disabled={!name.trim()}
             onClick={async () => {
-              await addPlan({ name, controllers, price_per_hour: price })
+              await addPlan({ name, controllers, price_per_hour: price, category })
               reset()
               onClose()
             }}
