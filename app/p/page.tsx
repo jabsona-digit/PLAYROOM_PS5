@@ -40,6 +40,8 @@ function PortalApp() {
   const [sessionActive, setSessionActive] = useState(false)
   const [endsAt, setEndsAt] = useState<string | null>(null)
   const [planName, setPlanName] = useState<string | null>(null)
+  const [controllers, setControllers] = useState<number | null>(null)
+  const [pricePerHour, setPricePerHour] = useState<number | null>(null)
 
   const [cart, setCart] = useState<CartItem[]>([])
   const [busy, setBusy] = useState(false)
@@ -73,6 +75,8 @@ function PortalApp() {
     setSessionActive(active)
     setEndsAt(active ? data.ends_at : null)
     setPlanName(active ? data.plan_name : null)
+    setControllers(active ? (data.controllers ?? null) : null)
+    setPricePerHour(active ? (data.price_per_hour ?? null) : null)
     // session ended → drop any unlocked access (the code dies with the session)
     if (!active) {
       setUnlocked(false)
@@ -102,6 +106,8 @@ function PortalApp() {
     setSessionActive(true)
     setEndsAt(data.ends_at ?? null)
     setPlanName(data.plan_name ?? null)
+    setControllers(data.controllers ?? null)
+    setPricePerHour(data.price_per_hour ?? null)
     try { sessionStorage.setItem(`inseat_code_${consoleId}`, candidate) } catch {}
     return true
   }, [venueId, consoleId])
@@ -283,22 +289,52 @@ function PortalApp() {
             {sessionActive ? 'მიმდინარე სესია' : 'სესია არ არის აქტიური'}
           </div>
           {sessionActive ? (
-            <div className="flex justify-between items-end">
-              <div>
-                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">დარჩენილი დრო</p>
-                <p className="text-4xl font-mono font-black mt-1">{clock}</p>
-                {planName ? <p className="mt-1 text-xs text-muted-foreground font-bold">{planName}</p> : null}
+            <>
+              <div className="flex justify-between items-end">
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">დარჩენილი დრო</p>
+                  <p className="text-4xl font-mono font-black mt-1">{clock}</p>
+                  {planName ? <p className="mt-1 text-xs text-muted-foreground font-bold">{planName}</p> : null}
+                </div>
+                {unlocked && (
+                  <button
+                    onClick={() => handleServiceRequest('call')}
+                    disabled={busy}
+                    className="nm-daylight px-5 py-2.5 rounded-xl text-xs font-bold text-primary whitespace-nowrap disabled:opacity-50"
+                  >
+                    დროის გაგრძელება
+                  </button>
+                )}
               </div>
-              {unlocked && (
-                <button
-                  onClick={() => handleServiceRequest('call')}
-                  disabled={busy}
-                  className="nm-daylight px-5 py-2.5 rounded-xl text-xs font-bold text-primary whitespace-nowrap disabled:opacity-50"
-                >
-                  დროის გაგრძელება
-                </button>
+
+              {/* What you're paying for — customer verification (anti-fraud).
+                  Playroom: show the joystick count so the customer spots an
+                  under-rung tier (charged for 2 but playing with 4). */}
+              {controllers != null && controllers > 0 && consoleType !== 'billiard' && consoleType !== 'snooker' && (
+                <div className="nm-inset mt-4 rounded-2xl p-3.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2 text-sm font-black">
+                      <Gamepad2 className="size-4 text-primary" />
+                      {controllers} ჯოისტიკი
+                    </span>
+                    {pricePerHour != null && (
+                      <span className="font-mono text-sm font-black text-primary">{gel(pricePerHour)} / სთ</span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+                    ⚠️ ირიცხები <b className="text-foreground">{controllers} ჯოისტიკზე</b>. თუ მეტი ჯოისტიკით თამაშობ — აცნობე ოპერატორს ან გამოიძახე სტაფი.
+                  </p>
+                </div>
               )}
-            </div>
+
+              {/* Billiard / other: show the tariff + price (no joystick claim) */}
+              {(consoleType === 'billiard' || consoleType === 'snooker') && pricePerHour != null && (
+                <div className="nm-inset mt-4 flex items-center justify-between rounded-2xl p-3.5">
+                  <span className="text-sm font-bold">{planName ?? 'ტარიფი'}</span>
+                  <span className="font-mono text-sm font-black text-primary">{gel(pricePerHour)} / სთ</span>
+                </div>
+              )}
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">
               შეკვეთა, დახმარება და სტაფის გამოძახება ხელმისაწვდომია მხოლოდ აქტიური სესიის დროს.
