@@ -12,7 +12,7 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
-> _Last updated **2026-06-16** — through migration **0075**. Since the previous (0036) revision:
+> _Last updated **2026-06-16** — through migration **0076**. Since the previous (0036) revision:
 > tournaments, capacity/typed-resource booking, God-Mode tenant billing, **plan entitlements (0062)**, payroll/RBAC hardening,
 > team email-invites, operator shifts & attribution, shared cash drawer, abandoned sessions, bar COGS,
 > **In-Seat Ordering portal** (live-session + per-session PIN/QR access gate, 0060–0061),
@@ -365,6 +365,8 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
       gets a "ვისთვის" picker. Backward compatible (untagged tariffs show everywhere).
 0075  PULSE CATEGORIES: get_pulse_stats returns each venue's REAL categories[] (from console_type pools). /live
       shows a mixed venue only under the tabs it truly offers, not every one. venue_type stays as the card badge.
+0076  SPECIFIC-UNIT BOOKING: get_venue_consoles (per-console busy) + create_marketplace_booking p_console_id
+      (optional). Customer can pin a specific PS5/table or keep "any"; pool capacity check still prevents oversell.
 ```
 
 > **Multi-venue-type frontend (no migration):** dynamic labels via `lib/ui.ts` ASSET_LABELS (🎮 კონსოლი / 🎱
