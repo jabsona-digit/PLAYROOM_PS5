@@ -789,6 +789,93 @@ export type Database = {
           },
         ]
       }
+      dynamic_pricing_rules: {
+        Row: {
+          created_at: string
+          days_of_week: number[]
+          id: string
+          is_active: boolean
+          multiplier: number
+          name: string
+          occupancy_max: number | null
+          occupancy_min: number | null
+          org_id: string
+          priority: number
+          rule_type: string
+          time_from: string | null
+          time_to: string | null
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          days_of_week?: number[]
+          id?: string
+          is_active?: boolean
+          multiplier?: number
+          name: string
+          occupancy_max?: number | null
+          occupancy_min?: number | null
+          org_id: string
+          priority?: number
+          rule_type?: string
+          time_from?: string | null
+          time_to?: string | null
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          days_of_week?: number[]
+          id?: string
+          is_active?: boolean
+          multiplier?: number
+          name?: string
+          occupancy_max?: number | null
+          occupancy_min?: number | null
+          org_id?: string
+          priority?: number
+          rule_type?: string
+          time_from?: string | null
+          time_to?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dynamic_pricing_rules_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dynamic_pricing_rules_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dynamic_pricing_rules_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "dynamic_pricing_rules_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dynamic_pricing_rules_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           created_at: string
@@ -3286,6 +3373,10 @@ export type Database = {
       }
       delete_payment_credentials: {
         Args: { p_org_id: string; p_provider: string }
+        Returns: Json
+      }
+      dynamic_price_quote: {
+        Args: { p_base: number; p_venue_id: string; p_when?: string }
         Returns: Json
       }
       end_session:
