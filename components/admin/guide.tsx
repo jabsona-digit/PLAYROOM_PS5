@@ -20,6 +20,7 @@ import {
   Info,
   Sparkles,
   ShieldAlert,
+  Plug,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -33,9 +34,10 @@ const CATEGORIES = [
   { id: 'team', title: '7. გუნდი & როლები', icon: Users },
   { id: 'customers', title: '8. კლიენტები, ჯავშნები, ტურნირები', icon: Trophy },
   { id: 'settings', title: '9. პარამეტრები & ფისკალი', icon: Settings },
-  { id: 'billing', title: '10. გამოწერა & პლატფორმა', icon: CreditCard },
-  { id: 'ai', title: '11. AI ფუნქციები', icon: Sparkles },
-  { id: 'faq', title: '12. ხშირი კითხვები (FAQ)', icon: HelpCircle },
+  { id: 'hardware', title: '10. Hardware კონტროლი', icon: Plug },
+  { id: 'billing', title: '11. გამოწერა & პლატფორმა', icon: CreditCard },
+  { id: 'ai', title: '12. AI ფუნქციები', icon: Sparkles },
+  { id: 'faq', title: '13. ხშირი კითხვები (FAQ)', icon: HelpCircle },
 ]
 
 export function Guide() {
@@ -360,6 +362,90 @@ export function Guide() {
       ),
     },
     {
+      category: 'hardware',
+      title: 'რა არის Hardware კონტროლი? 🔌',
+      content: (
+        <div className="space-y-3">
+          <p>
+            Hardware კონტროლი ფიზიკურ ჩართვა/გამორთვას უბამს სესიის სტატუსს — სესია დაიწყო → კონსოლი/TV ირთვება, დასრულდა → ითიშება. ეს ხურავს თაღლითობის ხვრელს: თანამშრომელი ვეღარ ამუშავებს კონსოლს სესიის გახსნის გარეშე (უსესიო დრო = დაკარგული შემოსავალი).
+          </p>
+          <div className="rounded-2xl p-4 text-sm" style={{ background: 'color-mix(in oklch, var(--status-expired) 12%, transparent)' }}>
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="size-5 shrink-0" style={{ color: 'var(--status-expired)' }} />
+              <p>
+                <b>მნიშვნელოვანი (SSD):</b> სჯობს ჩაირთოს/ითიშოს <b>ტელევიზორი ან HDMI სიგნალი</b>, და არა თვითონ კონსოლი — PS5-ის უეცარი გამორთვა SSD-ს აზიანებს. ამიტომ პარამეტრში „რას თიშავს" ნაგულისხმევად <b>TV</b>-ა.
+              </p>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            ფუნქცია არჩევითია — თუ კლუბს მხოლოდ მფლობელი ამუშავებს, შეიძლება საერთოდ არ ჩართო.
+          </p>
+        </div>
+      ),
+    },
+    {
+      category: 'hardware',
+      title: 'კონტროლის რეჟიმები — Manual / Cloud / Agent',
+      content: (
+        <div className="space-y-3">
+          <p>პარამეტრები → <b>🔌 Hardware</b>-ში თითო კონსოლს ანიჭებ ერთ რეჟიმს:</p>
+          <ul className="list-disc space-y-1.5 pl-4">
+            <li><b>Manual</b> — მოწყობილობის გარეშე. სისტემა აღრიცხავს ჩართვა/გამორთვას და გაქვს „Force ON/OFF". მუშაობს ახლავე, ნებისმიერ კლუბში.</li>
+            <li><b>Cloud</b> — სმარტ-როზეტი (Shelly) vendor-ის ღრუბლით. ირთვება/ითიშება ავტომატურად, ლეპტოპზე პროგრამის გარეშე.</li>
+            <li><b>Agent</b> — ლოკალური relay-ბორდი (USR / Waveshare / „სოჩიკი") ლოკალური bridge-ით. <i>მალე დაემატება.</i></li>
+          </ul>
+          <div className="rounded-2xl p-4 text-sm" style={{ background: 'color-mix(in oklch, var(--primary) 12%, transparent)' }}>
+            <div className="flex items-start gap-2">
+              <Info className="size-5 shrink-0" style={{ color: 'var(--primary)' }} />
+              <p><b>Force ON/OFF</b> (მფლობელი/ადმინი) — კონსოლის ხელით ჩართვა/გამორთვა ნებისმიერ დროს, საჭიროებისას.</p>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      category: 'hardware',
+      title: 'Shelly Cloud-ის დაყენება (Cloud რეჟიმი) ☁️',
+      content: (
+        <div className="space-y-3">
+          <ol className="list-decimal space-y-1.5 pl-4">
+            <li>შეიძინე <b>Shelly</b> სმარტ-როზეტი და ჩართე ტელევიზორი მასში.</li>
+            <li>Shelly-ის აპში: <b>Settings → Authorization Cloud Key</b> — დააკოპირე <b>server</b> და <b>auth key</b>.</li>
+            <li>პარამეტრები → 🔌 Hardware → <b>Shelly Cloud account</b>: ჩასვი server + key (ერთხელ, ფილიალზე). გასაღები ინახება დაშიფრულად.</li>
+            <li>თითო კონსოლზე აირჩიე რეჟიმი <b>Cloud</b> + driver „Shelly Cloud" + ჩასვი <b>Device ID</b> და <b>Channel</b>.</li>
+            <li>დააჭირე <b>Test ON/OFF</b> — დარწმუნდი რომ ირთვება/ითიშება.</li>
+          </ol>
+          <div className="rounded-2xl p-4 text-sm" style={{ background: 'color-mix(in oklch, var(--status-free) 12%, transparent)' }}>
+            <div className="flex items-start gap-2">
+              <ShieldAlert className="size-5 shrink-0" style={{ color: 'var(--status-free)' }} />
+              <p>გასაღები (auth key) <b>დაშიფრულად</b> ინახება და მხოლოდ სერვერი იყენებს — ეკრანზე აღარასდროს ჩანს.</p>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      category: 'hardware',
+      title: 'მკაცრი რეჟიმი — სესია მხოლოდ კონფიგურირებულ კონსოლზე',
+      content: (
+        <div className="space-y-3">
+          <p>
+            პარამეტრები → 🔌 Hardware-ში არის გადამრთველი <b>„სესია მხოლოდ კონფიგურირებულ კონსოლზე"</b>:
+          </p>
+          <ul className="list-disc space-y-1.5 pl-4">
+            <li><b>გამორთული (ნაგულისხმევი):</b> ყველაფერი ჩვეულებრივ — ოპერატორი თავისუფლად იწყებს სესიას.</li>
+            <li><b>ჩართული:</b> ოპერატორი სესიას <b>ვერ დაიწყებს</b> კონსოლზე, რომელსაც კონტროლი დაყენებული არ აქვს — ვერ აუვლის გვერდს anti-fraud-ს.</li>
+          </ul>
+          <div className="rounded-2xl p-4 text-sm" style={{ background: 'color-mix(in oklch, var(--status-warning5) 12%, transparent)' }}>
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="size-5 shrink-0" style={{ color: 'var(--status-warning5)' }} />
+              <p>ჩართვამდე დარწმუნდი, რომ ყველა აქტიურ კონსოლს hardware აქვს დაყენებული — თორემ მათზე სესიის დაწყება დაიბლოკება.</p>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
       category: 'billing',
       title: 'გამოწერა (SaaS)',
       content: (
@@ -428,6 +514,15 @@ export function Guide() {
       content: (
         <p>
           დარწმუნდით, რომ კონსოლზე <b>აქტიური სესიაა</b> და სტუმარს მისცეს <b>მიმდინარე</b> სესიის კოდი — ის ჩანს კონსოლის ბარათზე მთავარ ეკრანზე. ყოველ ახალ სესიას ახალი კოდი აქვს, ამიტომ წინა სესიის (ან გადაღებული QR-ის) კოდი აღარ მუშაობს. ალტერნატივად — ანახეთ სესიის QR დასასკანერებლად.
+        </p>
+      ),
+    },
+    {
+      category: 'faq',
+      title: '"კონსოლი/TV ავტომატურად არ ჩაირთო"',
+      content: (
+        <p>
+          შეამოწმე: (1) კონსოლზე Hardware დაყენებულია? (პარამეტრები → 🔌). (2) Cloud რეჟიმზე — Shelly server/key და Device ID სწორია? დააჭირე <b>Test</b>-ს. (3) <b>Manual</b> რეჟიმი მხოლოდ აღრიცხავს — ფიზიკურად არ რთავს; ავტომატური ჩართვისთვის საჭიროა რეალური მოწყობილობა (Cloud/Agent). საჭიროებისას ხელით — <b>Force ON</b>.
         </p>
       ),
     },
