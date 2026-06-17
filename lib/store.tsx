@@ -251,7 +251,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
     const venue = venueRef.current
     if (!venue) return
     const [{ data: cons }, { data: active }, { data: hw }, { data: ven }] = await Promise.all([
-      supabase.from('consoles').select('*').eq('venue_id', venue).order('slot_number'),
+      supabase.from('consoles').select('*').eq('venue_id', venue).is('deleted_at', null).order('slot_number'),
       supabase
         .from('sessions')
         .select('*, session_extensions(*)')
