@@ -31,7 +31,8 @@ import { QrPrintModal } from './qr-print-modal'
 // Bookable resource types — each is its own capacity pool (0039). Latin keys keep
 // future console_type→category mapping clean (standard/coupe/vip = playroom,
 // billiard/snooker = billiard). console_type is free-text in the DB.
-const CTYPES = ['standard', 'coupe', 'vip', 'billiard', 'snooker']
+// 'coupe' merged into 'vip' (0082) — no longer offered when creating a console.
+const CTYPES = ['standard', 'vip', 'billiard', 'snooker']
 const CTYPE_LABEL: Record<string, string> = {
   standard: 'PS5', coupe: 'კუპე', vip: 'VIP', billiard: 'ბილიარდი', snooker: 'სნუკერი',
 }
