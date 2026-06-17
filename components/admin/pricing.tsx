@@ -13,6 +13,7 @@ import { DynamicPricing } from './dynamic-pricing'
 const PLAN_CATS: { v: string | null; label: string }[] = [
   { v: null, label: 'ყველა' },
   { v: 'playroom', label: '🎮 ფლეირუმი' },
+  { v: 'vip', label: '👑 VIP' },
   { v: 'billiard', label: '🎱 ბილიარდი' },
   { v: 'karaoke', label: '🎤 კარაოკე' },
   { v: 'vr', label: '🥽 VR' },

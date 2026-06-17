@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
 import { supabase } from '@/lib/supabase/client'
-import { formatClock, gel, openBillableMinutes, paymentMethodLabel, statusMeta, consoleLabels, consoleCategory, venueLabels } from '@/lib/ui'
+import { formatClock, gel, openBillableMinutes, paymentMethodLabel, statusMeta, consoleLabels, consoleCategory, planCategoryOf, venueLabels } from '@/lib/ui'
 import type { Bank, ConsoleUnit, PaymentMethod } from '@/lib/types'
 import { Modal } from './modal'
 import { Analytics } from './analytics'
@@ -460,8 +460,8 @@ function StartSessionModal({
 }) {
   const { plans, startSession, startOpenSession } = usePlayroom()
   const { currentVenueId } = useOrg()
-  // only tariffs for this asset's category (or untagged = all); fall back to all if none match
-  const cat = consoleCategory(consoleType)
+  // only tariffs for this asset's pricing category (or untagged = all); fall back to all if none match
+  const cat = planCategoryOf(consoleType)
   const allActive = plans.filter((p) => p.is_active)
   const matched = allActive.filter((p) => p.category == null || p.category === cat)
   const activePlans = matched.length ? matched : allActive
