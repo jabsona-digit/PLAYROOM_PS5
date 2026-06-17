@@ -83,8 +83,8 @@ interface PlayroomState {
   tick: () => void
   updatePlanPrice: (id: number, price: number) => void
   togglePlanActive: (id: number) => void
-  updatePlanCategory: (id: number, category: string | null) => void
-  addPlan: (params: { name: string; controllers: number; price_per_hour: number; category?: string | null }) => Promise<void>
+  updatePlanCategory: (id: number, category: string | null, console_type?: string | null) => void
+  addPlan: (params: { name: string; controllers: number; price_per_hour: number; category?: string | null; console_type?: string | null }) => Promise<void>
   removePlan: (id: number) => Promise<void>
   clockToggle: (pin: string) => Promise<{ ok: boolean; message: string }>
   refreshStaff: () => Promise<void>
@@ -148,6 +148,7 @@ function mapPlan(r: any): PricingPlan {
     name: r.name,
     type: r.type,
     category: r.category ?? null,
+    console_type: r.console_type ?? null,
     controllers: r.controllers,
     price_per_hour: num(r.price_per_hour),
     is_active: r.is_active,
@@ -590,7 +591,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
   )
 
   const addPlan: PlayroomState['addPlan'] = useCallback(
-    async ({ name, controllers, price_per_hour, category }) => {
+    async ({ name, controllers, price_per_hour, category, console_type }) => {
       const org = orgRef.current
       if (!org) return
       const clean = name.trim()
@@ -607,6 +608,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
         name: clean,
         type,
         category: category ?? null,
+        console_type: console_type ?? null,
         controllers,
         price_per_hour,
       })
@@ -618,9 +620,9 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
   )
 
   const updatePlanCategory: PlayroomState['updatePlanCategory'] = useCallback(
-    async (id, category) => {
+    async (id, category, console_type = null) => {
       const { error } = await (supabase.from('pricing_plans') as any)
-        .update({ category })
+        .update({ category, console_type })
         .eq('id', id)
       if (error) return pushToast('danger', error.message)
       await loadPlans()

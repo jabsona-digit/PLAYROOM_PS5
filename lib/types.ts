@@ -38,7 +38,8 @@ export interface PricingPlan {
   id: number
   name: string
   type: 'standard' | 'pro' | 'premium' | 'custom'
-  category: string | null    // asset category this tariff applies to; null = all (0074)
+  category: string | null    // asset class this tariff applies to; null = all (0074)
+  console_type: string | null // sub-type within the class (standard/vip/snooker…); null = all (0083)
   controllers: number
   price_per_hour: number
   is_active: boolean

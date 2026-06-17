@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
 import { supabase } from '@/lib/supabase/client'
-import { formatClock, gel, openBillableMinutes, paymentMethodLabel, statusMeta, consoleLabels, consoleCategory, planCategoryOf, venueLabels } from '@/lib/ui'
+import { formatClock, gel, openBillableMinutes, paymentMethodLabel, statusMeta, consoleLabels, consoleCategory, planAppliesToConsole, venueLabels } from '@/lib/ui'
 import type { Bank, ConsoleUnit, PaymentMethod } from '@/lib/types'
 import { Modal } from './modal'
 import { Analytics } from './analytics'
@@ -460,10 +460,9 @@ function StartSessionModal({
 }) {
   const { plans, startSession, startOpenSession } = usePlayroom()
   const { currentVenueId } = useOrg()
-  // only tariffs for this asset's pricing category (or untagged = all); fall back to all if none match
-  const cat = planCategoryOf(consoleType)
+  // only tariffs that apply to this console's class + sub-type; fall back to all if none match
   const allActive = plans.filter((p) => p.is_active)
-  const matched = allActive.filter((p) => p.category == null || p.category === cat)
+  const matched = allActive.filter((p) => planAppliesToConsole(p, consoleType))
   const activePlans = matched.length ? matched : allActive
   const [planId, setPlanId] = useState(activePlans[0]?.id ?? 1)
   const [mode, setMode] = useState<'fixed' | 'open'>('fixed')
@@ -512,7 +511,7 @@ function StartSessionModal({
               >
                 {p.name}
                 <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
-                  {gel(p.price_per_hour)}/სთ{cat === 'playroom' ? ` • ${p.controllers} ჯოისტიკი` : ''}
+                  {gel(p.price_per_hour)}/სთ{consoleCategory(consoleType) === 'playroom' ? ` • ${p.controllers} ჯოისტიკი` : ''}
                 </span>
               </button>
             ))}

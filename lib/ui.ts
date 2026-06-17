@@ -95,11 +95,15 @@ const CONSOLE_CATEGORY: Record<string, VenueType> = {
 export const consoleCategory = (consoleType?: string | null): VenueType =>
   CONSOLE_CATEGORY[consoleType ?? ''] ?? 'playroom'
 
-// Pricing category for a console_type (which tariffs apply). Same as consoleCategory
-// EXCEPT VIP is its own priced tier, so a VIP console shows VIP tariffs — not the PS5
-// ones. (Revenue/cashier still groups VIP under playroom via consoleCategory.)
-export const planCategoryOf = (consoleType?: string | null): string =>
-  consoleType === 'vip' ? 'vip' : consoleCategory(consoleType)
+// Does a tariff apply to a console? The tariff's asset class must match (or be null)
+// AND its sub-type (console_type) must match (or be null = all sub-types in that class).
+// So a VIP console shows VIP tariffs, a PS5 console shows PS5 tariffs — both playroom.
+export const planAppliesToConsole = (
+  plan: { category?: string | null; console_type?: string | null },
+  consoleType?: string | null,
+): boolean =>
+  (plan.category == null || plan.category === consoleCategory(consoleType)) &&
+  (plan.console_type == null || plan.console_type === (consoleType ?? 'standard'))
 
 /** Per-asset labels (dashboard card icon + word) from consoles.console_type — so a
     mixed venue shows 🎮 კონსოლი and 🎱 მაგიდა side by side. */

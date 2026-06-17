@@ -9,15 +9,23 @@ import type { PricingPlan } from '@/lib/types'
 import { Modal } from './modal'
 import { DynamicPricing } from './dynamic-pricing'
 
-// which asset category a tariff applies to (null = all). Matches consoleCategory.
-const PLAN_CATS: { v: string | null; label: string }[] = [
-  { v: null, label: 'ყველა' },
-  { v: 'playroom', label: '🎮 ფლეირუმი' },
-  { v: 'vip', label: '👑 VIP' },
-  { v: 'billiard', label: '🎱 ბილიარდი' },
-  { v: 'karaoke', label: '🎤 კარაოკე' },
-  { v: 'vr', label: '🥽 VR' },
+// What a tariff applies to: asset class + optional sub-type (console_type). The
+// sub-types (PS5/VIP under playroom, snooker under billiard) sit UNDER their class —
+// VIP is a playroom sub-type, not its own category. null/null = applies to everything.
+const PLAN_TARGETS: { category: string | null; console_type: string | null; label: string }[] = [
+  { category: null,       console_type: null,       label: 'ყველა' },
+  { category: 'playroom', console_type: 'standard', label: '🎮 PS5' },
+  { category: 'playroom', console_type: 'vip',      label: '👑 VIP' },
+  { category: 'playroom', console_type: null,       label: '🎮 ფლეირუმი (ყველა)' },
+  { category: 'billiard', console_type: null,       label: '🎱 ბილიარდი' },
+  { category: 'billiard', console_type: 'snooker',  label: '🎱 სნუკერი' },
+  { category: 'karaoke',  console_type: null,       label: '🎤 კარაოკე' },
+  { category: 'vr',       console_type: null,       label: '🥽 VR' },
 ]
+const sameTarget = (
+  p: { category?: string | null; console_type?: string | null },
+  t: { category: string | null; console_type: string | null },
+) => (p.category ?? null) === t.category && (p.console_type ?? null) === t.console_type
 
 function PlanCard({ plan }: { plan: PricingPlan }) {
   const { updatePlanPrice, togglePlanActive, updatePlanCategory, removePlan } = usePlayroom()
@@ -99,19 +107,19 @@ function PlanCard({ plan }: { plan: PricingPlan }) {
       <div className="mt-5">
         <p className="mb-1.5 text-xs font-semibold text-muted-foreground">ვისთვის (ერთეულის ტიპი)</p>
         <div className="flex flex-wrap gap-1.5">
-          {PLAN_CATS.map((c) => {
-            const active = (plan.category ?? null) === c.v
+          {PLAN_TARGETS.map((t) => {
+            const active = sameTarget(plan, t)
             return (
               <button
-                key={c.label}
+                key={t.label}
                 type="button"
-                onClick={() => updatePlanCategory(plan.id, c.v)}
+                onClick={() => updatePlanCategory(plan.id, t.category, t.console_type)}
                 className={cn(
                   'rounded-lg px-2.5 py-1 text-xs font-bold transition-colors',
                   active ? 'nm-daylight text-primary' : 'nm-btn text-muted-foreground',
                 )}
               >
-                {c.label}
+                {t.label}
               </button>
             )
           })}
@@ -167,13 +175,13 @@ function AddPlanModal({ open, onClose }: { open: boolean; onClose: () => void })
   const [name, setName] = useState('')
   const [controllers, setControllers] = useState(2)
   const [price, setPrice] = useState(5)
-  const [category, setCategory] = useState<string | null>(null)
+  const [target, setTarget] = useState(PLAN_TARGETS[0])
 
   const reset = () => {
     setName('')
     setControllers(2)
     setPrice(5)
-    setCategory(null)
+    setTarget(PLAN_TARGETS[0])
   }
 
   return (
@@ -193,17 +201,17 @@ function AddPlanModal({ open, onClose }: { open: boolean; onClose: () => void })
         <div>
           <p className="mb-2 text-sm font-semibold text-muted-foreground">ვისთვის (ერთეულის ტიპი)</p>
           <div className="flex flex-wrap gap-1.5">
-            {PLAN_CATS.map((c) => (
+            {PLAN_TARGETS.map((t) => (
               <button
-                key={c.label}
+                key={t.label}
                 type="button"
-                onClick={() => setCategory(c.v)}
+                onClick={() => setTarget(t)}
                 className={cn(
                   'rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors',
-                  (category ?? null) === c.v ? 'nm-daylight text-primary' : 'nm-btn text-muted-foreground',
+                  sameTarget(target, t) ? 'nm-daylight text-primary' : 'nm-btn text-muted-foreground',
                 )}
               >
-                {c.label}
+                {t.label}
               </button>
             ))}
           </div>
@@ -273,7 +281,7 @@ function AddPlanModal({ open, onClose }: { open: boolean; onClose: () => void })
             type="button"
             disabled={!name.trim()}
             onClick={async () => {
-              await addPlan({ name, controllers, price_per_hour: price, category })
+              await addPlan({ name, controllers, price_per_hour: price, category: target.category, console_type: target.console_type })
               reset()
               onClose()
             }}
