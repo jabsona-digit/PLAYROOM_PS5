@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_keys: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          org_id: string | null
+          revoked_at: string | null
+          scopes: string[]
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          org_id?: string | null
+          revoked_at?: string | null
+          scopes?: string[]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          org_id?: string | null
+          revoked_at?: string | null
+          scopes?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_keys_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -3336,6 +3393,15 @@ export type Database = {
         Args: { p_reservation_id: string }
         Returns: undefined
       }
+      create_api_key: {
+        Args: {
+          p_expires_at?: string
+          p_name: string
+          p_org_id?: string
+          p_scopes?: string[]
+        }
+        Returns: Json
+      }
       create_bar_sale:
         | {
             Args: {
@@ -3547,6 +3613,7 @@ export type Database = {
       is_org_member: { Args: { p_org: string }; Returns: boolean }
       is_org_member_raw: { Args: { p_org: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
+      list_api_keys: { Args: { p_org_id?: string }; Returns: Json }
       list_org_members: {
         Args: { p_org: string }
         Returns: {
@@ -3708,6 +3775,7 @@ export type Database = {
         }
         Returns: Json
       }
+      revoke_api_key: { Args: { p_id: string }; Returns: Json }
       revoke_invite: { Args: { p_invite_id: string }; Returns: undefined }
       save_hardware_credentials: {
         Args: {
@@ -3859,6 +3927,7 @@ export type Database = {
         Args: { p_booking_id: string; p_comment?: string; p_rating: number }
         Returns: string
       }
+      verify_api_key: { Args: { p_key: string }; Returns: Json }
       void_bar_sale: {
         Args: { p_reason?: string; p_sale_id: string }
         Returns: undefined
