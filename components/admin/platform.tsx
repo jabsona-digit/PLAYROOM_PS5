@@ -19,6 +19,7 @@ import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
 import { supabase } from '@/lib/supabase/client'
 import { gel } from '@/lib/ui'
+import { ApiKeysPanel } from './api-keys-panel'
 
 // Plan prices — single source of truth is plan_monthly_price() in the DB (see
 // migration 0040). These mirror it only for the plan-dropdown labels. Keep in
@@ -313,6 +314,11 @@ export function PlatformConsole({ onViewAs }: { onViewAs: () => void }) {
             })
           )}
         </div>
+      </div>
+
+      {/* Platform-wide API keys (God Mode) */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ApiKeysPanel platform />
       </div>
     </div>
   )
