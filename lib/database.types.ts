@@ -3638,6 +3638,15 @@ export type Database = {
         }
         Returns: Json
       }
+      portal_request_extend: {
+        Args: {
+          p_code: string
+          p_console_id: number
+          p_minutes: number
+          p_venue_id: string
+        }
+        Returns: Json
+      }
       portal_request_service: {
         Args: {
           p_code: string
