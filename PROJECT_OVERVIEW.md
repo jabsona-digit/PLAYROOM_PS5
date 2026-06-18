@@ -370,6 +370,20 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 0077  SELF-SERVE VENUES + PRICE BUMP: create_venue(org,name,venue_type) owner-gated (is_org_admin), plan cap via
       enforce_venue_limit. Owner adds a venue from Settings ("ფილიალები") → 2nd cash register = 2nd venue (own
       Z-Report/bar/P&L for free). plan_monthly_price raised Pro 45→50 / Enterprise 65→70.
+0078  ORG OVERVIEW: get_org_overview(org,today,week,month) — owner cross-venue revenue rollup (sessions+bar)
+0079  ORG OVERVIEW + payment split (cash/card/transfer today, club-wide) in get_org_overview
+0080  PORTAL bill prep: portal_get_session_status/unlock also return controllers + price_per_hour (joystick witness)
+0081  public_venues.price_from is category-aware (billiard venue shows billiard min, not org-wide PS5 min)
+0082  reusable console slots (partial-unique on deleted_at is null) — soft-deleted no longer blocks re-add
+0083  PRICING SUB-TYPE: pricing_plans.console_type (standard/vip/snooker…); VIP is a playroom SUB-TYPE not a category;
+      planAppliesToConsole(plan,consoleType) = class match AND sub-type match; public_venue_plans exposes console_type
+0084  MID-SESSION TARIFF CHANGE: change_session_tier(session,plan) — fixed session re-converts remaining prepaid
+      balance at the new rate (add joysticks mid-game, exact rebill); open rejected (segment accrual TODO)
+0085  MARKETPLACE AI SEARCH: search_venues_for_ai + check_venue_availability_for_ai (anon, definer+search_path) for
+      the guest AI Concierge (ai-assistant edge `guest_concierge` action; ChatConcierge in martelounge-web)
+0086  SESSION TAB + ITEMIZED BILL (hybrid pay-now/at-end): bar_sales stay paid-only; unpaid tab = delivered
+      service_requests, settled at end into one paid bar_sale (settle_session_tab); compute/get/portal_get_bill
+0087  EXTEND REQUEST→CONFIRM: portal_request_extend (kind='extend') → operator confirm in inbox runs extend_session
 ```
 
 > **Multi-venue-type frontend (no migration):** dynamic labels via `lib/ui.ts` ASSET_LABELS (🎮 კონსოლი / 🎱
