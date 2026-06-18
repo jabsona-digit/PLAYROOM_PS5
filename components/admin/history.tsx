@@ -11,6 +11,12 @@ import { gel, paymentMethodLabel, timeOfDay } from '@/lib/ui'
 import { FraudAuditDashboard } from './fraud-audit'
 
 type Filter = 'all' | 'standard' | 'premium' | 'audit'
+type BillData = {
+  play_amount: number
+  paid_items: { name: string; qty: number; line_total: number }[]
+  paid_bar_total: number
+  grand_total: number
+}
 
 export function HistoryModule() {
   const { completed, employees, pushToast } = usePlayroom()
@@ -28,6 +34,15 @@ export function HistoryModule() {
   const [refundReason, setRefundReason] = useState('')
   const [refundAmount, setRefundAmount] = useState('')
   const [isRefunding, setIsRefunding] = useState(false)
+  const [receipt, setReceipt] = useState<{ name: string; bill: BillData } | null>(null)
+
+  const openReceipt = async (id: string, name: string) => {
+    const { data } = await (supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: unknown }>)(
+      'get_session_bill', { p_session_id: id },
+    )
+    const b = data as (BillData & { error?: string }) | null
+    if (b && !b.error) setReceipt({ name, bill: b })
+  }
 
   const handleRefund = async () => {
     if (!selectedSessionId) return
@@ -146,6 +161,12 @@ export function HistoryModule() {
                       <span className={cn(isRefunded && 'line-through text-muted-foreground')}>
                         {gel(s.price_total)}
                       </span>
+                      <button
+                        onClick={() => openReceipt(s.id, s.customer_name ?? 'სტუმარი')}
+                        className="nm-btn rounded-xl px-2 py-1 text-xs font-bold text-muted-foreground"
+                      >
+                        🧾 ქვითარი
+                      </button>
                       {isRefunded ? (
                         <div className="flex items-center gap-1 mt-1">
                           <span className="nm-inset px-2 py-0.5 rounded-lg text-xs text-muted-foreground">დაბრუნებული</span>
@@ -201,6 +222,30 @@ export function HistoryModule() {
                 დაბრუნება
               </button>
             </div>
+          </Modal>
+
+          <Modal open={!!receipt} onClose={() => setReceipt(null)} title={`🧾 ქვითარი — ${receipt?.name ?? ''}`}>
+            {receipt && (
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">🎮 თამაში</span>
+                  <span className="font-mono">{gel(receipt.bill.play_amount)}</span>
+                </div>
+                {receipt.bill.paid_items?.map((it, i) => (
+                  <div key={i} className="flex justify-between">
+                    <span className="text-muted-foreground">🍹 {it.qty}× {it.name}</span>
+                    <span className="font-mono">{gel(it.line_total)}</span>
+                  </div>
+                ))}
+                {(!receipt.bill.paid_items || receipt.bill.paid_items.length === 0) && (
+                  <p className="text-xs text-muted-foreground">ბარის შეკვეთა არ ყოფილა</p>
+                )}
+                <div className="mt-2 flex justify-between border-t border-border pt-3 text-base font-black">
+                  <span>სულ</span>
+                  <span className="font-mono text-primary">{gel(receipt.bill.grand_total)}</span>
+                </div>
+              </div>
+            )}
           </Modal>
         </>
       )}
