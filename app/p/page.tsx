@@ -14,7 +14,7 @@ const rpc = (fn: string, args: Record<string, unknown>) =>
   (supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: any; error: { message: string } | null }>)(fn, args)
 
 interface Category { id: number; name: string }
-interface Product { id: number; category_id: number | null; name: string; price: number }
+interface Product { id: number; category_id: number | null; name: string; price: number; stock?: number | null }
 interface CartItem { id: number; name: string; qty: number; price: number }
 
 const UNCATEGORIZED = -1
@@ -188,6 +188,9 @@ function PortalApp() {
 
   const addToCart = (p: Product) => {
     if (!unlocked) { flashError(orderErrorText('no_active_session')); return }
+    if (p.stock != null && p.stock <= 0) { flashError(`${p.name} — მარაგი ამოიწურა`); return }
+    const have = cart.find((i) => i.id === p.id)?.qty ?? 0
+    if (p.stock != null && have >= p.stock) { flashError(`${p.name} — მარაგში მხოლოდ ${p.stock}-ია`); return }
     setCart((prev) => {
       const existing = prev.find((i) => i.id === p.id)
       if (existing) return prev.map((i) => (i.id === p.id ? { ...i, qty: i.qty + 1 } : i))
@@ -195,14 +198,21 @@ function PortalApp() {
     })
   }
 
-  const updateQty = (id: number, delta: number) =>
+  const updateQty = (id: number, delta: number) => {
+    if (delta > 0) {
+      const stock = products.find((p) => p.id === id)?.stock
+      const have = cart.find((i) => i.id === id)?.qty ?? 0
+      if (stock != null && have >= stock) { flashError(`მარაგში მხოლოდ ${stock}-ია`); return }
+    }
     setCart((prev) => prev.map((i) => (i.id === id ? { ...i, qty: i.qty + delta } : i)).filter((i) => i.qty > 0))
+  }
 
   const orderErrorText = (code?: string) => {
     switch (code) {
       case 'too_many_pending': return 'ბევრი შეკვეთა გაქვთ მოლოდინში. დაელოდეთ ოპერატორს.'
       case 'venue_unavailable': return 'კლუბი ამჟამად მიუწვდომელია.'
       case 'product_unavailable': return 'ზოგი პროდუქტი აღარ არის ხელმისაწვდომი. განაახლეთ გვერდი.'
+      case 'insufficient_stock': return 'პროდუქტი მარაგში აღარ არის საკმარისი. შეამცირეთ რაოდენობა.'
       case 'no_active_session': return 'სესია არ არის აქტიური. შეკვეთა და მოთხოვნა ხელმისაწვდომია მხოლოდ თამაშის დროს — მიმართეთ ოპერატორს.'
       case 'bad_code': return 'კოდი არასწორია ან ვადაგასულია. შეიყვანეთ ხელახლა.'
       case 'rate_limited': return 'ბევრი მცდელობა იყო. დაელოდეთ ერთ წუთს.'
@@ -225,7 +235,15 @@ function PortalApp() {
     setBusy(false)
     if (error || !data?.ok) {
       if (data?.error === 'bad_code') relock()
-      flashError(orderErrorText(data?.error))
+      if (data?.error === 'insufficient_stock') {
+        flashError(`${data.product ?? 'პროდუქტი'} — მარაგში მხოლოდ ${data.available}-ია`)
+      } else {
+        flashError(orderErrorText(data?.error))
+      }
+      // stock may have moved under us — refresh the menu so badges/caps are honest
+      rpc('portal_get_menu', { p_venue_id: venueId }).then(({ data: m }) => {
+        if (m && !m.error && Array.isArray(m.products)) setProducts(m.products as Product[])
+      })
       return
     }
     setCart([])
@@ -541,19 +559,34 @@ function PortalApp() {
 
             {/* Product Grid */}
             <div className="grid grid-cols-2 gap-4 mt-2">
-              {visibleProducts.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => addToCart(p)}
-                  className="nm-raised flex flex-col items-center justify-center p-4 rounded-3xl active:scale-95 transition-transform"
-                >
-                  <div className="size-16 nm-inset bg-background/50 rounded-2xl mb-3 flex items-center justify-center text-primary/40">
-                    <Coffee className="size-7" />
-                  </div>
-                  <p className="text-sm font-bold text-center leading-tight mb-1 h-8 line-clamp-2">{p.name}</p>
-                  <p className="text-primary font-mono font-black">{gel(p.price)}</p>
-                </button>
-              ))}
+              {visibleProducts.map((p) => {
+                const soldOut = p.stock != null && p.stock <= 0
+                const have = cart.find((i) => i.id === p.id)?.qty ?? 0
+                const maxed = p.stock != null && have >= p.stock
+                const disabled = soldOut || maxed
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => addToCart(p)}
+                    disabled={disabled}
+                    className={cn(
+                      'nm-raised relative flex flex-col items-center justify-center p-4 rounded-3xl transition-transform',
+                      disabled ? 'opacity-50' : 'active:scale-95',
+                    )}
+                  >
+                    {soldOut ? (
+                      <span className="absolute right-2 top-2 rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-black text-red-400">გაყიდულია</span>
+                    ) : p.stock != null && p.stock <= 5 ? (
+                      <span className="absolute right-2 top-2 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-black text-amber-400">დარჩა {p.stock}</span>
+                    ) : null}
+                    <div className="size-16 nm-inset bg-background/50 rounded-2xl mb-3 flex items-center justify-center text-primary/40">
+                      <Coffee className="size-7" />
+                    </div>
+                    <p className="text-sm font-bold text-center leading-tight mb-1 h-8 line-clamp-2">{p.name}</p>
+                    <p className="text-primary font-mono font-black">{gel(p.price)}</p>
+                  </button>
+                )
+              })}
             </div>
           </>
         )}
