@@ -137,7 +137,12 @@ export function ServiceInbox() {
     setBusyId(null)
     setPayFor(null)
     if (error || data?.error) {
-      pushToast('danger', 'ვერ შესრულდა. სცადეთ თავიდან.')
+      const code = String(data?.error ?? error?.message ?? '')
+      if (code.includes('insufficient_stock')) {
+        pushToast('danger', `მარაგი არ არის საკმარისი${data?.product ? ` — ${data.product} (დარჩა ${data.available})` : ''}. შეავსე საწყობი.`)
+      } else {
+        pushToast('danger', 'ვერ შესრულდა. სცადეთ თავიდან.')
+      }
       return
     }
     if (status === 'done' && onTab) pushToast('success', '🧾 დაემატა ტაბზე — გადახდა სესიის ბოლოს')
