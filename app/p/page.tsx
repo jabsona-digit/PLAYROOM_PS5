@@ -42,6 +42,12 @@ function PortalApp() {
   const [planName, setPlanName] = useState<string | null>(null)
   const [controllers, setControllers] = useState<number | null>(null)
   const [pricePerHour, setPricePerHour] = useState<number | null>(null)
+  const [bill, setBill] = useState<{
+    play_amount: number; play_paid: boolean
+    paid_items: { name: string; qty: number; line_total: number }[]; paid_bar_total: number
+    tab_items: { name: string; qty: number; line_total: number }[]; tab_total: number
+    grand_total: number
+  } | null>(null)
 
   const [cart, setCart] = useState<CartItem[]>([])
   const [busy, setBusy] = useState(false)
@@ -112,12 +118,29 @@ function PortalApp() {
     return true
   }, [venueId, consoleId])
 
+  // live running bill (play + bar paid/owed) — needs the session code to read
+  const loadBill = useCallback(async (c: string | null) => {
+    if (!consoleId || !c) return
+    const { data, error } = await rpc('portal_get_bill', { p_console_id: Number(consoleId), p_code: c })
+    if (error || !data || data.error) return
+    setBill(data)
+  }, [consoleId])
+
   const relock = () => {
     setUnlocked(false)
     setCode(null)
+    setBill(null)
     setPinInput('')
     try { sessionStorage.removeItem(`inseat_code_${consoleId}`) } catch {}
   }
+
+  // refresh the bill on unlock + every 20s while unlocked
+  useEffect(() => {
+    if (!unlocked || !code) { setBill(null); return }
+    loadBill(code)
+    const iv = setInterval(() => loadBill(code), 20_000)
+    return () => clearInterval(iv)
+  }, [unlocked, code, loadBill])
 
   // initial load: menu + session
   useEffect(() => {
@@ -342,6 +365,39 @@ function PortalApp() {
             </p>
           )}
         </div>
+
+        {/* My running bill — play + bar (paid green / owed red), settled at session end */}
+        {unlocked && bill && (
+          <div className="nm-raised rounded-3xl p-5 mt-3">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-black">🧾 ჩემი ანგარიში</h3>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className={bill.play_paid ? 'text-green-400' : 'text-red-400'}>
+                  {bill.play_paid ? '🟢' : '🔴'} თამაში
+                </span>
+                <span className="font-mono">{gel(bill.play_amount)}</span>
+              </div>
+              {bill.paid_items.map((it, i) => (
+                <div key={`p${i}`} className="flex justify-between text-green-400">
+                  <span>🟢 {it.qty}× {it.name}</span><span className="font-mono">{gel(it.line_total)}</span>
+                </div>
+              ))}
+              {bill.tab_items.map((it, i) => (
+                <div key={`t${i}`} className="flex justify-between text-red-400">
+                  <span>🔴 {it.qty}× {it.name}</span><span className="font-mono">{gel(it.line_total)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 flex justify-between border-t border-white/10 pt-3 text-base font-black">
+              <span>სულ</span><span className="font-mono text-primary">{gel(bill.grand_total)}</span>
+            </div>
+            {(bill.tab_total > 0 || !bill.play_paid) && (
+              <p className="mt-2 text-[11px] text-red-400">
+                🔴 გადასახდელი {gel((bill.play_paid ? 0 : bill.play_amount) + bill.tab_total)} — გადაიხდით სესიის ბოლოს
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Locked: need the CURRENT session's code (typed PIN or scanned QR) */}
         {sessionActive && !unlocked && (

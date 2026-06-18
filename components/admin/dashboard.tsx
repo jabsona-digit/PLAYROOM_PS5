@@ -384,6 +384,14 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
   )
 }
 
+type BillItem = { name: string; qty: number; line_total: number }
+type SessionBill = {
+  play_amount: number; play_paid: boolean
+  paid_items: BillItem[]; paid_bar_total: number
+  tab_items: BillItem[]; tab_total: number
+  grand_total: number
+}
+
 function EndSessionModal({
   open,
   onClose,
@@ -393,10 +401,23 @@ function EndSessionModal({
   onClose: () => void
   unit: ConsoleUnit
 }) {
-  const { endSession } = usePlayroom()
+  const { endSession, pushToast } = usePlayroom()
   const { fiscalEnabled, issueReceipt } = useFiscal()
   const [tip, setTip] = useState(0)
+  const [bill, setBill] = useState<SessionBill | null>(null)
+  const [settleM, setSettleM] = useState<{ m: string; b: string | null } | null>(null)
   const now = useNow()
+
+  const sid = unit.active_session?.id
+  useEffect(() => {
+    if (!open || !sid) { setBill(null); setSettleM(null); return }
+    ;(supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: unknown }>)(
+      'get_session_bill', { p_session_id: sid },
+    ).then(({ data }) => {
+      const d = data as (SessionBill & { error?: string }) | null
+      if (d && !d.error) setBill(d)
+    })
+  }, [open, sid])
 
   const s = unit.active_session
   if (!s) return null
@@ -420,11 +441,41 @@ function EndSessionModal({
         )}
 
         <div className="nm-inset flex items-center justify-between rounded-2xl px-4 py-3">
-          <span className="text-sm font-semibold text-muted-foreground">ძირითადი თანხა</span>
+          <span className="text-sm font-semibold text-muted-foreground">თამაში</span>
           <span className="font-mono text-xl font-extrabold text-primary">
             {gel(base)}
           </span>
         </div>
+
+        {bill && (bill.paid_bar_total > 0 || bill.tab_total > 0) && (
+          <div className="nm-inset space-y-1.5 rounded-2xl p-4">
+            <p className="mb-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">ბარი</p>
+            {bill.paid_items?.map((it, i) => (
+              <div key={`p${i}`} className="flex justify-between text-xs">
+                <span className="text-[var(--status-free)]">🟢 {it.qty}× {it.name}</span>
+                <span className="font-mono text-[var(--status-free)]">{gel(it.line_total)}</span>
+              </div>
+            ))}
+            {bill.tab_items?.map((it, i) => (
+              <div key={`t${i}`} className="flex justify-between text-xs">
+                <span className="text-[var(--status-expired)]">🔴 {it.qty}× {it.name}</span>
+                <span className="font-mono text-[var(--status-expired)]">{gel(it.line_total)}</span>
+              </div>
+            ))}
+            {bill.tab_total > 0 && (
+              <div className="mt-1.5 border-t border-border pt-2">
+                <p className="mb-1.5 text-[11px] font-bold text-[var(--status-expired)]">
+                  🔴 გადასახდელი ტაბი: {gel(bill.tab_total)} — აირჩიე გადახდა:
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <button type="button" onClick={() => setSettleM({ m: 'cash', b: null })} className={`nm-btn rounded-xl py-2 text-xs font-bold ${settleM?.m === 'cash' ? 'nm-daylight text-primary' : ''}`}>ნაღდი</button>
+                  <button type="button" onClick={() => setSettleM({ m: 'card', b: 'TBC' })} className={`nm-btn rounded-xl py-2 text-xs font-bold ${settleM?.b === 'TBC' ? 'nm-daylight text-primary' : ''}`}>TBC</button>
+                  <button type="button" onClick={() => setSettleM({ m: 'card', b: 'BOG' })} className={`nm-btn rounded-xl py-2 text-xs font-bold ${settleM?.b === 'BOG' ? 'nm-daylight text-primary' : ''}`}>BOG</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <label className="block">
           <span className="text-sm font-semibold text-muted-foreground">ჩაიანი (₾)</span>
@@ -439,13 +490,23 @@ function EndSessionModal({
         </label>
 
         <p className="text-sm text-center font-bold">
-          სულ: <span className="text-primary">{gel(base)}</span>
+          სულ: <span className="text-primary">{gel(base + (bill?.paid_bar_total ?? 0) + (bill?.tab_total ?? 0))}</span>
+          {bill && (bill.paid_bar_total + bill.tab_total) > 0 && (
+            <span className="text-xs text-muted-foreground"> (თამაში {gel(base)} + ბარი {gel(bill.paid_bar_total + bill.tab_total)})</span>
+          )}
           {tip > 0 && <span className="text-amber-400"> + ჩაიანი {gel(tip)}</span>}
         </p>
 
         <button
           type="button"
+          disabled={!!bill && bill.tab_total > 0 && !settleM}
           onClick={async () => {
+            if (bill && bill.tab_total > 0 && settleM) {
+              const { error } = await (supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ error: { message: string } | null }>)(
+                'settle_session_tab', { p_session_id: s.id, p_payment_method: settleM.m, p_bank: settleM.b },
+              )
+              if (error) { pushToast('danger', 'ტაბის გადახდა ვერ მოხერხდა'); return }
+            }
             if (fiscalEnabled && s) {
               await issueReceipt(
                 [{ name: `${unit.name} — სესია`, qty: 1, unitPrice: base }],
@@ -454,13 +515,13 @@ function EndSessionModal({
               )
             }
             endSession(unit.id, tip)
-            setTip(0)
+            setTip(0); setBill(null); setSettleM(null)
             onClose()
           }}
-          className="nm-btn flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-extrabold text-[var(--status-expired)]"
+          className="nm-btn flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-extrabold text-[var(--status-expired)] disabled:opacity-50"
         >
           <Square className="size-4" />
-          დადასტურება
+          {bill && bill.tab_total > 0 ? 'გადახდა და დასრულება' : 'დადასტურება'}
         </button>
       </div>
     </Modal>

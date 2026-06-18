@@ -124,13 +124,14 @@ export function ServiceInbox() {
 
   const count = requests.length
 
-  const resolve = async (id: string, status: 'done' | 'dismissed', method?: string, bank?: string | null) => {
+  const resolve = async (id: string, status: 'done' | 'dismissed', method?: string, bank?: string | null, onTab = false) => {
     setBusyId(id)
     const { data, error } = await sb.rpc('resolve_service_request', {
       p_id: id,
       p_status: status,
       p_payment_method: method ?? null,
       p_bank: bank ?? null,
+      p_on_tab: onTab,
     })
     setBusyId(null)
     setPayFor(null)
@@ -138,7 +139,8 @@ export function ServiceInbox() {
       pushToast('danger', 'ვერ შესრულდა. სცადეთ თავიდან.')
       return
     }
-    if (status === 'done' && method) pushToast('success', 'შეკვეთა გაიყიდა ✅')
+    if (status === 'done' && onTab) pushToast('success', '🧾 დაემატა ტაბზე — გადახდა სესიის ბოლოს')
+    else if (status === 'done' && method) pushToast('success', 'შეკვეთა გაიყიდა ✅')
     refresh()
   }
 
@@ -211,10 +213,14 @@ export function ServiceInbox() {
                       {/* actions */}
                       {r.kind === 'order' ? (
                         payFor === r.id ? (
-                          <div className="mt-3 grid grid-cols-3 gap-2">
-                            <button disabled={busyId === r.id} onClick={() => resolve(r.id, 'done', 'cash')} className="nm-btn rounded-xl py-2 text-xs font-bold text-[var(--status-free)]">ნაღდი</button>
-                            <button disabled={busyId === r.id} onClick={() => resolve(r.id, 'done', 'card', 'TBC')} className="nm-btn rounded-xl py-2 text-xs font-bold text-primary">TBC</button>
-                            <button disabled={busyId === r.id} onClick={() => resolve(r.id, 'done', 'card', 'BOG')} className="nm-btn rounded-xl py-2 text-xs font-bold text-primary">BOG</button>
+                          <div className="mt-3 space-y-2">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">ახლა გადახდა:</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              <button disabled={busyId === r.id} onClick={() => resolve(r.id, 'done', 'cash')} className="nm-btn rounded-xl py-2 text-xs font-bold text-[var(--status-free)]">ნაღდი</button>
+                              <button disabled={busyId === r.id} onClick={() => resolve(r.id, 'done', 'card', 'TBC')} className="nm-btn rounded-xl py-2 text-xs font-bold text-primary">TBC</button>
+                              <button disabled={busyId === r.id} onClick={() => resolve(r.id, 'done', 'card', 'BOG')} className="nm-btn rounded-xl py-2 text-xs font-bold text-primary">BOG</button>
+                            </div>
+                            <button disabled={busyId === r.id} onClick={() => resolve(r.id, 'done', undefined, undefined, true)} className="nm-btn w-full rounded-xl py-2 text-xs font-bold text-[var(--status-warning5)]">🧾 ტაბზე — გადახდა სესიის ბოლოს</button>
                           </div>
                         ) : (
                           <div className="mt-3 flex gap-2">
