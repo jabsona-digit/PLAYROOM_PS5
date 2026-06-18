@@ -51,7 +51,8 @@ function PortalApp() {
 
   const [cart, setCart] = useState<CartItem[]>([])
   const [busy, setBusy] = useState(false)
-  const [successType, setSuccessType] = useState<'order' | 'battery' | 'call' | 'equipment' | null>(null)
+  const [successType, setSuccessType] = useState<'order' | 'battery' | 'call' | 'equipment' | 'extend' | null>(null)
+  const [extendOpen, setExtendOpen] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   // per-session access gate — proves this device holds the CURRENT session's
@@ -232,6 +233,22 @@ function PortalApp() {
     setTimeout(() => setSuccessType(null), 3500)
   }
 
+  const requestExtend = async (minutes: number) => {
+    if (!venueId || !consoleId || !code) { flashError(orderErrorText('no_active_session')); return }
+    setBusy(true)
+    const { data, error } = await rpc('portal_request_extend', {
+      p_venue_id: venueId, p_console_id: Number(consoleId), p_code: code, p_minutes: minutes,
+    })
+    setBusy(false)
+    setExtendOpen(false)
+    if (error || !data?.ok) {
+      if (data?.error === 'bad_code') relock()
+      flashError(orderErrorText(data?.error)); return
+    }
+    setSuccessType('extend')
+    setTimeout(() => setSuccessType(null), 3500)
+  }
+
   const handleServiceRequest = async (kind: 'battery' | 'call' | 'equipment') => {
     if (!venueId || !consoleId) return
     if (!unlocked || !code) { flashError(orderErrorText('no_active_session')); return }
@@ -320,13 +337,29 @@ function PortalApp() {
                   {planName ? <p className="mt-1 text-xs text-muted-foreground font-bold">{planName}</p> : null}
                 </div>
                 {unlocked && (
-                  <button
-                    onClick={() => handleServiceRequest('call')}
-                    disabled={busy}
-                    className="nm-daylight px-5 py-2.5 rounded-xl text-xs font-bold text-primary whitespace-nowrap disabled:opacity-50"
-                  >
-                    დროის გაგრძელება
-                  </button>
+                  extendOpen ? (
+                    <div className="flex items-center gap-1.5">
+                      {[15, 30, 60].map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => requestExtend(m)}
+                          disabled={busy}
+                          className="nm-daylight rounded-xl px-3 py-2.5 text-xs font-black text-primary disabled:opacity-50"
+                        >
+                          +{m}′
+                        </button>
+                      ))}
+                      <button onClick={() => setExtendOpen(false)} className="px-1 text-xs text-muted-foreground">✕</button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setExtendOpen(true)}
+                      disabled={busy}
+                      className="nm-daylight px-5 py-2.5 rounded-xl text-xs font-bold text-primary whitespace-nowrap disabled:opacity-50"
+                    >
+                      დროის გაგრძელება
+                    </button>
+                  )
                 )}
               </div>
 
@@ -612,6 +645,13 @@ function PortalApp() {
                 <Bell className="size-16 text-[var(--status-free)] mb-4" />
                 <h2 className="text-xl font-black mb-2">ოპერატორი გამოძახებულია!</h2>
                 <p className="text-sm text-muted-foreground">ოპერატორმა უკვე მიიღო შეტყობინება და მალე მოვა თქვენთან.</p>
+              </>
+            )}
+            {successType === 'extend' && (
+              <>
+                <Clock className="size-16 text-[var(--status-active)] mb-4" />
+                <h2 className="text-xl font-black mb-2">მოთხოვნა გაიგზავნა!</h2>
+                <p className="text-sm text-muted-foreground">ოპერატორი დაადასტურებს და დრო დაგემატებათ — ანგარიშშიც აისახება.</p>
               </>
             )}
           </div>

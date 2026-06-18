@@ -16,7 +16,7 @@ interface ReqItem { product_id: number; name: string; unit_price: number; qty: n
 interface ServiceRequest {
   id: string
   console_id: number
-  kind: 'order' | 'battery' | 'call' | 'equipment'
+  kind: 'order' | 'battery' | 'call' | 'equipment' | 'extend'
   items: ReqItem[]
   total: number
   created_at: string
@@ -50,6 +50,7 @@ const KIND = {
   battery: { label: 'ჯოისტიკი დაჯდა', Icon: BatteryWarning, color: 'var(--status-expired)' },
   call: { label: 'სტაფის გამოძახება', Icon: ConciergeBell, color: 'var(--status-free)' },
   equipment: { label: 'ინვენტარი (ბილიარდი)', Icon: Boxes, color: 'var(--status-warning5)' },
+  extend: { label: 'დროის გაგრძელება', Icon: Bell, color: 'var(--status-active)' },
 } as const
 
 export function ServiceInbox() {
@@ -194,6 +195,11 @@ export function ServiceInbox() {
                       <p className="mt-1 text-xs font-bold uppercase tracking-wider" style={{ color: meta.color }}>
                         {meta.label}
                       </p>
+                      {r.kind === 'extend' && (
+                        <p className="mt-1 text-sm font-black text-primary">
+                          +{(r.items?.[0] as { minutes?: number })?.minutes ?? '?'} წთ — დაადასტურე და დაემატება
+                        </p>
+                      )}
 
                       {r.kind === 'order' && (
                         <ul className="mt-2 space-y-1">
