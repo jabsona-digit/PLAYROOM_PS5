@@ -3355,6 +3355,22 @@ export type Database = {
         Returns: string
       }
       ai_rate_limit: { Args: { p_limit?: number }; Returns: undefined }
+      api_analytics_summary: { Args: { p_org_id: string }; Returns: Json }
+      api_device_list: { Args: { p_org_id: string }; Returns: Json }
+      api_device_report: {
+        Args: {
+          p_console_id: number
+          p_error?: string
+          p_org_id: string
+          p_state: string
+          p_success?: boolean
+        }
+        Returns: Json
+      }
+      api_list_sessions: {
+        Args: { p_limit?: number; p_org_id: string }
+        Returns: Json
+      }
       cancel_reservation: {
         Args: { p_reason?: string; p_reservation_id: string }
         Returns: undefined
