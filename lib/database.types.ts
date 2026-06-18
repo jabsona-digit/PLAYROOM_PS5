@@ -3331,6 +3331,7 @@ export type Database = {
         Args: { p_closing_cash: number; p_note?: string; p_venue_id: string }
         Returns: Json
       }
+      compute_session_bill: { Args: { p_session_id: string }; Returns: Json }
       confirm_reservation: {
         Args: { p_reservation_id: string }
         Returns: undefined
@@ -3511,6 +3512,7 @@ export type Database = {
       }
       get_payment_settings: { Args: { p_org_id: string }; Returns: Json }
       get_pulse_stats: { Args: never; Returns: Json }
+      get_session_bill: { Args: { p_session_id: string }; Returns: Json }
       get_vat_summary: {
         Args: { p_from: string; p_to: string; p_venue_id: string }
         Returns: Json
@@ -3618,6 +3620,10 @@ export type Database = {
       plan_limit: { Args: { p_kind: string; p_plan: string }; Returns: number }
       plan_monthly_price: { Args: { p_plan: string }; Returns: number }
       plan_rank: { Args: { p: string }; Returns: number }
+      portal_get_bill: {
+        Args: { p_code: string; p_console_id: number }
+        Returns: Json
+      }
       portal_get_menu: { Args: { p_venue_id: string }; Returns: Json }
       portal_get_session_status: {
         Args: { p_console_id: number }
@@ -3687,6 +3693,7 @@ export type Database = {
         Args: {
           p_bank?: string
           p_id: string
+          p_on_tab?: boolean
           p_payment_method?: string
           p_status?: string
         }
@@ -3738,6 +3745,14 @@ export type Database = {
       }
       set_payment_provider_active: {
         Args: { p_active: boolean; p_org_id: string; p_provider: string }
+        Returns: Json
+      }
+      settle_session_tab: {
+        Args: {
+          p_bank?: string
+          p_payment_method: string
+          p_session_id: string
+        }
         Returns: Json
       }
       slugify: { Args: { p: string }; Returns: string }
