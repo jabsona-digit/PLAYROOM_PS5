@@ -3315,6 +3315,14 @@ export type Database = {
         Args: { p_org: string; p_uid: string }
         Returns: string
       }
+      change_session_tier: {
+        Args: { p_pricing_plan_id: number; p_session_id: string }
+        Returns: Json
+      }
+      check_venue_availability_for_ai: {
+        Args: { p_venue_id: string }
+        Returns: Json
+      }
       clock_toggle: {
         Args: { p_pin: string; p_venue_id: string }
         Returns: Json
@@ -3700,6 +3708,17 @@ export type Database = {
           p_org_id: string
           p_provider: string
           p_secret: Json
+        }
+        Returns: Json
+      }
+      search_venues_for_ai: {
+        Args: {
+          p_lat?: number
+          p_limit?: number
+          p_lng?: number
+          p_require_bar?: boolean
+          p_require_billiard?: boolean
+          p_require_vip?: boolean
         }
         Returns: Json
       }

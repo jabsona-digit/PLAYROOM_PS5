@@ -100,10 +100,11 @@ function StatCard({
 }
 
 function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
-  const { extendSession, hardwareRequired } = usePlayroom()
+  const { extendSession, changeSessionTier, hardwareRequired } = usePlayroom()
   const tilt = use3dTilt(4)
   const [startOpen, setStartOpen] = useState(false)
   const [extendOpen, setExtendOpen] = useState(false)
+  const [tierOpen, setTierOpen] = useState(false)
   const [endOpen, setEndOpen] = useState(false)
   const [accessOpen, setAccessOpen] = useState(false)
 
@@ -327,6 +328,15 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
                 დასრულება
               </button>
             </div>
+            {!isOpen && (
+              <button
+                type="button"
+                onClick={() => setTierOpen(true)}
+                className="nm-btn mt-3 flex w-full items-center justify-center gap-2 rounded-2xl py-2.5 text-sm font-bold text-primary"
+              >
+                🎮 ჯოისტიკი / ტარიფის შეცვლა
+              </button>
+            )}
             {accessChip}
           </div>
         )}
@@ -344,6 +354,16 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
         onConfirm={(min) => {
           extendSession(unit.id, min)
           setExtendOpen(false)
+        }}
+      />
+      <TierModal
+        open={tierOpen}
+        onClose={() => setTierOpen(false)}
+        consoleType={unit.console_type}
+        currentPlanId={s?.pricing_plan_id ?? 0}
+        onConfirm={(planId) => {
+          changeSessionTier(unit.id, planId)
+          setTierOpen(false)
         }}
       />
       <EndSessionModal
@@ -715,6 +735,57 @@ function ExtendModal({
             +{m} წთ
           </button>
         ))}
+      </div>
+    </Modal>
+  )
+}
+
+function TierModal({
+  open,
+  onClose,
+  consoleType,
+  currentPlanId,
+  onConfirm,
+}: {
+  open: boolean
+  onClose: () => void
+  consoleType?: string | null
+  currentPlanId: number
+  onConfirm: (planId: number) => void
+}) {
+  const { plans } = usePlayroom()
+  const applicable = plans.filter((p) => p.is_active && planAppliesToConsole(p, consoleType))
+  return (
+    <Modal open={open} onClose={onClose} title="ჯოისტიკი / ტარიფის შეცვლა">
+      <p className="mb-4 text-sm text-muted-foreground text-pretty">
+        აირჩიე ახალი ტარიფი. გადახდილი თანხა გადაითვლება ახალ ფასზე — დარჩენილი დრო შესაბამისად შემოკლდება/გაიზრდება (ფული უცვლელია).
+      </p>
+      <div className="space-y-2">
+        {applicable.map((p) => {
+          const isCurrent = p.id === currentPlanId
+          return (
+            <button
+              key={p.id}
+              type="button"
+              disabled={isCurrent}
+              onClick={() => onConfirm(p.id)}
+              className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left ${
+                isCurrent ? 'nm-inset opacity-50' : 'nm-btn'
+              }`}
+            >
+              <span className="text-sm font-bold">
+                {p.name}
+                {isCurrent ? ' (მიმდინარე)' : ''}
+              </span>
+              <span className="font-mono text-sm text-primary">
+                {gel(p.price_per_hour)}/სთ · {p.controllers} ჯ
+              </span>
+            </button>
+          )
+        })}
+        {applicable.length === 0 && (
+          <p className="py-4 text-center text-sm text-muted-foreground">ტარიფი არ მოიძებნა</p>
+        )}
       </div>
     </Modal>
   )

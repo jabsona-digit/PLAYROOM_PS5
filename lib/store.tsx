@@ -78,6 +78,7 @@ interface PlayroomState {
     bank?: Bank | null
   }) => void
   extendSession: (console_id: number, extra_minutes: number) => void
+  changeSessionTier: (console_id: number, plan_id: number) => void
   endSession: (console_id: number, tip?: number) => void
   refreshLive: () => Promise<void>
   tick: () => void
@@ -523,6 +524,26 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
     [pushToast, refetchLive],
   )
 
+  const changeSessionTier: PlayroomState['changeSessionTier'] = useCallback(
+    async (console_id, plan_id) => {
+      const sid = consolesRef.current.find((c) => c.id === console_id)?.active_session?.id
+      if (!sid) return
+      const { data, error } = await supabase.rpc('change_session_tier', {
+        p_session_id: sid,
+        p_pricing_plan_id: plan_id,
+      })
+      if (error) {
+        return pushToast('danger', error.message === 'open_not_supported'
+          ? 'pay-as-you-go სესიაზე ტარიფის შეცვლა ჯერ არ არის'
+          : error.message)
+      }
+      const r = data as { remaining_min?: number } | null
+      await refetchLive()
+      pushToast('success', `ტარიფი შეიცვალა — დარჩა ${r?.remaining_min ?? 0} წთ`)
+    },
+    [pushToast, refetchLive],
+  )
+
   const endSession: PlayroomState['endSession'] = useCallback(
     async (console_id, tip = 0) => {
       const sid = consolesRef.current.find((c) => c.id === console_id)?.active_session?.id
@@ -758,6 +779,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
       startSession,
       startOpenSession,
       extendSession,
+      changeSessionTier,
       endSession,
       refreshLive: refetchLive,
       tick,
@@ -791,6 +813,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
       startSession,
       startOpenSession,
       extendSession,
+      changeSessionTier,
       endSession,
       refetchLive,
       tick,
