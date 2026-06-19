@@ -2636,20 +2636,68 @@ export type Database = {
           },
         ]
       }
+      tournament_groups: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          org_id: string
+          tournament_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          org_id: string
+          tournament_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          org_id?: string
+          tournament_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_groups_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_groups_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_groups_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournament_matches: {
         Row: {
           console_id: number | null
           created_at: string
+          group_id: string | null
           id: string
           next_match_id: string | null
           next_slot: number | null
           org_id: string
           p1_id: string | null
           p2_id: string | null
-          position: number
-          round: number
+          position: number | null
+          round: number | null
           score1: number | null
           score2: number | null
+          stage: string
           status: string
           tournament_id: string
           winner_id: string | null
@@ -2657,16 +2705,18 @@ export type Database = {
         Insert: {
           console_id?: number | null
           created_at?: string
+          group_id?: string | null
           id?: string
           next_match_id?: string | null
           next_slot?: number | null
           org_id: string
           p1_id?: string | null
           p2_id?: string | null
-          position: number
-          round: number
+          position?: number | null
+          round?: number | null
           score1?: number | null
           score2?: number | null
+          stage?: string
           status?: string
           tournament_id: string
           winner_id?: string | null
@@ -2674,16 +2724,18 @@ export type Database = {
         Update: {
           console_id?: number | null
           created_at?: string
+          group_id?: string | null
           id?: string
           next_match_id?: string | null
           next_slot?: number | null
           org_id?: string
           p1_id?: string | null
           p2_id?: string | null
-          position?: number
-          round?: number
+          position?: number | null
+          round?: number | null
           score1?: number | null
           score2?: number | null
+          stage?: string
           status?: string
           tournament_id?: string
           winner_id?: string | null
@@ -2757,6 +2809,7 @@ export type Database = {
       tournament_participants: {
         Row: {
           created_at: string
+          group_id: string | null
           id: string
           name: string
           org_id: string
@@ -2765,6 +2818,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          group_id?: string | null
           id?: string
           name: string
           org_id: string
@@ -2773,6 +2827,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          group_id?: string | null
           id?: string
           name?: string
           org_id?: string
@@ -2805,15 +2860,18 @@ export type Database = {
       }
       tournaments: {
         Row: {
+          advance_per_group: number
           bracket_size: number | null
           created_at: string
           entry_fee: number
           format: string
           game: string | null
+          group_size: number
           id: string
           max_participants: number | null
           name: string
           org_id: string
+          phase: string | null
           prize_pool: number
           starts_at: string | null
           status: string
@@ -2821,15 +2879,18 @@ export type Database = {
           winner_participant_id: string | null
         }
         Insert: {
+          advance_per_group?: number
           bracket_size?: number | null
           created_at?: string
           entry_fee?: number
           format?: string
           game?: string | null
+          group_size?: number
           id?: string
           max_participants?: number | null
           name: string
           org_id: string
+          phase?: string | null
           prize_pool?: number
           starts_at?: string | null
           status?: string
@@ -2837,15 +2898,18 @@ export type Database = {
           winner_participant_id?: string | null
         }
         Update: {
+          advance_per_group?: number
           bracket_size?: number | null
           created_at?: string
           entry_fee?: number
           format?: string
           game?: string | null
+          group_size?: number
           id?: string
           max_participants?: number | null
           name?: string
           org_id?: string
+          phase?: string | null
           prize_pool?: number
           starts_at?: string | null
           status?: string
@@ -3670,6 +3734,7 @@ export type Database = {
           triggered_by: string
         }[]
       }
+      get_group_standings: { Args: { p_tournament: string }; Returns: Json }
       get_hardware_secret: {
         Args: { p_provider: string; p_venue_id: string }
         Returns: Json
@@ -3945,6 +4010,7 @@ export type Database = {
         }
         Returns: Json
       }
+      seed_group_stage: { Args: { p_tournament: string }; Returns: undefined }
       seed_tournament: { Args: { p_tournament: string }; Returns: undefined }
       set_console_power: {
         Args: {
@@ -3972,6 +4038,10 @@ export type Database = {
         Returns: Json
       }
       slugify: { Args: { p: string }; Returns: string }
+      start_knockout_from_groups: {
+        Args: { p_tournament: string }
+        Returns: undefined
+      }
       start_open_session: {
         Args: {
           p_bank?: string
