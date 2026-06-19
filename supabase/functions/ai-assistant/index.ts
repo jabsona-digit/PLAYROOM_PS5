@@ -612,20 +612,37 @@ Use the real numbers from the data (RevPACH, occupancy %, gold hour). Keep it un
       const { data, error } = await db.rpc('get_daily_brief_data', args)
       if (error) throw error
 
+      // Operator joystick-integrity flags (trailing 30d) — zero-hardware anti-fraud (0095).
+      let operator_flags: unknown[] = []
+      try {
+        const { data: venueRow } = await db.from('venues').select('org_id').eq('id', vId).single()
+        const orgId = (venueRow as { org_id?: string } | null)?.org_id
+        if (orgId) {
+          const briefTo = body.date ? new Date(body.date as string) : new Date()
+          const briefFrom = new Date(briefTo.getTime() - 30 * 86_400_000)
+          const { data: oi } = await db.rpc('get_operator_integrity', {
+            p_org_id: orgId, p_from: briefFrom.toISOString(), p_to: briefTo.toISOString(), p_venue_id: vId,
+          })
+          operator_flags = ((oi as { operators?: Array<{ flag?: boolean }> } | null)?.operators ?? [])
+            .filter((o) => o.flag)
+        }
+      } catch (_) { /* best-effort — never block the brief */ }
+      const briefPayload = { ...(data as Record<string, unknown>), operator_flags }
+
       const briefSys = `You are an elite AI Chief Operations Officer (COO) and Strategic Analyst for a Georgian gaming lounge network, briefing the TRUE OWNER on today's performance.
-You receive a JSON snapshot (revenue today vs yesterday in GEL, sessions, total hours, top_console, idle_consoles, peak_hour_tbilisi 0-23, cancels/voids/refunds today, low_stock[], hardware_warnings[]).
+You receive a JSON snapshot (revenue today vs yesterday in GEL, sessions, total hours, top_console, idle_consoles, peak_hour_tbilisi 0-23, cancels/voids/refunds today, low_stock[], hardware_warnings[], operator_flags[] = staff ringing fewer joysticks than the venue average over 30d).
 
 Your goal isn't just to report numbers—it's to uncover hidden patterns, analyze operational risks, and generate revenue-maximizing strategies.
 
 Write a crisp, highly analytical, and strategic end-of-day brief in GEORGIAN markdown:
 1. 📈 **დღის შეფასება (Executive Summary):** 1 punchy headline and a dynamic letter grade (A+/A/B/C/D) based on revenue trajectory and utilization. Briefly explain *why*.
 2. 💡 **ღრმა ანალიტიკა და კორელაციები:** Find the "Why" behind the data. Which hour drove the most efficiency? Are idle consoles directly bleeding revenue? Point out non-obvious correlations.
-3. 🚨 **რისკები და კონტროლი (Risk Management):** Analyze any fraud indicators (abnormal cancels/voids/refunds). Are operators making mistakes? Report on physical risks (low_stock on high-margin items, hardware_warnings).
+3. 🚨 **რისკები და კონტროლი (Risk Management):** Analyze any fraud indicators (abnormal cancels/voids/refunds). If operator_flags[] is non-empty, NAME the flagged operator(s) + their joystick deviation as an under-ringing CHECK (frame as "worth verifying", never a definitive accusation). Report on physical risks (low_stock on high-margin items, hardware_warnings).
 4. 🎯 **ხვალინდელი სტრატეგია (Action Plan):** Provide EXACTLY 3 highly creative, data-driven actions. (e.g., "Tomorrow 14:00-17:00 is historically dead, launch a -20% student promo", "Restock X immediately before the evening rush").
 
 Be ruthless with insights, precise with REAL numbers, and never just echo the JSON. Keep it professional, sharp, under ~200 words. No preamble.`
 
-      const g = await callGemini(briefSys, [{ role: 'user', parts: [{ text: JSON.stringify(data) }] }])
+      const g = await callGemini(briefSys, [{ role: 'user', parts: [{ text: JSON.stringify(briefPayload) }] }])
       const text = g?.candidates?.[0]?.content?.parts?.find((p: { text?: string }) => p.text)?.text ?? 'ანგარიში ვერ მომზადდა.'
       return json({ type: 'text', text })
     } catch (e) {
