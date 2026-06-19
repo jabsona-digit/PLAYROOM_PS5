@@ -2682,6 +2682,85 @@ export type Database = {
           },
         ]
       }
+      tournament_host_offers: {
+        Row: {
+          agreed_amount: number | null
+          created_at: string
+          id: string
+          note: string | null
+          org_id: string
+          proposed_amount: number | null
+          status: string
+          tournament_id: string
+          venue_id: string
+        }
+        Insert: {
+          agreed_amount?: number | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          org_id: string
+          proposed_amount?: number | null
+          status?: string
+          tournament_id: string
+          venue_id: string
+        }
+        Update: {
+          agreed_amount?: number | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          org_id?: string
+          proposed_amount?: number | null
+          status?: string
+          tournament_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_host_offers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_host_offers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_host_offers_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_host_offers_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "tournament_host_offers_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_host_offers_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournament_matches: {
         Row: {
           console_id: number | null
@@ -2861,62 +2940,91 @@ export type Database = {
       tournaments: {
         Row: {
           advance_per_group: number
+          agreed_amount: number | null
           bracket_size: number | null
+          commission_pct: number
           created_at: string
+          creator_scope: string
           entry_fee: number
           format: string
           game: string | null
           group_size: number
+          host_org_id: string | null
           id: string
+          is_public: boolean
           max_participants: number | null
           name: string
-          org_id: string
+          org_id: string | null
           phase: string | null
           prize_pool: number
           starts_at: string | null
           status: string
-          venue_id: string
+          venue_id: string | null
           winner_participant_id: string | null
         }
         Insert: {
           advance_per_group?: number
+          agreed_amount?: number | null
           bracket_size?: number | null
+          commission_pct?: number
           created_at?: string
+          creator_scope?: string
           entry_fee?: number
           format?: string
           game?: string | null
           group_size?: number
+          host_org_id?: string | null
           id?: string
+          is_public?: boolean
           max_participants?: number | null
           name: string
-          org_id: string
+          org_id?: string | null
           phase?: string | null
           prize_pool?: number
           starts_at?: string | null
           status?: string
-          venue_id: string
+          venue_id?: string | null
           winner_participant_id?: string | null
         }
         Update: {
           advance_per_group?: number
+          agreed_amount?: number | null
           bracket_size?: number | null
+          commission_pct?: number
           created_at?: string
+          creator_scope?: string
           entry_fee?: number
           format?: string
           game?: string | null
           group_size?: number
+          host_org_id?: string | null
           id?: string
+          is_public?: boolean
           max_participants?: number | null
           name?: string
-          org_id?: string
+          org_id?: string | null
           phase?: string | null
           prize_pool?: number
           starts_at?: string | null
           status?: string
-          venue_id?: string
+          venue_id?: string | null
           winner_participant_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "tournaments_host_org_id_fkey"
+            columns: ["host_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournaments_host_org_id_fkey"
+            columns: ["host_org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tournaments_org_id_fkey"
             columns: ["org_id"]
@@ -3490,6 +3598,10 @@ export type Database = {
         Args: { p_match: string; p_winner: string }
         Returns: undefined
       }
+      accept_host_offer: {
+        Args: { p_agreed: number; p_offer: string }
+        Returns: undefined
+      }
       accept_invite: { Args: { p_token: string }; Returns: Json }
       add_expense: {
         Args: {
@@ -3631,6 +3743,20 @@ export type Database = {
         Returns: string
       }
       create_platform_telegram_code: { Args: never; Returns: Json }
+      create_platform_tournament: {
+        Args: {
+          p_advance: number
+          p_entry_fee: number
+          p_format: string
+          p_game: string
+          p_group_size: number
+          p_max: number
+          p_name: string
+          p_prize_pool: number
+          p_starts_at: string
+        }
+        Returns: string
+      }
       create_reservation: {
         Args: {
           p_console_id?: number
@@ -3806,6 +3932,7 @@ export type Database = {
       is_org_member_raw: { Args: { p_org: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
       list_api_keys: { Args: { p_org_id?: string }; Returns: Json }
+      list_hosting_opportunities: { Args: never; Returns: Json }
       list_org_members: {
         Args: { p_org: string }
         Returns: {
@@ -3815,6 +3942,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      list_platform_tournaments: { Args: never; Returns: Json }
       log_audit: {
         Args: {
           p_action: string
@@ -4132,6 +4260,15 @@ export type Database = {
         }
       }
       start_shift: { Args: { p_venue_id: string }; Returns: Json }
+      submit_host_offer: {
+        Args: {
+          p_note: string
+          p_proposed: number
+          p_tournament: string
+          p_venue_id: string
+        }
+        Returns: string
+      }
       submit_review: {
         Args: { p_booking_id: string; p_comment?: string; p_rating: number }
         Returns: string
