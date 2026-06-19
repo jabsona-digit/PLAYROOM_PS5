@@ -46,6 +46,7 @@ function PortalApp() {
     play_amount: number; play_paid: boolean
     paid_items: { name: string; qty: number; line_total: number }[]; paid_bar_total: number
     tab_items: { name: string; qty: number; line_total: number }[]; tab_total: number
+    tab_extension: number; red_total: number
     grand_total: number
   } | null>(null)
 
@@ -53,6 +54,7 @@ function PortalApp() {
   const [busy, setBusy] = useState(false)
   const [successType, setSuccessType] = useState<'order' | 'battery' | 'call' | 'equipment' | 'extend' | null>(null)
   const [extendOpen, setExtendOpen] = useState(false)
+  const [extendMin, setExtendMin] = useState<number | null>(null) // minutes picked, awaiting pay choice
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   // per-session access gate — proves this device holds the CURRENT session's
@@ -251,14 +253,15 @@ function PortalApp() {
     setTimeout(() => setSuccessType(null), 3500)
   }
 
-  const requestExtend = async (minutes: number) => {
+  const requestExtend = async (minutes: number, pay: 'cash' | 'card' | 'transfer' | 'tab') => {
     if (!venueId || !consoleId || !code) { flashError(orderErrorText('no_active_session')); return }
     setBusy(true)
     const { data, error } = await rpc('portal_request_extend', {
-      p_venue_id: venueId, p_console_id: Number(consoleId), p_code: code, p_minutes: minutes,
+      p_venue_id: venueId, p_console_id: Number(consoleId), p_code: code, p_minutes: minutes, p_pay: pay,
     })
     setBusy(false)
     setExtendOpen(false)
+    setExtendMin(null)
     if (error || !data?.ok) {
       if (data?.error === 'bad_code') relock()
       flashError(orderErrorText(data?.error)); return
@@ -355,12 +358,21 @@ function PortalApp() {
                   {planName ? <p className="mt-1 text-xs text-muted-foreground font-bold">{planName}</p> : null}
                 </div>
                 {unlocked && (
-                  extendOpen ? (
+                  !extendOpen ? (
+                    <button
+                      onClick={() => { setExtendOpen(true); setExtendMin(null) }}
+                      disabled={busy}
+                      className="nm-daylight px-5 py-2.5 rounded-xl text-xs font-bold text-primary whitespace-nowrap disabled:opacity-50"
+                    >
+                      დროის გაგრძელება
+                    </button>
+                  ) : extendMin == null ? (
+                    /* step 1 — pick minutes */
                     <div className="flex items-center gap-1.5">
                       {[15, 30, 60].map((m) => (
                         <button
                           key={m}
-                          onClick={() => requestExtend(m)}
+                          onClick={() => setExtendMin(m)}
                           disabled={busy}
                           className="nm-daylight rounded-xl px-3 py-2.5 text-xs font-black text-primary disabled:opacity-50"
                         >
@@ -370,13 +382,15 @@ function PortalApp() {
                       <button onClick={() => setExtendOpen(false)} className="px-1 text-xs text-muted-foreground">✕</button>
                     </div>
                   ) : (
-                    <button
-                      onClick={() => setExtendOpen(true)}
-                      disabled={busy}
-                      className="nm-daylight px-5 py-2.5 rounded-xl text-xs font-bold text-primary whitespace-nowrap disabled:opacity-50"
-                    >
-                      დროის გაგრძელება
-                    </button>
+                    /* step 2 — how do you pay for +extendMin? */
+                    <div className="flex flex-wrap items-center justify-end gap-1.5 max-w-[230px]">
+                      <span className="w-full text-right text-[10px] font-bold text-muted-foreground">+{extendMin}′ — როგორ იხდი?</span>
+                      <button onClick={() => requestExtend(extendMin, 'cash')} disabled={busy} className="nm-btn rounded-lg px-2.5 py-2 text-xs font-bold text-[var(--status-free)] disabled:opacity-50">💵 ნაღდი</button>
+                      <button onClick={() => requestExtend(extendMin, 'card')} disabled={busy} className="nm-btn rounded-lg px-2.5 py-2 text-xs font-bold text-primary disabled:opacity-50">💳 ბარათი</button>
+                      <button onClick={() => requestExtend(extendMin, 'transfer')} disabled={busy} className="nm-btn rounded-lg px-2.5 py-2 text-xs font-bold text-primary disabled:opacity-50">🏦 გადარიცხვა</button>
+                      <button onClick={() => requestExtend(extendMin, 'tab')} disabled={busy} className="nm-btn rounded-lg px-2.5 py-2 text-xs font-bold text-[var(--status-warning5)] disabled:opacity-50">🧾 ბოლოს</button>
+                      <button onClick={() => setExtendMin(null)} className="px-1 text-xs text-muted-foreground">✕</button>
+                    </div>
                   )
                 )}
               </div>
@@ -438,13 +452,18 @@ function PortalApp() {
                   <span>🔴 {it.qty}× {it.name}</span><span className="font-mono">{gel(it.line_total)}</span>
                 </div>
               ))}
+              {bill.tab_extension > 0 && (
+                <div className="flex justify-between text-red-400">
+                  <span>🔴 ⏱️ დროის გაგრძელება</span><span className="font-mono">{gel(bill.tab_extension)}</span>
+                </div>
+              )}
             </div>
             <div className="mt-3 flex justify-between border-t border-white/10 pt-3 text-base font-black">
               <span>სულ</span><span className="font-mono text-primary">{gel(bill.grand_total)}</span>
             </div>
-            {(bill.tab_total > 0 || !bill.play_paid) && (
+            {bill.red_total > 0 && (
               <p className="mt-2 text-[11px] text-red-400">
-                🔴 გადასახდელი {gel((bill.play_paid ? 0 : bill.play_amount) + bill.tab_total)} — გადაიხდით სესიის ბოლოს
+                🔴 გადასახდელი {gel(bill.red_total)} — გადაიხდით სესიის ბოლოს
               </p>
             )}
           </div>

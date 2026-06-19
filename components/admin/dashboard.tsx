@@ -389,6 +389,7 @@ type SessionBill = {
   play_amount: number; play_paid: boolean
   paid_items: BillItem[]; paid_bar_total: number
   tab_items: BillItem[]; tab_total: number
+  tab_extension: number; red_total: number
   grand_total: number
 }
 
@@ -422,6 +423,9 @@ function EndSessionModal({
   const s = unit.active_session
   if (!s) return null
 
+  // owed-at-end = bar tab + unpaid time-extensions (both settled by settle_session_tab)
+  const owedTab = (bill?.tab_total ?? 0) + (bill?.tab_extension ?? 0)
+
   // Open sessions are billed by elapsed time (rounded up to 5 min); the stored
   // price_total is 0 until close, so compute the live amount here.
   const elapsedMs = (now ?? Date.now()) - new Date(s.started_at).getTime()
@@ -447,7 +451,7 @@ function EndSessionModal({
           </span>
         </div>
 
-        {bill && (bill.paid_bar_total > 0 || bill.tab_total > 0) && (
+        {bill && (bill.paid_bar_total > 0 || owedTab > 0) && (
           <div className="nm-inset space-y-1.5 rounded-2xl p-4">
             <p className="mb-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">ბარი</p>
             {bill.paid_items?.map((it, i) => (
@@ -462,10 +466,16 @@ function EndSessionModal({
                 <span className="font-mono text-[var(--status-expired)]">{gel(it.line_total)}</span>
               </div>
             ))}
-            {bill.tab_total > 0 && (
+            {bill.tab_extension > 0 && (
+              <div className="flex justify-between text-xs">
+                <span className="text-[var(--status-expired)]">🔴 ⏱️ დროის გაგრძელება</span>
+                <span className="font-mono text-[var(--status-expired)]">{gel(bill.tab_extension)}</span>
+              </div>
+            )}
+            {owedTab > 0 && (
               <div className="mt-1.5 border-t border-border pt-2">
                 <p className="mb-1.5 text-[11px] font-bold text-[var(--status-expired)]">
-                  🔴 გადასახდელი ტაბი: {gel(bill.tab_total)} — აირჩიე გადახდა:
+                  🔴 გადასახდელი ტაბი: {gel(owedTab)} — აირჩიე გადახდა:
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   <button type="button" onClick={() => setSettleM({ m: 'cash', b: null })} className={`nm-btn rounded-xl py-2 text-xs font-bold ${settleM?.m === 'cash' ? 'nm-daylight text-primary' : ''}`}>ნაღდი</button>
@@ -490,18 +500,18 @@ function EndSessionModal({
         </label>
 
         <p className="text-sm text-center font-bold">
-          სულ: <span className="text-primary">{gel(base + (bill?.paid_bar_total ?? 0) + (bill?.tab_total ?? 0))}</span>
-          {bill && (bill.paid_bar_total + bill.tab_total) > 0 && (
-            <span className="text-xs text-muted-foreground"> (თამაში {gel(base)} + ბარი {gel(bill.paid_bar_total + bill.tab_total)})</span>
+          სულ: <span className="text-primary">{gel(base + (bill?.paid_bar_total ?? 0) + owedTab)}</span>
+          {bill && (bill.paid_bar_total + owedTab) > 0 && (
+            <span className="text-xs text-muted-foreground"> (თამაში {gel(base)} + ბარი/დრო {gel(bill.paid_bar_total + owedTab)})</span>
           )}
           {tip > 0 && <span className="text-amber-400"> + ჩაიანი {gel(tip)}</span>}
         </p>
 
         <button
           type="button"
-          disabled={!!bill && bill.tab_total > 0 && !settleM}
+          disabled={!!bill && owedTab > 0 && !settleM}
           onClick={async () => {
-            if (bill && bill.tab_total > 0 && settleM) {
+            if (bill && owedTab > 0 && settleM) {
               const { error } = await (supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ error: { message: string } | null }>)(
                 'settle_session_tab', { p_session_id: s.id, p_payment_method: settleM.m, p_bank: settleM.b },
               )
@@ -521,7 +531,7 @@ function EndSessionModal({
           className="nm-btn flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-extrabold text-[var(--status-expired)] disabled:opacity-50"
         >
           <Square className="size-4" />
-          {bill && bill.tab_total > 0 ? 'გადახდა და დასრულება' : 'დადასტურება'}
+          {bill && owedTab > 0 ? 'გადახდა და დასრულება' : 'დადასტურება'}
         </button>
       </div>
     </Modal>

@@ -200,11 +200,18 @@ export function ServiceInbox() {
                       <p className="mt-1 text-xs font-bold uppercase tracking-wider" style={{ color: meta.color }}>
                         {meta.label}
                       </p>
-                      {r.kind === 'extend' && (
-                        <p className="mt-1 text-sm font-black text-primary">
-                          +{(r.items?.[0] as { minutes?: number })?.minutes ?? '?'} წთ — დაადასტურე და დაემატება
-                        </p>
-                      )}
+                      {r.kind === 'extend' && (() => {
+                        const it = (r.items?.[0] as { minutes?: number; pay?: string }) ?? {}
+                        const payLabel = it.pay === 'cash' ? '💵 ნაღდი ახლა'
+                          : it.pay === 'card' ? '💳 ბარათი ახლა'
+                          : it.pay === 'transfer' ? '🏦 გადარიცხვა ახლა'
+                          : '🧾 ბოლოს (ტაბზე)'
+                        return (
+                          <p className="mt-1 text-sm font-black text-primary">
+                            +{it.minutes ?? '?'} წთ · {payLabel} — დაადასტურე
+                          </p>
+                        )
+                      })()}
 
                       {r.kind === 'order' && (
                         <ul className="mt-2 space-y-1">
