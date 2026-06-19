@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ShieldAlert, ScanSearch, CheckCircle2, Calendar } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { OperatorIntegrity } from './operator-integrity'
 
 export function FraudAuditDashboard() {
   const [loading, setLoading] = useState(false)
@@ -105,6 +106,9 @@ export function FraudAuditDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Statistical anti-fraud — operator joystick integrity (no hardware, migration 0095) */}
+      <OperatorIntegrity />
 
       {loading && (
         <div className="nm-inset rounded-3xl p-12 flex flex-col items-center justify-center text-center animate-pulse">
