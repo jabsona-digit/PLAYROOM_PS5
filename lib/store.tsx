@@ -125,6 +125,8 @@ function mapSession(r: any): Session {
     is_open: r.is_open ?? false,
     created_by_user: r.created_by_user ?? null,
     portal_code: r.portal_code ?? null,
+    refunded_at: r.refunded_at ?? null,
+    refund_amount: r.refund_amount == null ? null : num(r.refund_amount),
     extensions: (r.session_extensions ?? []).map(mapExtension),
   }
 }

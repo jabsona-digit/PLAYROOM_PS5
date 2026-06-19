@@ -74,6 +74,8 @@ type StatSession = {
   ended_at?: string
   ends_at?: string | null
   started_at: string
+  refunded_at?: string | null
+  refund_amount?: number | null
 }
 type StatConsole = { name: string; console_type?: string }
 
@@ -111,7 +113,9 @@ function computeSessionStats(sessions: StatSession[], consoleList: StatConsole[]
 
   for (const s of sessions) {
     const ts = new Date(s.ended_at ?? s.ends_at ?? s.started_at).getTime()
-    const amt = s.price_total
+    // refunded sessions stay status='completed' — net the refund out of revenue (F3)
+    const refunded = s.refunded_at ? (s.refund_amount ?? s.price_total) : 0
+    const amt = Math.max(0, s.price_total - refunded)
     const tip = s.tip_amount
 
     all += amt

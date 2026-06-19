@@ -75,6 +75,8 @@ export interface Session {
   is_open: boolean
   created_by_user?: string | null // auth user (operator) who created the session
   portal_code?: string | null // per-session In-Seat access code (PIN + QR), rotates each session
+  refunded_at?: string | null  // set by refund_session — net this out of revenue
+  refund_amount?: number | null
   extensions: SessionExtension[]
 }
 
