@@ -3583,6 +3583,15 @@ export type Database = {
       }
       get_hardware_settings: { Args: { p_venue_id: string }; Returns: Json }
       get_open_drawer: { Args: { p_venue_id: string }; Returns: Json }
+      get_operator_integrity: {
+        Args: {
+          p_from?: string
+          p_org_id: string
+          p_to?: string
+          p_venue_id?: string
+        }
+        Returns: Json
+      }
       get_org_overview: {
         Args: {
           p_month: string
