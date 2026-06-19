@@ -27,6 +27,7 @@ import { PaymentSettings } from './payment-settings'
 import { TeamSettings } from './team-settings'
 import { HardwareSettings } from './hardware-settings'
 import { ApiKeysPanel } from './api-keys-panel'
+import { TelegramSettings } from './telegram-settings'
 import { QrPrintModal } from './qr-print-modal'
 
 // Bookable resource types — each is its own capacity pool (0039). Latin keys keep
@@ -745,6 +746,8 @@ export function Settings() {
       <HardwareSettings />
 
       <ApiKeysPanel />
+
+      <TelegramSettings />
 
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="ახალი კონსოლი">
         <div className="space-y-5">
