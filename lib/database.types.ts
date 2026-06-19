@@ -1715,6 +1715,8 @@ export type Database = {
           plan: string
           slug: string | null
           subscription_status: string
+          telegram_alerts: Json
+          telegram_chat_id: number | null
           trial_ends_at: string | null
         }
         Insert: {
@@ -1726,6 +1728,8 @@ export type Database = {
           plan?: string
           slug?: string | null
           subscription_status?: string
+          telegram_alerts?: Json
+          telegram_chat_id?: number | null
           trial_ends_at?: string | null
         }
         Update: {
@@ -1737,6 +1741,8 @@ export type Database = {
           plan?: string
           slug?: string | null
           subscription_status?: string
+          telegram_alerts?: Json
+          telegram_chat_id?: number | null
           trial_ends_at?: string | null
         }
         Relationships: []
@@ -2560,6 +2566,48 @@ export type Database = {
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telegram_link_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          org_id: string
+          used_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          org_id: string
+          used_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          org_id?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_link_codes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "telegram_link_codes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
             referencedColumns: ["id"]
           },
         ]
@@ -3506,6 +3554,7 @@ export type Database = {
         }
         Returns: string
       }
+      create_telegram_link_code: { Args: { p_org_id: string }; Returns: Json }
       create_venue: {
         Args: { p_name: string; p_org_id: string; p_venue_type?: string }
         Returns: {
@@ -3982,6 +4031,12 @@ export type Database = {
         Args: { p_booking_id: string; p_comment?: string; p_rating: number }
         Returns: string
       }
+      telegram_link: {
+        Args: { p_chat_id: number; p_code: string }
+        Returns: Json
+      }
+      telegram_link_status: { Args: { p_org_id: string }; Returns: Json }
+      telegram_org_summary: { Args: { p_chat_id: number }; Returns: Json }
       verify_api_key: { Args: { p_key: string }; Returns: Json }
       void_bar_sale: {
         Args: { p_reason?: string; p_sale_id: string }
