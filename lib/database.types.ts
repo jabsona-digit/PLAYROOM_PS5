@@ -1891,6 +1891,27 @@ export type Database = {
           },
         ]
       }
+      platform_telegram_config: {
+        Row: {
+          alerts: Json
+          chat_id: number | null
+          id: number
+          updated_at: string | null
+        }
+        Insert: {
+          alerts?: Json
+          chat_id?: number | null
+          id?: number
+          updated_at?: string | null
+        }
+        Update: {
+          alerts?: Json
+          chat_id?: number | null
+          id?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       power_events: {
         Row: {
           action: string
@@ -2576,7 +2597,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           expires_at: string
-          org_id: string
+          org_id: string | null
+          scope: string
           used_at: string | null
         }
         Insert: {
@@ -2584,7 +2606,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           expires_at?: string
-          org_id: string
+          org_id?: string | null
+          scope?: string
           used_at?: string | null
         }
         Update: {
@@ -2592,7 +2615,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           expires_at?: string
-          org_id?: string
+          org_id?: string | null
+          scope?: string
           used_at?: string | null
         }
         Relationships: [
@@ -3542,6 +3566,7 @@ export type Database = {
         }
         Returns: string
       }
+      create_platform_telegram_code: { Args: never; Returns: Json }
       create_reservation: {
         Args: {
           p_console_id?: number
@@ -3781,6 +3806,10 @@ export type Database = {
       }
       next_fiscal_receipt_no: { Args: never; Returns: string }
       next_invoice_number: { Args: { p_org_id: string }; Returns: string }
+      notify_platform_telegram: {
+        Args: { p_kind: string; p_text: string }
+        Returns: undefined
+      }
       notify_telegram_org: {
         Args: { p_kind: string; p_org_id: string; p_text: string }
         Returns: undefined
@@ -3793,6 +3822,8 @@ export type Database = {
       plan_limit: { Args: { p_kind: string; p_plan: string }; Returns: number }
       plan_monthly_price: { Args: { p_plan: string }; Returns: number }
       plan_rank: { Args: { p: string }; Returns: number }
+      platform_daily_digest: { Args: never; Returns: undefined }
+      platform_telegram_status: { Args: never; Returns: Json }
       portal_get_bill: {
         Args: { p_code: string; p_console_id: number }
         Returns: Json
