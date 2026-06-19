@@ -3781,6 +3781,10 @@ export type Database = {
       }
       next_fiscal_receipt_no: { Args: never; Returns: string }
       next_invoice_number: { Args: { p_org_id: string }; Returns: string }
+      notify_telegram_org: {
+        Args: { p_kind: string; p_org_id: string; p_text: string }
+        Returns: undefined
+      }
       open_cash_drawer: {
         Args: { p_opening_cash?: number; p_venue_id: string }
         Returns: Json
