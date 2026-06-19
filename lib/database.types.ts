@@ -2261,28 +2261,40 @@ export type Database = {
       }
       session_extensions: {
         Row: {
+          bank: string | null
           created_at: string
           extra_minutes: number
           extra_price: number
           id: string
+          on_tab: boolean
           org_id: string
+          payment_method: string | null
           session_id: string
+          settled_at: string | null
         }
         Insert: {
+          bank?: string | null
           created_at?: string
           extra_minutes: number
           extra_price: number
           id?: string
+          on_tab?: boolean
           org_id: string
+          payment_method?: string | null
           session_id: string
+          settled_at?: string | null
         }
         Update: {
+          bank?: string | null
           created_at?: string
           extra_minutes?: number
           extra_price?: number
           id?: string
+          on_tab?: boolean
           org_id?: string
+          payment_method?: string | null
           session_id?: string
+          settled_at?: string | null
         }
         Relationships: [
           {
@@ -3552,7 +3564,13 @@ export type Database = {
         | { Args: { p_session_id: string; p_tip?: number }; Returns: undefined }
       end_shift: { Args: { p_venue_id: string }; Returns: Json }
       extend_session: {
-        Args: { p_extra_min: number; p_session_id: string }
+        Args: {
+          p_bank?: string
+          p_extra_min: number
+          p_on_tab?: boolean
+          p_payment_method?: string
+          p_session_id: string
+        }
         Returns: undefined
       }
       get_console_analytics: {
@@ -3741,9 +3759,11 @@ export type Database = {
       }
       portal_request_extend: {
         Args: {
+          p_bank?: string
           p_code: string
           p_console_id: number
           p_minutes: number
+          p_pay?: string
           p_venue_id: string
         }
         Returns: Json
