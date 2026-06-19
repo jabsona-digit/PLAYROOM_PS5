@@ -4040,6 +4040,7 @@ export type Database = {
         Returns: Json
       }
       telegram_link_status: { Args: { p_org_id: string }; Returns: Json }
+      telegram_nightly_briefs: { Args: never; Returns: undefined }
       telegram_org_summary: { Args: { p_chat_id: number }; Returns: Json }
       verify_api_key: { Args: { p_key: string }; Returns: Json }
       void_bar_sale: {
