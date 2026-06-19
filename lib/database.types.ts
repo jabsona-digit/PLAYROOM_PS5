@@ -3595,6 +3595,15 @@ export type Database = {
       get_payment_settings: { Args: { p_org_id: string }; Returns: Json }
       get_pulse_stats: { Args: never; Returns: Json }
       get_session_bill: { Args: { p_session_id: string }; Returns: Json }
+      get_staff_leaderboard: {
+        Args: {
+          p_from?: string
+          p_org_id: string
+          p_to?: string
+          p_venue_id?: string
+        }
+        Returns: Json
+      }
       get_vat_summary: {
         Args: { p_from: string; p_to: string; p_venue_id: string }
         Returns: Json
