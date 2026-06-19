@@ -63,8 +63,11 @@ Deno.serve(async (req) => {
       const code = parts[1] ?? ''
       if (!code) { await reply('გამოიყენე: <code>/link კოდი</code>\n(კოდი: პარამეტრები → Telegram)'); return new Response('ok') }
       const { data } = await svc.rpc('telegram_link', { p_chat_id: chatId, p_code: code })
-      if ((data as { ok?: boolean })?.ok) {
-        await reply(`✅ დაკავშირდა: <b>${(data as { org_name?: string }).org_name ?? ''}</b>\n\nსცადე: /revenue · /consoles`)
+      const d = data as { ok?: boolean; platform?: boolean; org_name?: string }
+      if (d?.ok && d.platform) {
+        await reply('✅ <b>პლატფორმის alert-ები ჩაირთო</b> 👑\n\nმიიღებ: 🆕 ახალი tenant · 👑 დღის digest (MRR / overdue / საცდელი).')
+      } else if (d?.ok) {
+        await reply(`✅ დაკავშირდა: <b>${d.org_name ?? ''}</b>\n\nსცადე: /revenue · /consoles`)
       } else {
         await reply('❌ კოდი არასწორია ან ვადაგასულია. პანელში დააგენერირე ახალი.')
       }

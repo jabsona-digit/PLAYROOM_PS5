@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Users2,
   Wallet,
+  Send,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
@@ -77,6 +78,8 @@ export function PlatformConsole({ onViewAs }: { onViewAs: () => void }) {
   const [rows, setRows] = useState<OrgRow[]>([])
   const [busyId, setBusyId] = useState<string | null>(null)
   const [payMonths, setPayMonths] = useState<Record<string, number>>({})
+  const [tgLinked, setTgLinked] = useState<boolean | null>(null)
+  const [tgCode, setTgCode] = useState<string | null>(null)
 
   const load = async () => {
     const { data } = await supabase
@@ -88,7 +91,15 @@ export function PlatformConsole({ onViewAs }: { onViewAs: () => void }) {
 
   useEffect(() => {
     load()
+    ;(supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: { linked?: boolean } | null }>)('platform_telegram_status', {})
+      .then(({ data }) => setTgLinked(!!data?.linked))
   }, [])
+
+  const genTelegramCode = async () => {
+    const { data } = await (supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: { ok?: boolean; code?: string } | null }>)('create_platform_telegram_code', {})
+    if (data?.ok && data.code) setTgCode(data.code)
+    else pushToast('danger', 'ვერ მოხერხდა — სცადე თავიდან')
+  }
 
   const mrr = rows
     .filter((r) => r.subscription_status === 'active')
@@ -141,6 +152,27 @@ export function PlatformConsole({ onViewAs }: { onViewAs: () => void }) {
         />
         <Kpi icon={ShieldCheck} label="აქტიური / საცდელი" value={`${activeCount} / ${trialCount}`} />
         <Kpi icon={Wallet} label="შემოსული გადახდები" value={gel(collected)} accent="var(--status-free)" />
+      </div>
+
+      {/* Platform Telegram alerts */}
+      <div className="nm-raised flex flex-col gap-3 rounded-3xl p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h3 className="flex items-center gap-2 text-base font-extrabold">
+            <Send className="size-5 text-primary" /> Telegram alert-ები (პლატფორმა)
+          </h3>
+          <p className="mt-1 text-xs text-muted-foreground text-pretty">
+            🆕 ახალი tenant · 👑 დღის digest (MRR / overdue / საცდელი) — შენს Telegram-ში.
+            {tgLinked === true ? ' ✅ დაკავშირებულია' : tgLinked === false ? ' ⚪ არ არის დაკავშირებული' : ''}
+          </p>
+          {tgCode && (
+            <p className="mt-2 text-sm">
+              გაუგზავნე ბოტს: <code className="nm-inset rounded-lg px-2 py-1 font-mono font-bold tracking-wider">/link {tgCode}</code>
+            </p>
+          )}
+        </div>
+        <button onClick={genTelegramCode} className="nm-btn shrink-0 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary">
+          კოდის გენერაცია
+        </button>
       </div>
 
       {/* Tenants */}
