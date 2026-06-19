@@ -3559,9 +3559,10 @@ export type Database = {
         Args: { p_base: number; p_venue_id: string; p_when?: string }
         Returns: Json
       }
-      end_session:
-        | { Args: { p_session_id: string }; Returns: undefined }
-        | { Args: { p_session_id: string; p_tip?: number }; Returns: undefined }
+      end_session: {
+        Args: { p_session_id: string; p_tip?: number }
+        Returns: undefined
+      }
       end_shift: { Args: { p_venue_id: string }; Returns: Json }
       extend_session: {
         Args: {
