@@ -107,6 +107,7 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
   const [tierOpen, setTierOpen] = useState(false)
   const [endOpen, setEndOpen] = useState(false)
   const [accessOpen, setAccessOpen] = useState(false)
+  const [billOpen, setBillOpen] = useState(false)
 
   const meta = statusMeta[unit.status]
   const s = unit.active_session
@@ -337,6 +338,13 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
                 🎮 ჯოისტიკი / ტარიფის შეცვლა
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setBillOpen(true)}
+              className="nm-btn mt-3 flex w-full items-center justify-center gap-2 rounded-2xl py-2.5 text-sm font-bold text-muted-foreground"
+            >
+              🧾 ანგარიში — რა შეუკვეთა
+            </button>
             {accessChip}
           </div>
         )}
@@ -371,6 +379,7 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
         onClose={() => setEndOpen(false)}
         unit={unit}
       />
+      <LiveBillModal open={billOpen} onClose={() => setBillOpen(false)} unit={unit} />
       {s?.portal_code && (
         <InSeatAccessModal
           open={accessOpen}
@@ -391,6 +400,66 @@ type SessionBill = {
   tab_items: BillItem[]; tab_total: number
   tab_extension: number; red_total: number
   grand_total: number
+}
+
+// Read-only live bill the OPERATOR sees mid-session — the SAME data the customer sees
+// on /p (get_session_bill -> compute_session_bill). Lets staff reconcile what was
+// ordered/added instead of relying on the customer's goodwill.
+function LiveBillModal({ open, onClose, unit }: { open: boolean; onClose: () => void; unit: ConsoleUnit }) {
+  const [bill, setBill] = useState<SessionBill | null>(null)
+  const sid = unit.active_session?.id
+  useEffect(() => {
+    if (!open || !sid) { setBill(null); return }
+    ;(supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: unknown }>)(
+      'get_session_bill', { p_session_id: sid },
+    ).then(({ data }) => {
+      const d = data as (SessionBill & { error?: string }) | null
+      if (d && !d.error) setBill(d)
+    })
+  }, [open, sid])
+
+  const empty = bill && (bill.paid_items?.length ?? 0) === 0 && (bill.tab_items?.length ?? 0) === 0 && (bill.tab_extension ?? 0) === 0
+
+  return (
+    <Modal open={open} onClose={onClose} title="ანგარიში — რა შეუკვეთა">
+      {!bill ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">იტვირთება…</p>
+      ) : (
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className={bill.play_paid ? 'text-[var(--status-free)]' : 'text-[var(--status-expired)]'}>
+              {bill.play_paid ? '🟢' : '🔴'} თამაში
+            </span>
+            <span className="font-mono">{gel(bill.play_amount)}</span>
+          </div>
+          {bill.paid_items?.map((it, i) => (
+            <div key={`p${i}`} className="flex justify-between text-[var(--status-free)]">
+              <span>🟢 {it.qty}× {it.name}</span><span className="font-mono">{gel(it.line_total)}</span>
+            </div>
+          ))}
+          {bill.tab_items?.map((it, i) => (
+            <div key={`t${i}`} className="flex justify-between text-[var(--status-expired)]">
+              <span>🔴 {it.qty}× {it.name}</span><span className="font-mono">{gel(it.line_total)}</span>
+            </div>
+          ))}
+          {bill.tab_extension > 0 && (
+            <div className="flex justify-between text-[var(--status-expired)]">
+              <span>🔴 ⏱️ დროის გაგრძელება</span><span className="font-mono">{gel(bill.tab_extension)}</span>
+            </div>
+          )}
+          {empty && <p className="text-xs text-muted-foreground">ბარიდან ჯერ არაფერი შეუკვეთავს.</p>}
+          <div className="mt-2 flex justify-between border-t border-border pt-2 text-base font-black">
+            <span>სულ</span><span className="font-mono text-primary">{gel(bill.grand_total)}</span>
+          </div>
+          {bill.red_total > 0 && (
+            <p className="text-[11px] text-[var(--status-expired)]">
+              🔴 გადასახდელი: {gel(bill.red_total)} — ტაბი, სესიის ბოლოს
+            </p>
+          )}
+        </div>
+      )}
+    </Modal>
+  )
 }
 
 function EndSessionModal({
