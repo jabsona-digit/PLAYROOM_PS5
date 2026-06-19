@@ -34,6 +34,10 @@ interface Tournament {
   bracket_size: number | null
   winner_participant_id: string | null
   created_at: string
+  format: 'single_elim' | 'groups_knockout'
+  phase: 'groups' | 'knockout' | null
+  group_size: number
+  advance_per_group: number
   participants?: { count: number }[]
 }
 interface Participant {
@@ -51,7 +55,15 @@ interface Match {
   score1: number | null
   score2: number | null
   status: 'pending' | 'live' | 'done'
+  group_id?: string | null
+  stage?: 'group' | 'knockout'
 }
+
+interface StandRow {
+  participant_id: string; participant: string
+  played: number; won: number; drawn: number; lost: number; gd: number; points: number
+}
+interface GroupStanding { group: string; group_id: string; rows: StandRow[] }
 
 const STATUS: Record<string, { label: string; color: string }> = {
   registration: { label: 'რეგისტრაცია', color: 'var(--status-warning10)' },
@@ -177,6 +189,90 @@ function Bracket({
   )
 }
 
+// ── Groups view (standings tables + group matches) ──────────────────────────
+function GroupsView({
+  tId, matches, names, advance, onReport, onStartKnockout,
+}: {
+  tId: string
+  matches: Match[]
+  names: Map<string, string>
+  advance: number
+  onReport: (id: string, s1: number, s2: number) => void
+  onStartKnockout: () => void
+}) {
+  const [groups, setGroups] = useState<GroupStanding[]>([])
+  const groupMatches = matches.filter((m) => m.stage === 'group')
+  const done = groupMatches.filter((m) => m.status === 'done').length
+  const allDone = groupMatches.length > 0 && done === groupMatches.length
+
+  useEffect(() => {
+    ;(supabase as any).rpc('get_group_standings', { p_tournament: tId }).then(({ data }: { data: unknown }) => {
+      if (Array.isArray(data)) setGroups(data as GroupStanding[])
+    })
+  }, [tId, done])
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">ჯგუფური ეტაპი · {done}/{groupMatches.length} მატჩი</p>
+        <button
+          onClick={onStartKnockout}
+          disabled={!allDone}
+          className={cn('nm-daylight rounded-2xl px-4 py-2.5 text-sm font-bold text-primary', !allDone && 'cursor-not-allowed opacity-40')}
+        >
+          🏆 ნოკაუტის დაწყება
+        </button>
+      </div>
+
+      {groups.map((g) => {
+        const gm = groupMatches.filter((m) => m.group_id === g.group_id)
+        return (
+          <div key={g.group_id} className="nm-raised rounded-3xl p-5">
+            <h3 className="mb-3 font-extrabold">ჯგუფი {g.group}</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[11px] uppercase text-muted-foreground">
+                    <th className="w-6 text-left font-semibold">#</th>
+                    <th className="text-left font-semibold">მოთამაშე</th>
+                    <th className="w-8 text-center font-semibold" title="თამაში">თ</th>
+                    <th className="w-8 text-center font-semibold" title="მოგება">მ</th>
+                    <th className="w-8 text-center font-semibold" title="ფრე">ფ</th>
+                    <th className="w-8 text-center font-semibold" title="წაგება">წ</th>
+                    <th className="w-10 text-center font-semibold" title="სხვაობა">+/−</th>
+                    <th className="w-9 text-center font-semibold text-primary" title="ქულა">ქ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {g.rows.map((r, i) => (
+                    <tr
+                      key={r.participant_id}
+                      className={cn('border-t border-border', i < advance && 'bg-[color-mix(in_oklch,var(--status-free)_10%,transparent)]')}
+                    >
+                      <td className="py-1.5 text-muted-foreground">{i + 1}</td>
+                      <td className="font-semibold">{i < advance && '🟢 '}{r.participant}</td>
+                      <td className="text-center">{r.played}</td>
+                      <td className="text-center">{r.won}</td>
+                      <td className="text-center">{r.drawn}</td>
+                      <td className="text-center">{r.lost}</td>
+                      <td className="text-center">{r.gd > 0 ? `+${r.gd}` : r.gd}</td>
+                      <td className="text-center font-mono font-black text-primary">{r.points}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-[10px] text-muted-foreground">🟢 ზედა {advance} გადადის ნოკაუტში · მოგება 3 ქ · ფრე 1 ქ</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {gm.map((m) => <MatchCard key={m.id} match={m} names={names} onReport={onReport} />)}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── Tournament detail (registration + bracket) ──────────────────────────────
 function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; onChanged: () => void }) {
   const { currentOrgId } = useOrg()
@@ -202,7 +298,7 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
         .eq('tournament_id', t.id)
         .order('created_at'),
       (supabase as any).from('tournament_matches')
-        .select('id, round, position, p1_id, p2_id, winner_id, score1, score2, status')
+        .select('id, round, position, p1_id, p2_id, winner_id, score1, score2, status, group_id, stage')
         .eq('tournament_id', t.id)
         .order('round')
         .order('position'),
@@ -242,23 +338,41 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
     load()
   }
 
+  const isGroups = tournament.format === 'groups_knockout'
+
   const seed = async () => {
-    const { error } = await (supabase as any).rpc('seed_tournament', { p_tournament: t.id })
+    const { error } = await (supabase as any).rpc(isGroups ? 'seed_group_stage' : 'seed_tournament', { p_tournament: t.id })
     if (error) {
-      const m = /need_two/.test(error.message)
-        ? 'საჭიროა მინიმუმ 2 მონაწილე'
+      const m = /need_two|need_three/.test(error.message)
+        ? `საჭიროა მინიმუმ ${isGroups ? 3 : 2} მონაწილე`
         : /already_seeded/.test(error.message)
-          ? 'ბადე უკვე გენერირებულია'
+          ? 'უკვე დაწყებულია'
           : error.message
       return pushToast('danger', m)
     }
-    pushToast('success', 'ბადე გენერირდა — ტურნირი დაიწყო!')
+    pushToast('success', isGroups ? 'ჯგუფები გენერირდა — ტურნირი დაიწყო!' : 'ბადე გენერირდა — ტურნირი დაიწყო!')
+    load()
+    onChanged()
+  }
+
+  const startKnockout = async () => {
+    const { error } = await (supabase as any).rpc('start_knockout_from_groups', { p_tournament: t.id })
+    if (error) {
+      const m = /group_stage_incomplete/.test(error.message)
+        ? 'ჯერ ყველა ჯგუფური მატჩი უნდა დასრულდეს'
+        : /knockout_already/.test(error.message)
+          ? 'ნოკაუტი უკვე დაწყებულია'
+          : error.message
+      return pushToast('danger', m)
+    }
+    pushToast('success', '🏆 ნოკაუტი დაიწყო!')
     load()
     onChanged()
   }
 
   const report = async (id: string, s1: number, s2: number) => {
-    if (s1 === s2) return pushToast('danger', 'ფრე არ შეიძლება — ვინმემ უნდა მოიგოს')
+    const isGroupMatch = matches.find((m) => m.id === id)?.stage === 'group'
+    if (!isGroupMatch && s1 === s2) return pushToast('danger', 'ფრე არ შეიძლება — ნოკაუტში ვინმემ უნდა მოიგოს')
     const { error } = await (supabase as any).rpc('report_match', {
       p_match: id,
       p_score1: s1,
@@ -350,9 +464,18 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
             <Play className="size-4" /> ბადის გენერაცია და დაწყება
           </button>
         </section>
+      ) : isGroups && tournament.phase === 'groups' ? (
+        <GroupsView
+          tId={t.id}
+          matches={matches}
+          names={names}
+          advance={tournament.advance_per_group}
+          onReport={report}
+          onStartKnockout={startKnockout}
+        />
       ) : (
         <section className="nm-raised rounded-3xl p-6">
-          <Bracket matches={matches} names={names} total={total} onReport={report} />
+          <Bracket matches={matches.filter((m) => m.stage !== 'group')} names={names} total={total} onReport={report} />
         </section>
       )}
 
@@ -379,7 +502,7 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
           )}
           <div className="flex-1 overflow-auto">
             <div className="scale-100 md:scale-125 md:origin-top-left">
-              <Bracket matches={matches} names={names} total={total} onReport={report} big />
+              <Bracket matches={matches.filter((m) => m.stage !== 'group')} names={names} total={total} onReport={report} big />
             </div>
           </div>
         </div>
@@ -395,7 +518,7 @@ export function Tournaments() {
   const [list, setList] = useState<Tournament[]>([])
   const [selected, setSelected] = useState<Tournament | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
-  const [form, setForm] = useState({ name: '', game: '', starts_at: '', entry_fee: '', prize_pool: '' })
+  const [form, setForm] = useState({ name: '', game: '', starts_at: '', entry_fee: '', prize_pool: '', format: 'groups_knockout', group_size: '4', advance_per_group: '2' })
 
   const load = useCallback(async () => {
     if (!currentOrgId) return
@@ -420,6 +543,9 @@ export function Tournaments() {
         venue_id: currentVenueId,
         name: form.name.trim(),
         game: form.game.trim() || null,
+        format: form.format,
+        group_size: Number(form.group_size || 4),
+        advance_per_group: Number(form.advance_per_group || 2),
         entry_fee: Number(form.entry_fee || 0),
         prize_pool: Number(form.prize_pool || 0),
         starts_at: form.starts_at || null,
@@ -428,7 +554,7 @@ export function Tournaments() {
       .single()
     if (error) return pushToast('danger', error.message)
     setCreateOpen(false)
-    setForm({ name: '', game: '', starts_at: '', entry_fee: '', prize_pool: '' })
+    setForm({ name: '', game: '', starts_at: '', entry_fee: '', prize_pool: '', format: 'groups_knockout', group_size: '4', advance_per_group: '2' })
     pushToast('success', 'ტურნირი შეიქმნა')
     load()
     setSelected(data as Tournament)
@@ -502,6 +628,25 @@ export function Tournaments() {
         <div className="space-y-3">
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="ტურნირის სახელი (მაგ. FIFA 25 Cup)" className="nm-inset w-full rounded-xl px-4 py-2.5 text-sm outline-none" />
           <input value={form.game} onChange={(e) => setForm({ ...form, game: e.target.value })} placeholder="თამაში (მაგ. EA FC 25, Mortal Kombat)" className="nm-inset w-full rounded-xl px-4 py-2.5 text-sm outline-none" />
+          <div>
+            <span className="text-xs text-muted-foreground">ფორმატი</span>
+            <div className="mt-1 flex gap-2">
+              <button type="button" onClick={() => setForm({ ...form, format: 'groups_knockout' })} className={cn('flex-1 rounded-xl px-3 py-2 text-xs font-bold', form.format === 'groups_knockout' ? 'nm-daylight text-primary' : 'nm-inset text-muted-foreground')}>⚽ ჯგუფები + ნოკაუტი</button>
+              <button type="button" onClick={() => setForm({ ...form, format: 'single_elim' })} className={cn('flex-1 rounded-xl px-3 py-2 text-xs font-bold', form.format === 'single_elim' ? 'nm-daylight text-primary' : 'nm-inset text-muted-foreground')}>🏆 პირდაპირი ნოკაუტი</button>
+            </div>
+          </div>
+          {form.format === 'groups_knockout' && (
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-xs text-muted-foreground">ჯგუფში მოთამაშე</span>
+                <input type="number" value={form.group_size} onChange={(e) => setForm({ ...form, group_size: e.target.value })} className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none" />
+              </label>
+              <label className="block">
+                <span className="text-xs text-muted-foreground">გადადის ნოკაუტში</span>
+                <input type="number" value={form.advance_per_group} onChange={(e) => setForm({ ...form, advance_per_group: e.target.value })} className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none" />
+              </label>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="text-xs text-muted-foreground">შესვლის ფასი</span>
