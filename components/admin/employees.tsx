@@ -8,6 +8,7 @@ import { useOrg, useModuleAccess } from '@/lib/org'
 import { supabase } from '@/lib/supabase/client'
 import { dateLabel, timeOfDay, gel, planErrorText } from '@/lib/ui'
 import { ROLE_LABELS, type OrgRole, type Employee } from '@/lib/types'
+import { StaffLeaderboard } from './staff-leaderboard'
 
 function PinPad() {
   const { clockToggle } = usePlayroom()
@@ -443,6 +444,7 @@ export function Employees() {
       <div className="lg:col-span-2 space-y-6">
         <PinPad />
         {canManage && <PayrollPanel />}
+        {canManage && <StaffLeaderboard />}
       </div>
 
       <div className="space-y-6 lg:col-span-3">
