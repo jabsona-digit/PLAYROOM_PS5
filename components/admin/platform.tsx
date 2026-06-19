@@ -14,6 +14,7 @@ import {
   Users2,
   Wallet,
   Send,
+  Trophy,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
@@ -174,6 +175,9 @@ export function PlatformConsole({ onViewAs }: { onViewAs: () => void }) {
           კოდის გენერაცია
         </button>
       </div>
+
+      {/* Platform tournaments */}
+      <PlatformTournaments />
 
       {/* Tenants */}
       <div className="nm-raised rounded-3xl p-6">
@@ -351,6 +355,285 @@ export function PlatformConsole({ onViewAs }: { onViewAs: () => void }) {
       {/* Platform-wide API keys (God Mode) */}
       <div className="grid gap-6 lg:grid-cols-2">
         <ApiKeysPanel platform />
+      </div>
+    </div>
+  )
+}
+
+interface POffer {
+  id: string
+  status: string
+  note: string | null
+  proposed_amount: number | null
+  agreed_amount: number | null
+  venue: string | null
+  org: string | null
+}
+interface PTournament {
+  id: string
+  name: string
+  game: string | null
+  status: string
+  entry_fee: number | null
+  prize_pool: number | null
+  starts_at: string | null
+  agreed_amount: number | null
+  is_public: boolean
+  host_venue: string | null
+  host_org: string | null
+  offers: POffer[] | null
+}
+
+const T_STATUS: Record<string, { label: string; color: string }> = {
+  seeking_host: { label: 'ჰოსტის ძებნა', color: 'var(--status-warning5)' },
+  registration: { label: 'რეგისტრაცია ღია', color: 'var(--status-active)' },
+  active: { label: 'მიმდინარე', color: 'var(--status-free)' },
+  completed: { label: 'დასრულდა', color: 'var(--status-expired)' },
+  cancelled: { label: 'გაუქმდა', color: 'var(--status-expired)' },
+}
+
+const rpcAny = supabase.rpc as unknown as (
+  f: string,
+  a: Record<string, unknown>,
+) => Promise<{ data: unknown; error: { message: string } | null }>
+
+const EMPTY_T_FORM = {
+  name: '',
+  game: '',
+  entry_fee: '20',
+  prize_pool: '200',
+  starts_at: '',
+  group_size: '4',
+  advance_per_group: '2',
+  max: '16',
+}
+
+function PlatformTournaments() {
+  const { pushToast } = usePlayroom()
+  const [list, setList] = useState<PTournament[]>([])
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [agreed, setAgreed] = useState<Record<string, string>>({})
+  const [form, setForm] = useState({ ...EMPTY_T_FORM })
+
+  const load = async () => {
+    const { data } = await rpcAny('list_platform_tournaments', {})
+    setList((data as PTournament[]) ?? [])
+  }
+  useEffect(() => {
+    load()
+  }, [])
+
+  const create = async () => {
+    if (!form.name.trim()) return pushToast('danger', 'სახელი სავალდებულოა')
+    setBusy(true)
+    const { error } = await rpcAny('create_platform_tournament', {
+      p_name: form.name.trim(),
+      p_game: form.game.trim(),
+      p_format: 'groups_knockout',
+      p_group_size: Number(form.group_size || 4),
+      p_advance: Number(form.advance_per_group || 2),
+      p_entry_fee: Number(form.entry_fee || 0),
+      p_prize_pool: Number(form.prize_pool || 0),
+      p_starts_at: form.starts_at || null,
+      p_max: form.max ? Number(form.max) : null,
+    })
+    setBusy(false)
+    if (error) return pushToast('danger', error.message)
+    setOpen(false)
+    setForm({ ...EMPTY_T_FORM })
+    pushToast('success', '🏆 ტურნირი შეიქმნა — owner-ებს გაეგზავნათ მოწვევა')
+    load()
+  }
+
+  const accept = async (offerId: string) => {
+    setBusy(true)
+    const { error } = await rpcAny('accept_host_offer', {
+      p_offer: offerId,
+      p_agreed: Number(agreed[offerId] || 0),
+    })
+    setBusy(false)
+    if (error) return pushToast('danger', error.message)
+    pushToast('success', '✅ ჰოსტი დადასტურდა — ვენიუ მიიღებს შეტყობინებას')
+    load()
+  }
+
+  return (
+    <div className="nm-raised rounded-3xl p-6">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 text-base font-extrabold">
+          <Trophy className="size-5 text-primary" /> პლატფორმის ტურნირები
+        </h3>
+        <button
+          onClick={() => setOpen(!open)}
+          className="nm-btn shrink-0 rounded-2xl px-4 py-2 text-sm font-bold text-primary"
+        >
+          {open ? 'დახურვა' : '+ ახალი'}
+        </button>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground text-pretty">
+        შენ ქმნი ტურნირს → owner-ებს მისდით მოწვევა (Telegram + პანელი) → შემოგთავაზებენ თავიანთ სივრცეს → ირჩევ ჰოსტს.
+      </p>
+
+      {open && (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <input
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="ტურნირის სახელი"
+            className="nm-inset rounded-xl px-4 py-2.5 text-sm outline-none sm:col-span-2"
+          />
+          <input
+            value={form.game}
+            onChange={(e) => setForm({ ...form, game: e.target.value })}
+            placeholder="თამაში (მაგ. EA FC 25)"
+            className="nm-inset rounded-xl px-4 py-2.5 text-sm outline-none sm:col-span-2"
+          />
+          <label className="block">
+            <span className="text-xs text-muted-foreground">საწევრო (₾)</span>
+            <input
+              type="number"
+              value={form.entry_fee}
+              onChange={(e) => setForm({ ...form, entry_fee: e.target.value })}
+              className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs text-muted-foreground">პრიზი (₾)</span>
+            <input
+              type="number"
+              value={form.prize_pool}
+              onChange={(e) => setForm({ ...form, prize_pool: e.target.value })}
+              className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs text-muted-foreground">ჯგუფში მოთამაშე</span>
+            <input
+              type="number"
+              value={form.group_size}
+              onChange={(e) => setForm({ ...form, group_size: e.target.value })}
+              className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs text-muted-foreground">გადადის ნოკაუტში</span>
+            <input
+              type="number"
+              value={form.advance_per_group}
+              onChange={(e) => setForm({ ...form, advance_per_group: e.target.value })}
+              className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs text-muted-foreground">მაქს. მონაწილე</span>
+            <input
+              type="number"
+              value={form.max}
+              onChange={(e) => setForm({ ...form, max: e.target.value })}
+              className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs text-muted-foreground">დაწყება</span>
+            <input
+              type="datetime-local"
+              value={form.starts_at}
+              onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
+              className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+            />
+          </label>
+          <button
+            disabled={busy}
+            onClick={create}
+            className="nm-btn rounded-2xl px-4 py-2.5 text-sm font-bold text-primary disabled:opacity-50 sm:col-span-2"
+          >
+            შექმნა + owner-ების მოწვევა
+          </button>
+        </div>
+      )}
+
+      <div className="mt-5 space-y-3">
+        {list.length === 0 && (
+          <p className="text-sm text-muted-foreground">ჯერ ტურნირები არ არის — შექმენი პირველი.</p>
+        )}
+        {list.map((t) => {
+          const meta = T_STATUS[t.status] ?? { label: t.status, color: 'var(--status-active)' }
+          return (
+            <div key={t.id} className="nm-inset rounded-2xl p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-bold">
+                    {t.name}
+                    {t.game && <span className="text-muted-foreground"> · {t.game}</span>}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    💰 {gel(t.entry_fee ?? 0)} · 🏆 {gel(t.prize_pool ?? 0)}
+                    {t.starts_at && ` · 📅 ${new Date(t.starts_at).toLocaleString('ka-GE', { dateStyle: 'short', timeStyle: 'short' })}`}
+                  </p>
+                </div>
+                <span
+                  className="nm-raised-sm shrink-0 rounded-full px-3 py-1 text-xs font-bold"
+                  style={{ color: meta.color }}
+                >
+                  {meta.label}
+                </span>
+              </div>
+
+              {t.status !== 'seeking_host' && t.host_venue && (
+                <p className="mt-2 text-sm">
+                  🏠 ჰოსტი: <b>{t.host_venue}</b>
+                  {t.host_org && <span className="text-muted-foreground"> ({t.host_org})</span>}
+                  {t.agreed_amount != null && ` · შეთანხმება ${gel(t.agreed_amount)}`}
+                </p>
+              )}
+
+              {t.status === 'seeking_host' && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs font-bold text-muted-foreground">
+                    შემოთავაზებები ({t.offers?.length ?? 0})
+                  </p>
+                  {(!t.offers || t.offers.length === 0) && (
+                    <p className="text-xs text-muted-foreground">ჯერ არავის შემოუთავაზებია — owner-ებს გაეგზავნათ მოწვევა.</p>
+                  )}
+                  {t.offers?.map((o) => (
+                    <div
+                      key={o.id}
+                      className="nm-raised-sm flex flex-wrap items-center justify-between gap-2 rounded-xl p-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold">
+                          {o.venue}
+                          {o.org && <span className="text-muted-foreground"> · {o.org}</span>}
+                        </p>
+                        {o.note && <p className="text-xs text-muted-foreground">„{o.note}“</p>}
+                        {o.proposed_amount != null && (
+                          <p className="text-xs">შემოთავაზებული: {gel(o.proposed_amount)}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          placeholder="₾"
+                          value={agreed[o.id] ?? ''}
+                          onChange={(e) => setAgreed({ ...agreed, [o.id]: e.target.value })}
+                          className="nm-inset w-20 rounded-lg px-2 py-1.5 text-sm outline-none"
+                        />
+                        <button
+                          disabled={busy}
+                          onClick={() => accept(o.id)}
+                          className="nm-btn shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold text-primary disabled:opacity-50"
+                        >
+                          დადასტურება
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

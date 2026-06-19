@@ -512,6 +512,149 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
 }
 
 // ── Main module ─────────────────────────────────────────────────────────────
+interface Opportunity {
+  id: string
+  name: string
+  game: string | null
+  format: string
+  entry_fee: number | null
+  prize_pool: number | null
+  starts_at: string | null
+  group_size: number
+  advance_per_group: number
+  my_offer: {
+    id: string
+    status: string
+    venue_id: string
+    proposed_amount: number | null
+    agreed_amount: number | null
+  } | null
+}
+
+function HostingOpportunities({ orgId }: { orgId: string }) {
+  const { pushToast } = usePlayroom()
+  const [ops, setOps] = useState<Opportunity[]>([])
+  const [venues, setVenues] = useState<{ id: string; name: string }[]>([])
+  const [draft, setDraft] = useState<Record<string, { venue: string; amount: string; note: string }>>({})
+  const [busy, setBusy] = useState(false)
+
+  const load = useCallback(async () => {
+    const { data } = await (supabase as any).rpc('list_hosting_opportunities', {})
+    setOps((data ?? []) as Opportunity[])
+  }, [])
+
+  useEffect(() => {
+    load()
+    ;(supabase as any)
+      .from('venues')
+      .select('id,name')
+      .eq('org_id', orgId)
+      .then(({ data }: { data: { id: string; name: string }[] | null }) => setVenues(data ?? []))
+  }, [load, orgId])
+
+  const offer = async (opId: string) => {
+    const d = draft[opId] || { venue: '', amount: '', note: '' }
+    const venueId = d.venue || venues[0]?.id
+    if (!venueId) return pushToast('danger', 'ჯერ შექმენი ფილიალი')
+    setBusy(true)
+    const { error } = await (supabase as any).rpc('submit_host_offer', {
+      p_tournament: opId,
+      p_venue_id: venueId,
+      p_note: d.note || '',
+      p_proposed: d.amount ? Number(d.amount) : null,
+    })
+    setBusy(false)
+    if (error) return pushToast('danger', error.message)
+    pushToast('success', '✅ შემოთავაზება გაიგზავნა — დაელოდე პლატფორმის პასუხს')
+    load()
+  }
+
+  if (ops.length === 0) return null
+
+  return (
+    <section className="nm-raised rounded-3xl p-6">
+      <h2 className="flex items-center gap-2 text-lg font-extrabold">🏆 ჰოსტინგის შესაძლებლობები</h2>
+      <p className="mt-1 text-xs text-muted-foreground text-pretty">
+        პლატფორმის ტურნირები ეძებენ ჰოსტს — შემოთავაზე შენი სივრცე და თანხა, რომელშიც უმასპინძლებ.
+      </p>
+      <div className="mt-4 space-y-3">
+        {ops.map((op) => {
+          const d = draft[op.id] || { venue: '', amount: '', note: '' }
+          const mine = op.my_offer
+          return (
+            <div key={op.id} className="nm-inset rounded-2xl p-4">
+              <div>
+                <p className="font-bold">
+                  {op.name}
+                  {op.game && <span className="text-muted-foreground"> · {op.game}</span>}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  💰 {gel(op.entry_fee ?? 0)} · 🏆 {gel(op.prize_pool ?? 0)}
+                  {op.starts_at && ` · 📅 ${new Date(op.starts_at).toLocaleString('ka-GE', { dateStyle: 'short', timeStyle: 'short' })}`}
+                </p>
+              </div>
+
+              {mine ? (
+                <p
+                  className="mt-3 text-sm font-semibold"
+                  style={{
+                    color:
+                      mine.status === 'accepted'
+                        ? 'var(--status-free)'
+                        : mine.status === 'declined'
+                          ? 'var(--status-expired)'
+                          : 'var(--status-active)',
+                  }}
+                >
+                  {mine.status === 'offered' && '⏳ შემოთავაზება გაგზავნილია — დაელოდე პასუხს'}
+                  {mine.status === 'accepted' && `✅ შენ შეგირჩიეს! შეთანხმება ${gel(mine.agreed_amount ?? 0)}`}
+                  {mine.status === 'declined' && '❌ ამ ტურნირზე სხვა ვენიუ შეირჩა'}
+                </p>
+              ) : (
+                <div className="mt-3 flex flex-wrap items-end gap-2">
+                  {venues.length > 1 && (
+                    <select
+                      value={d.venue || venues[0]?.id || ''}
+                      onChange={(e) => setDraft({ ...draft, [op.id]: { ...d, venue: e.target.value } })}
+                      className="nm-inset rounded-xl px-3 py-2 text-sm outline-none"
+                    >
+                      {venues.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <input
+                    type="number"
+                    placeholder="თანხა ₾"
+                    value={d.amount}
+                    onChange={(e) => setDraft({ ...draft, [op.id]: { ...d, amount: e.target.value } })}
+                    className="nm-inset w-28 rounded-xl px-3 py-2 text-sm outline-none"
+                  />
+                  <input
+                    placeholder="შენიშვნა (არჩევითი)"
+                    value={d.note}
+                    onChange={(e) => setDraft({ ...draft, [op.id]: { ...d, note: e.target.value } })}
+                    className="nm-inset min-w-[8rem] flex-1 rounded-xl px-3 py-2 text-sm outline-none"
+                  />
+                  <button
+                    disabled={busy}
+                    onClick={() => offer(op.id)}
+                    className="nm-btn shrink-0 rounded-xl px-4 py-2 text-sm font-bold text-primary disabled:opacity-50"
+                  >
+                    შემოთავაზება
+                  </button>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
 export function Tournaments() {
   const { currentOrgId, currentVenueId } = useOrg()
   const { pushToast } = usePlayroom()
@@ -582,6 +725,8 @@ export function Tournaments() {
 
   return (
     <div className="space-y-6">
+      {currentOrgId && <HostingOpportunities orgId={currentOrgId} />}
+
       <section className="nm-raised rounded-3xl p-6">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
