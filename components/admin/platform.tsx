@@ -179,6 +179,9 @@ export function PlatformConsole({ onViewAs }: { onViewAs: () => void }) {
       {/* Platform tournaments */}
       <PlatformTournaments />
 
+      {/* Tenant global-promotion requests */}
+      <TenantPromotionRequests />
+
       {/* Tenants */}
       <div className="nm-raised rounded-3xl p-6">
         <h3 className="flex items-center gap-2 text-base font-extrabold">
@@ -674,6 +677,155 @@ function PlatformTournaments() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+interface PromoReq {
+  id: string
+  name: string
+  game: string | null
+  status: string
+  promotion_status: string
+  entry_fee: number | null
+  prize_pool: number | null
+  starts_at: string | null
+  proposed_commission_pct: number | null
+  commission_pct: number | null
+  rejected_reason: string | null
+  venue: string | null
+  org: string | null
+  registered_count: number | null
+  checked_in_count: number | null
+  collected: number | null
+  commission_due: number | null
+}
+
+const PROMO_META: Record<string, { label: string; color: string }> = {
+  pending: { label: '⏳ მოლოდინში', color: 'var(--status-active)' },
+  approved: { label: '✅ დადასტურდა', color: 'var(--status-free)' },
+  rejected: { label: '❌ უარყოფილი', color: 'var(--status-expired)' },
+}
+
+function TenantPromotionRequests() {
+  const { pushToast } = usePlayroom()
+  const [list, setList] = useState<PromoReq[]>([])
+  const [busy, setBusy] = useState(false)
+  const [pct, setPct] = useState<Record<string, string>>({})
+
+  const load = async () => {
+    const { data } = await rpcAny('list_tenant_promotion_requests', {})
+    setList((data as PromoReq[]) ?? [])
+  }
+  useEffect(() => {
+    load()
+  }, [])
+
+  const approve = async (id: string, fallback: number | null) => {
+    setBusy(true)
+    const { error } = await rpcAny('approve_tournament_promotion', {
+      p_tournament: id,
+      p_commission: Number(pct[id] ?? fallback ?? 0),
+    })
+    setBusy(false)
+    if (error) return pushToast('danger', error.message)
+    pushToast('success', '✅ დადასტურდა — owner-ს ეცნობა, marketplace-ზე გამოჩნდა')
+    load()
+  }
+
+  const reject = async (id: string) => {
+    const reason = window.prompt('უარყოფის მიზეზი (არჩევითი):') ?? ''
+    setBusy(true)
+    const { error } = await rpcAny('reject_tournament_promotion', { p_tournament: id, p_reason: reason })
+    setBusy(false)
+    if (error) return pushToast('danger', error.message)
+    pushToast('info', 'უარყოფილია — owner-ს ეცნობა')
+    load()
+  }
+
+  if (list.length === 0) return null
+
+  return (
+    <div className="nm-raised rounded-3xl p-6">
+      <h3 className="flex items-center gap-2 text-base font-extrabold">
+        🌍 Global ტურნირის მოთხოვნები
+      </h3>
+      <p className="mt-1 text-xs text-muted-foreground text-pretty">
+        owner-ებმა საკუთარი ტურნირი მოითხოვეს marketplace-ზე — დაადასტურე კომისიის %-ით ან უარყავი.
+      </p>
+      <div className="mt-4 space-y-3">
+        {list.map((t) => {
+          const meta = PROMO_META[t.promotion_status] ?? { label: t.promotion_status, color: 'var(--status-active)' }
+          return (
+            <div key={t.id} className="nm-inset rounded-2xl p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-bold">
+                    {t.name}
+                    {t.game && <span className="text-muted-foreground"> · {t.game}</span>}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    🏠 {t.venue ?? '—'}
+                    {t.org && <span> ({t.org})</span>} · 💰 {gel(t.entry_fee ?? 0)} · 🏆 {gel(t.prize_pool ?? 0)}
+                    {t.starts_at && ` · 📅 ${new Date(t.starts_at).toLocaleString('ka-GE', { dateStyle: 'short', timeStyle: 'short' })}`}
+                  </p>
+                </div>
+                <span className="nm-raised-sm shrink-0 rounded-full px-3 py-1 text-xs font-bold" style={{ color: meta.color }}>
+                  {meta.label}
+                </span>
+              </div>
+
+              {t.promotion_status === 'pending' ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    შემოთავაზებული: <b>{t.proposed_commission_pct ?? 0}%</b> · საბოლოო კომისია %:
+                  </span>
+                  <input
+                    type="number"
+                    placeholder={String(t.proposed_commission_pct ?? 0)}
+                    value={pct[t.id] ?? ''}
+                    onChange={(e) => setPct({ ...pct, [t.id]: e.target.value })}
+                    className="nm-inset w-20 rounded-lg px-2 py-1.5 text-sm outline-none"
+                  />
+                  <button
+                    disabled={busy}
+                    onClick={() => approve(t.id, t.proposed_commission_pct)}
+                    className="nm-btn rounded-xl px-3 py-1.5 text-xs font-bold text-primary disabled:opacity-50"
+                  >
+                    დადასტურება
+                  </button>
+                  <button
+                    disabled={busy}
+                    onClick={() => reject(t.id)}
+                    className="nm-btn rounded-xl px-3 py-1.5 text-xs font-bold text-[var(--status-expired)] disabled:opacity-50"
+                  >
+                    უარყოფა
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className="nm-raised-sm rounded-xl px-3 py-2">
+                    <p className="text-[10px] text-muted-foreground">რეგისტრ.</p>
+                    <p className="text-sm font-extrabold">{t.registered_count ?? 0}</p>
+                  </div>
+                  <div className="nm-raised-sm rounded-xl px-3 py-2">
+                    <p className="text-[10px] text-muted-foreground">გავლილი</p>
+                    <p className="text-sm font-extrabold text-[var(--status-free)]">{t.checked_in_count ?? 0}</p>
+                  </div>
+                  <div className="nm-raised-sm rounded-xl px-3 py-2">
+                    <p className="text-[10px] text-muted-foreground">შემოსული</p>
+                    <p className="text-sm font-extrabold">{gel(t.collected ?? 0)}</p>
+                  </div>
+                  <div className="nm-raised-sm rounded-xl px-3 py-2">
+                    <p className="text-[10px] text-muted-foreground">კომისია {t.commission_pct ?? 0}%</p>
+                    <p className="text-sm font-extrabold text-primary">{gel(t.commission_due ?? 0)}</p>
+                  </div>
                 </div>
               )}
             </div>

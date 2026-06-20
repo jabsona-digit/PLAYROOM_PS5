@@ -45,6 +45,11 @@ interface Tournament {
   group_size: number
   advance_per_group: number
   creator_scope?: string
+  is_public?: boolean
+  promotion_status?: 'pending' | 'approved' | 'rejected' | null
+  proposed_commission_pct?: number | null
+  commission_pct?: number | null
+  rejected_reason?: string | null
   participants?: { count: number }[]
 }
 interface Registration {
@@ -366,14 +371,21 @@ function RegistrationsPanel({
   onDrawn: () => void
 }) {
   const { pushToast } = usePlayroom()
+  const { currentOrgId } = useOrg()
   const [regs, setRegs] = useState<Registration[]>([])
+  const [walkIns, setWalkIns] = useState<Participant[]>([])
+  const [wName, setWName] = useState('')
   const [scanOpen, setScanOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [draw, setDraw] = useState<DrawData | null>(null)
 
   const load = useCallback(async () => {
-    const { data } = await (supabase as any).rpc('get_tournament_registrations', { p_tournament: tId })
-    setRegs((data ?? []) as Registration[])
+    const [{ data: rs }, { data: ps }] = await Promise.all([
+      (supabase as any).rpc('get_tournament_registrations', { p_tournament: tId }),
+      (supabase as any).from('tournament_participants').select('id, name, phone').eq('tournament_id', tId).order('created_at'),
+    ])
+    setRegs((rs ?? []) as Registration[])
+    setWalkIns((ps ?? []) as Participant[])
   }, [tId])
   useEffect(() => {
     load()
@@ -382,7 +394,25 @@ function RegistrationsPanel({
   const checkedIn = regs.filter((r) => r.status === 'checked_in').length
   const registered = regs.filter((r) => r.status !== 'cancelled').length
   const collected = regs.reduce((s, r) => s + (r.status === 'checked_in' ? Number(r.paid_amount ?? 0) : 0), 0)
+  const drawCount = checkedIn + walkIns.length
   const minPlayers = format === 'groups_knockout' ? 3 : 2
+
+  const addWalkIn = async () => {
+    if (!wName.trim() || !currentOrgId) return
+    const { error } = await (supabase as any).from('tournament_participants').insert({
+      tournament_id: tId,
+      org_id: currentOrgId,
+      name: wName.trim(),
+    })
+    if (error) return pushToast('danger', error.message)
+    setWName('')
+    load()
+  }
+
+  const removeWalkIn = async (id: string) => {
+    await (supabase as any).from('tournament_participants').delete().eq('id', id)
+    load()
+  }
 
   const checkin = async (regId: string) => {
     const { data, error } = await (supabase as any).rpc('checkin_tournament_registration', {
@@ -478,18 +508,43 @@ function RegistrationsPanel({
         ))}
       </div>
 
+      {/* walk-ins — added at the venue, no online registration */}
+      <div className="mt-5 border-t border-[var(--border)] pt-4">
+        <p className="mb-2 text-xs font-bold text-muted-foreground">ადგილზე დამატება (walk-in) · {walkIns.length}</p>
+        <div className="mb-2 flex gap-2">
+          <input
+            value={wName}
+            onChange={(e) => setWName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addWalkIn()}
+            placeholder="სახელი / ნიკი"
+            className="nm-inset min-w-32 flex-1 rounded-xl px-4 py-2 text-sm outline-none"
+          />
+          <button onClick={addWalkIn} className="nm-btn flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-bold text-primary">
+            <UserPlus className="size-4" /> დამატება
+          </button>
+        </div>
+        {walkIns.map((p) => (
+          <div key={p.id} className="nm-raised-sm mb-1.5 flex items-center justify-between rounded-xl px-4 py-2">
+            <span className="text-sm font-semibold">{p.name}</span>
+            <button onClick={() => removeWalkIn(p.id)} className="text-[var(--status-expired)]">
+              <Trash2 className="size-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+
       <button
         onClick={runDraw}
-        disabled={busy || checkedIn < minPlayers}
+        disabled={busy || drawCount < minPlayers}
         className={cn(
           'nm-daylight mt-5 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold text-primary',
-          (busy || checkedIn < minPlayers) && 'cursor-not-allowed opacity-40',
+          (busy || drawCount < minPlayers) && 'cursor-not-allowed opacity-40',
         )}
       >
-        <Dices className="size-4" /> ვირტუალური დოლორა — გათამაშება და დაწყება
+        <Dices className="size-4" /> ვირტუალური დოლორა — გათამაშება და დაწყება ({drawCount})
       </button>
-      {checkedIn < minPlayers && (
-        <p className="mt-2 text-center text-xs text-muted-foreground">საჭიროა მინ. {minPlayers} გავლილი მონაწილე</p>
+      {drawCount < minPlayers && (
+        <p className="mt-2 text-center text-xs text-muted-foreground">საჭიროა მინ. {minPlayers} მონაწილე (გავლილი + walk-in)</p>
       )}
 
       <BarcodeScanner open={scanOpen} onClose={() => setScanOpen(false)} onScan={handleScan} />
@@ -571,7 +626,7 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
   }
 
   const isGroups = tournament.format === 'groups_knockout'
-  const isPlatform = tournament.creator_scope === 'platform'
+  const promoPending = tournament.promotion_status === 'pending'
 
   const seed = async () => {
     const { error } = await (supabase as any).rpc(isGroups ? 'seed_group_stage' : 'seed_tournament', { p_tournament: t.id })
@@ -644,7 +699,28 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
         </div>
       )}
 
-      {tournament.status === 'registration' && isPlatform ? (
+      {tournament.promotion_status && (
+        <div
+          className="nm-inset rounded-2xl p-4 text-sm"
+          style={{
+            color:
+              tournament.promotion_status === 'approved'
+                ? 'var(--status-free)'
+                : tournament.promotion_status === 'rejected'
+                  ? 'var(--status-expired)'
+                  : 'var(--status-active)',
+          }}
+        >
+          {tournament.promotion_status === 'pending' &&
+            `⏳ Global მოთხოვნა გაგზავნილია — დაელოდე პლატფორმის დადასტურებას (შემოთავაზებული კომისია ${tournament.proposed_commission_pct ?? 0}%)`}
+          {tournament.promotion_status === 'approved' &&
+            `🌍 Global — დადასტურდა, marketplace-ზეა (კომისია ${tournament.commission_pct ?? 0}%)`}
+          {tournament.promotion_status === 'rejected' &&
+            `❌ Global უარყოფილია${tournament.rejected_reason ? `: ${tournament.rejected_reason}` : ''} — ლოკალურად ჩატარება შესაძლებელია`}
+        </div>
+      )}
+
+      {tournament.status === 'registration' && tournament.is_public ? (
         <RegistrationsPanel
           tId={t.id}
           format={tournament.format}
@@ -697,13 +773,13 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
           </div>
           <button
             onClick={seed}
-            disabled={participants.length < 2}
+            disabled={participants.length < 2 || promoPending}
             className={cn(
               'nm-daylight mt-5 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold text-primary',
-              participants.length < 2 && 'cursor-not-allowed opacity-40',
+              (participants.length < 2 || promoPending) && 'cursor-not-allowed opacity-40',
             )}
           >
-            <Play className="size-4" /> ბადის გენერაცია და დაწყება
+            <Play className="size-4" /> {promoPending ? 'დაელოდე დადასტურებას' : 'ბადის გენერაცია და დაწყება'}
           </button>
         </section>
       ) : isGroups && tournament.phase === 'groups' ? (
@@ -903,7 +979,7 @@ export function Tournaments() {
   const [list, setList] = useState<Tournament[]>([])
   const [selected, setSelected] = useState<Tournament | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
-  const [form, setForm] = useState({ name: '', game: '', starts_at: '', entry_fee: '', prize_pool: '', format: 'groups_knockout', group_size: '4', advance_per_group: '2' })
+  const [form, setForm] = useState({ name: '', game: '', starts_at: '', entry_fee: '', prize_pool: '', format: 'groups_knockout', group_size: '4', advance_per_group: '2', scope: 'local', commission: '10' })
 
   const load = useCallback(async () => {
     if (!currentOrgId) return
@@ -938,9 +1014,18 @@ export function Tournaments() {
       .select('*')
       .single()
     if (error) return pushToast('danger', error.message)
+    if (form.scope === 'global' && data) {
+      const { error: pErr } = await (supabase as any).rpc('submit_tournament_for_promotion', {
+        p_tournament: (data as Tournament).id,
+        p_commission: Number(form.commission || 0),
+      })
+      if (pErr) pushToast('danger', `ტურნირი შეიქმნა, მაგრამ მოთხოვნა ვერ გაიგზავნა: ${pErr.message}`)
+      else pushToast('success', '🌍 Global მოთხოვნა გაიგზავნა — დაელოდე დადასტურებას')
+    } else {
+      pushToast('success', 'ტურნირი შეიქმნა')
+    }
     setCreateOpen(false)
-    setForm({ name: '', game: '', starts_at: '', entry_fee: '', prize_pool: '', format: 'groups_knockout', group_size: '4', advance_per_group: '2' })
-    pushToast('success', 'ტურნირი შეიქმნა')
+    setForm({ name: '', game: '', starts_at: '', entry_fee: '', prize_pool: '', format: 'groups_knockout', group_size: '4', advance_per_group: '2', scope: 'local', commission: '10' })
     load()
     setSelected(data as Tournament)
   }
@@ -1015,6 +1100,22 @@ export function Tournaments() {
         <div className="space-y-3">
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="ტურნირის სახელი (მაგ. FIFA 25 Cup)" className="nm-inset w-full rounded-xl px-4 py-2.5 text-sm outline-none" />
           <input value={form.game} onChange={(e) => setForm({ ...form, game: e.target.value })} placeholder="თამაში (მაგ. EA FC 25, Mortal Kombat)" className="nm-inset w-full rounded-xl px-4 py-2.5 text-sm outline-none" />
+          <div>
+            <span className="text-xs text-muted-foreground">ტიპი</span>
+            <div className="mt-1 flex gap-2">
+              <button type="button" onClick={() => setForm({ ...form, scope: 'local' })} className={cn('flex-1 rounded-xl px-3 py-2 text-xs font-bold', form.scope === 'local' ? 'nm-daylight text-primary' : 'nm-inset text-muted-foreground')}>🏠 ლოკალური</button>
+              <button type="button" onClick={() => setForm({ ...form, scope: 'global' })} className={cn('flex-1 rounded-xl px-3 py-2 text-xs font-bold', form.scope === 'global' ? 'nm-daylight text-primary' : 'nm-inset text-muted-foreground')}>🌍 Global (marketplace)</button>
+            </div>
+            {form.scope === 'global' && (
+              <div className="mt-2">
+                <p className="mb-1 text-[11px] text-muted-foreground">Global = play.martelounge.ge-ზე გამოჩნდება პლატფორმის დადასტურების შემდეგ (ონლაინ რეგისტრაცია + QR). შემოთავაზე კომისიის %:</p>
+                <div className="flex items-center gap-2">
+                  <input type="number" value={form.commission} onChange={(e) => setForm({ ...form, commission: e.target.value })} className="nm-inset w-24 rounded-xl px-4 py-2.5 text-sm outline-none" />
+                  <span className="text-sm text-muted-foreground">% კომისია პლატფორმას</span>
+                </div>
+              </div>
+            )}
+          </div>
           <div>
             <span className="text-xs text-muted-foreground">ფორმატი</span>
             <div className="mt-1 flex gap-2">
