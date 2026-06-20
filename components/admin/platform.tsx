@@ -379,8 +379,13 @@ interface PTournament {
   starts_at: string | null
   agreed_amount: number | null
   is_public: boolean
+  commission_pct: number | null
   host_venue: string | null
   host_org: string | null
+  registered_count: number | null
+  checked_in_count: number | null
+  collected: number | null
+  commission_due: number | null
   offers: POffer[] | null
 }
 
@@ -455,6 +460,13 @@ function PlatformTournaments() {
     setBusy(false)
     if (error) return pushToast('danger', error.message)
     pushToast('success', '✅ ჰოსტი დადასტურდა — ვენიუ მიიღებს შეტყობინებას')
+    load()
+  }
+
+  const setCommission = async (id: string, pct: string) => {
+    const { error } = await rpcAny('set_tournament_commission', { p_tournament: id, p_pct: Number(pct || 0) })
+    if (error) return pushToast('danger', error.message)
+    pushToast('success', `კომისია: ${Number(pct || 0)}%`)
     load()
   }
 
@@ -586,6 +598,39 @@ function PlatformTournaments() {
                   {t.host_org && <span className="text-muted-foreground"> ({t.host_org})</span>}
                   {t.agreed_amount != null && ` · შეთანხმება ${gel(t.agreed_amount)}`}
                 </p>
+              )}
+
+              {t.status !== 'seeking_host' && (
+                <>
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div className="nm-raised-sm rounded-xl px-3 py-2">
+                      <p className="text-[10px] text-muted-foreground">რეგისტრ.</p>
+                      <p className="text-sm font-extrabold">{t.registered_count ?? 0}</p>
+                    </div>
+                    <div className="nm-raised-sm rounded-xl px-3 py-2">
+                      <p className="text-[10px] text-muted-foreground">გავლილი</p>
+                      <p className="text-sm font-extrabold text-[var(--status-free)]">{t.checked_in_count ?? 0}</p>
+                    </div>
+                    <div className="nm-raised-sm rounded-xl px-3 py-2">
+                      <p className="text-[10px] text-muted-foreground">შემოსული</p>
+                      <p className="text-sm font-extrabold">{gel(t.collected ?? 0)}</p>
+                    </div>
+                    <div className="nm-raised-sm rounded-xl px-3 py-2">
+                      <p className="text-[10px] text-muted-foreground">კომისია</p>
+                      <p className="text-sm font-extrabold text-primary">{gel(t.commission_due ?? 0)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">კომისია %:</span>
+                    <input
+                      type="number"
+                      defaultValue={String(t.commission_pct ?? 0)}
+                      onBlur={(e) => setCommission(t.id, e.target.value)}
+                      className="nm-inset w-20 rounded-lg px-2 py-1 text-sm outline-none"
+                    />
+                    <span className="text-[10px] text-muted-foreground">(fokus-დან გასვლისას ინახება)</span>
+                  </div>
+                </>
               )}
 
               {t.status === 'seeking_host' && (

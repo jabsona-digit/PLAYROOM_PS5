@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import {
   Trophy,
   Plus,
@@ -13,6 +14,9 @@ import {
   X,
   Gamepad2,
   Users,
+  ScanLine,
+  Dices,
+  Check,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useOrg } from '@/lib/org'
@@ -20,6 +24,8 @@ import { usePlayroom } from '@/lib/store'
 import { supabase } from '@/lib/supabase/client'
 import { gel } from '@/lib/ui'
 import { Modal } from './modal'
+
+const BarcodeScanner = dynamic(() => import('./barcode-scanner'), { ssr: false })
 
 interface Tournament {
   id: string
@@ -38,7 +44,17 @@ interface Tournament {
   phase: 'groups' | 'knockout' | null
   group_size: number
   advance_per_group: number
+  creator_scope?: string
   participants?: { count: number }[]
+}
+interface Registration {
+  id: string
+  display_name: string
+  phone: string | null
+  status: 'registered' | 'checked_in' | 'cancelled'
+  paid_amount: number | null
+  paid_method: string | null
+  checked_in_at: string | null
 }
 interface Participant {
   id: string
@@ -274,6 +290,222 @@ function GroupsView({
 }
 
 // ── Tournament detail (registration + bracket) ──────────────────────────────
+function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="nm-inset rounded-xl px-3 py-2.5">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={cn('text-lg font-extrabold', accent ? 'text-[var(--status-free)]' : 'text-foreground')}>{value}</p>
+    </div>
+  )
+}
+
+interface DrawData {
+  format: string
+  groups?: { group: string; players: string[] }[]
+  players?: string[]
+}
+
+function DrawReveal({ draw, onClose }: { draw: DrawData; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[110] flex flex-col items-center overflow-auto bg-background/95 p-6 backdrop-blur-sm md:p-10">
+      <style>{`@keyframes mtl-fadeup{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}`}</style>
+      <div className="mb-8 flex items-center gap-3">
+        <Dices className="size-8 text-primary" />
+        <h1 className="text-3xl font-extrabold text-primary text-glow md:text-4xl">ვირტუალური დოლორა</h1>
+      </div>
+      {draw.format === 'groups_knockout' && draw.groups ? (
+        <div className="grid w-full max-w-5xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {draw.groups.map((g, gi) => (
+            <div
+              key={g.group}
+              className="nm-raised rounded-3xl p-5"
+              style={{ animation: 'mtl-fadeup .5s ease-out both', animationDelay: `${gi * 280}ms` }}
+            >
+              <h2 className="mb-3 text-center text-lg font-extrabold text-primary">ჯგუფი {g.group}</h2>
+              <div className="space-y-2">
+                {g.players.map((p, pi) => (
+                  <div
+                    key={p}
+                    className="nm-inset rounded-xl px-4 py-2.5 text-center text-sm font-semibold"
+                    style={{ animation: 'mtl-fadeup .4s ease-out both', animationDelay: `${gi * 280 + pi * 140 + 220}ms` }}
+                  >
+                    {p}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="w-full max-w-md space-y-2">
+          {(draw.players ?? []).map((p, pi) => (
+            <div
+              key={p}
+              className="nm-inset rounded-xl px-4 py-2.5 text-center text-sm font-semibold"
+              style={{ animation: 'mtl-fadeup .4s ease-out both', animationDelay: `${pi * 140}ms` }}
+            >
+              {p}
+            </div>
+          ))}
+        </div>
+      )}
+      <button onClick={onClose} className="nm-btn mt-10 rounded-2xl px-8 py-3 text-sm font-bold text-primary">
+        დახურვა და ცხრილზე გადასვლა
+      </button>
+    </div>
+  )
+}
+
+function RegistrationsPanel({
+  tId,
+  format,
+  onDrawn,
+}: {
+  tId: string
+  format: string
+  onDrawn: () => void
+}) {
+  const { pushToast } = usePlayroom()
+  const [regs, setRegs] = useState<Registration[]>([])
+  const [scanOpen, setScanOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [draw, setDraw] = useState<DrawData | null>(null)
+
+  const load = useCallback(async () => {
+    const { data } = await (supabase as any).rpc('get_tournament_registrations', { p_tournament: tId })
+    setRegs((data ?? []) as Registration[])
+  }, [tId])
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const checkedIn = regs.filter((r) => r.status === 'checked_in').length
+  const registered = regs.filter((r) => r.status !== 'cancelled').length
+  const collected = regs.reduce((s, r) => s + (r.status === 'checked_in' ? Number(r.paid_amount ?? 0) : 0), 0)
+  const minPlayers = format === 'groups_knockout' ? 3 : 2
+
+  const checkin = async (regId: string) => {
+    const { data, error } = await (supabase as any).rpc('checkin_tournament_registration', {
+      p_registration: regId,
+      p_method: 'cash',
+      p_amount: null,
+    })
+    if (error) {
+      const m = /not_found/.test(error.message)
+        ? 'QR ვერ მოიძებნა — არასწორი ან სხვა ტურნირის'
+        : /not_authorized/.test(error.message)
+          ? 'არ გაქვს უფლება'
+          : error.message
+      return pushToast('danger', m)
+    }
+    const d = data as { display_name: string; already: boolean; paid_amount: number }
+    pushToast(
+      'success',
+      d.already ? `${d.display_name} — უკვე გავლილია ✓` : `✅ ${d.display_name} — შემოწმდა (${gel(d.paid_amount)})`,
+    )
+    load()
+  }
+
+  const handleScan = (raw: string) => {
+    const id = raw.startsWith('MTLT:') ? raw.slice(5) : raw
+    setScanOpen(false)
+    checkin(id)
+  }
+
+  const runDraw = async () => {
+    setBusy(true)
+    const { data, error } = await (supabase as any).rpc('draw_tournament_groups', { p_tournament: tId })
+    setBusy(false)
+    if (error) {
+      const m = /already_drawn/.test(error.message)
+        ? 'გათამაშება უკვე ჩატარდა'
+        : /need_two|need_three/.test(error.message)
+          ? 'საჭიროა მეტი დადასტურებული მონაწილე'
+          : error.message
+      return pushToast('danger', m)
+    }
+    setDraw(data as DrawData)
+  }
+
+  return (
+    <section className="nm-raised rounded-3xl p-6">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Users className="size-5 text-primary" />
+          <h3 className="font-bold">ონლაინ რეგისტრაციები</h3>
+        </div>
+        <button
+          onClick={() => setScanOpen(true)}
+          className="nm-btn flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-primary"
+        >
+          <ScanLine className="size-4" /> QR სკანირება
+        </button>
+      </div>
+
+      <div className="mb-4 grid grid-cols-3 gap-3">
+        <Stat label="რეგისტრ." value={String(registered)} />
+        <Stat label="გავლილი" value={String(checkedIn)} accent />
+        <Stat label="შემოსული" value={gel(collected)} />
+      </div>
+
+      <div className="space-y-2">
+        {regs.length === 0 && (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            ჯერ რეგისტრაცია არ არის — გაუზიარე ტურნირის ბმული play.martelounge.ge/tournaments
+          </p>
+        )}
+        {regs.map((r) => (
+          <div key={r.id} className="nm-raised-sm flex items-center justify-between gap-2 rounded-xl px-4 py-2.5">
+            <span className="min-w-0 text-sm">
+              <span className="font-semibold">{r.display_name}</span>
+              {r.phone && <span className="ml-2 text-xs text-muted-foreground">{r.phone}</span>}
+            </span>
+            {r.status === 'checked_in' ? (
+              <span className="flex shrink-0 items-center gap-1 text-xs font-bold text-[var(--status-free)]">
+                <Check className="size-4" /> გავლილი
+              </span>
+            ) : r.status === 'cancelled' ? (
+              <span className="shrink-0 text-xs text-muted-foreground">გაუქმდა</span>
+            ) : (
+              <button
+                onClick={() => checkin(r.id)}
+                className="nm-btn shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-primary"
+              >
+                ✓ check-in
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={runDraw}
+        disabled={busy || checkedIn < minPlayers}
+        className={cn(
+          'nm-daylight mt-5 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold text-primary',
+          (busy || checkedIn < minPlayers) && 'cursor-not-allowed opacity-40',
+        )}
+      >
+        <Dices className="size-4" /> ვირტუალური დოლორა — გათამაშება და დაწყება
+      </button>
+      {checkedIn < minPlayers && (
+        <p className="mt-2 text-center text-xs text-muted-foreground">საჭიროა მინ. {minPlayers} გავლილი მონაწილე</p>
+      )}
+
+      <BarcodeScanner open={scanOpen} onClose={() => setScanOpen(false)} onScan={handleScan} />
+      {draw && (
+        <DrawReveal
+          draw={draw}
+          onClose={() => {
+            setDraw(null)
+            onDrawn()
+          }}
+        />
+      )}
+    </section>
+  )
+}
+
 function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; onChanged: () => void }) {
   const { currentOrgId } = useOrg()
   const { pushToast } = usePlayroom()
@@ -339,6 +571,7 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
   }
 
   const isGroups = tournament.format === 'groups_knockout'
+  const isPlatform = tournament.creator_scope === 'platform'
 
   const seed = async () => {
     const { error } = await (supabase as any).rpc(isGroups ? 'seed_group_stage' : 'seed_tournament', { p_tournament: t.id })
@@ -411,7 +644,16 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
         </div>
       )}
 
-      {tournament.status === 'registration' ? (
+      {tournament.status === 'registration' && isPlatform ? (
+        <RegistrationsPanel
+          tId={t.id}
+          format={tournament.format}
+          onDrawn={() => {
+            load()
+            onChanged()
+          }}
+        />
+      ) : tournament.status === 'registration' ? (
         <section className="nm-raised rounded-3xl p-6">
           <div className="mb-4 flex items-center gap-2">
             <Users className="size-5 text-primary" />
