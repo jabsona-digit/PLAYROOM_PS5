@@ -3051,6 +3051,10 @@ export type Database = {
           org_id: string | null
           phase: string | null
           prize_pool: number
+          promoted_at: string | null
+          promotion_status: string | null
+          proposed_commission_pct: number | null
+          rejected_reason: string | null
           starts_at: string | null
           status: string
           venue_id: string | null
@@ -3075,6 +3079,10 @@ export type Database = {
           org_id?: string | null
           phase?: string | null
           prize_pool?: number
+          promoted_at?: string | null
+          promotion_status?: string | null
+          proposed_commission_pct?: number | null
+          rejected_reason?: string | null
           starts_at?: string | null
           status?: string
           venue_id?: string | null
@@ -3099,6 +3107,10 @@ export type Database = {
           org_id?: string | null
           phase?: string | null
           prize_pool?: number
+          promoted_at?: string | null
+          promotion_status?: string | null
+          proposed_commission_pct?: number | null
+          rejected_reason?: string | null
           starts_at?: string | null
           status?: string
           venue_id?: string | null
@@ -3747,6 +3759,10 @@ export type Database = {
         Args: { p_limit?: number; p_org_id: string }
         Returns: Json
       }
+      approve_tournament_promotion: {
+        Args: { p_commission: number; p_tournament: string }
+        Returns: undefined
+      }
       cancel_reservation: {
         Args: { p_reason?: string; p_reservation_id: string }
         Returns: undefined
@@ -4069,6 +4085,7 @@ export type Database = {
         }[]
       }
       list_platform_tournaments: { Args: never; Returns: Json }
+      list_tenant_promotion_requests: { Args: never; Returns: Json }
       log_audit: {
         Args: {
           p_action: string
@@ -4214,6 +4231,10 @@ export type Database = {
       register_for_tournament: {
         Args: { p_name: string; p_phone: string; p_tournament: string }
         Returns: string
+      }
+      reject_tournament_promotion: {
+        Args: { p_reason: string; p_tournament: string }
+        Returns: undefined
       }
       reply_to_review: {
         Args: { p_id: string; p_reply: string }
@@ -4406,6 +4427,10 @@ export type Database = {
       submit_review: {
         Args: { p_booking_id: string; p_comment?: string; p_rating: number }
         Returns: string
+      }
+      submit_tournament_for_promotion: {
+        Args: { p_commission: number; p_tournament: string }
+        Returns: undefined
       }
       telegram_link: {
         Args: { p_chat_id: number; p_code: string }
