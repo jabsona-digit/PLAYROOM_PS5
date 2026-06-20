@@ -2965,6 +2965,66 @@ export type Database = {
           },
         ]
       }
+      tournament_registrations: {
+        Row: {
+          checked_in_at: string | null
+          created_at: string
+          customer_id: string
+          display_name: string
+          id: string
+          paid_amount: number | null
+          paid_at: string | null
+          paid_method: string | null
+          participant_id: string | null
+          phone: string | null
+          status: string
+          tournament_id: string
+        }
+        Insert: {
+          checked_in_at?: string | null
+          created_at?: string
+          customer_id: string
+          display_name: string
+          id?: string
+          paid_amount?: number | null
+          paid_at?: string | null
+          paid_method?: string | null
+          participant_id?: string | null
+          phone?: string | null
+          status?: string
+          tournament_id: string
+        }
+        Update: {
+          checked_in_at?: string | null
+          created_at?: string
+          customer_id?: string
+          display_name?: string
+          id?: string
+          paid_amount?: number | null
+          paid_at?: string | null
+          paid_method?: string | null
+          participant_id?: string | null
+          phone?: string | null
+          status?: string
+          tournament_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_registrations_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "public_tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_registrations_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournaments: {
         Row: {
           advance_per_group: number
@@ -3706,6 +3766,10 @@ export type Database = {
         Args: { p_venue_id: string }
         Returns: Json
       }
+      checkin_tournament_registration: {
+        Args: { p_amount: number; p_method: string; p_registration: string }
+        Returns: Json
+      }
       clock_toggle: {
         Args: { p_pin: string; p_venue_id: string }
         Returns: Json
@@ -3869,6 +3933,7 @@ export type Database = {
         Args: { p_org_id: string; p_provider: string }
         Returns: Json
       }
+      draw_tournament_groups: { Args: { p_tournament: string }; Returns: Json }
       dynamic_price_quote: {
         Args: { p_base: number; p_venue_id: string; p_when?: string }
         Returns: Json
@@ -3916,6 +3981,7 @@ export type Database = {
         Returns: Json
       }
       get_hardware_settings: { Args: { p_venue_id: string }; Returns: Json }
+      get_my_tournament_registrations: { Args: never; Returns: Json }
       get_open_drawer: { Args: { p_venue_id: string }; Returns: Json }
       get_operator_integrity: {
         Args: {
@@ -3945,6 +4011,10 @@ export type Database = {
           p_to?: string
           p_venue_id?: string
         }
+        Returns: Json
+      }
+      get_tournament_registrations: {
+        Args: { p_tournament: string }
         Returns: Json
       }
       get_vat_summary: {
@@ -4135,6 +4205,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      register_for_tournament: {
+        Args: { p_name: string; p_phone: string; p_tournament: string }
+        Returns: string
+      }
       reply_to_review: {
         Args: { p_id: string; p_reply: string }
         Returns: undefined
@@ -4206,6 +4280,10 @@ export type Database = {
       set_payment_provider_active: {
         Args: { p_active: boolean; p_org_id: string; p_provider: string }
         Returns: Json
+      }
+      set_tournament_commission: {
+        Args: { p_pct: number; p_tournament: string }
+        Returns: undefined
       }
       settle_session_tab: {
         Args: {
