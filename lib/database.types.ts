@@ -344,6 +344,7 @@ export type Database = {
           org_id: string
           payment_method: string
           session_id: string | null
+          source: string
           tip_amount: number
           total: number
           venue_id: string
@@ -360,6 +361,7 @@ export type Database = {
           org_id: string
           payment_method?: string
           session_id?: string | null
+          source?: string
           tip_amount?: number
           total?: number
           venue_id: string
@@ -376,6 +378,7 @@ export type Database = {
           org_id?: string
           payment_method?: string
           session_id?: string | null
+          source?: string
           tip_amount?: number
           total?: number
           venue_id?: string
@@ -2977,6 +2980,7 @@ export type Database = {
           paid_method: string | null
           participant_id: string | null
           phone: string | null
+          sale_id: string | null
           status: string
           tournament_id: string
         }
@@ -2991,6 +2995,7 @@ export type Database = {
           paid_method?: string | null
           participant_id?: string | null
           phone?: string | null
+          sale_id?: string | null
           status?: string
           tournament_id: string
         }
@@ -3005,6 +3010,7 @@ export type Database = {
           paid_method?: string | null
           participant_id?: string | null
           phone?: string | null
+          sale_id?: string | null
           status?: string
           tournament_id?: string
         }
