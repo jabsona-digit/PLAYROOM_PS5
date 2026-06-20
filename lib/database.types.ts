@@ -2677,6 +2677,13 @@ export type Database = {
             foreignKeyName: "tournament_groups_tournament_id_fkey"
             columns: ["tournament_id"]
             isOneToOne: false
+            referencedRelation: "public_tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_groups_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
             referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
@@ -2729,6 +2736,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_host_offers_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "public_tournaments"
             referencedColumns: ["id"]
           },
           {
@@ -2873,6 +2887,13 @@ export type Database = {
             foreignKeyName: "tournament_matches_tournament_id_fkey"
             columns: ["tournament_id"]
             isOneToOne: false
+            referencedRelation: "public_tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_matches_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
             referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
@@ -2926,6 +2947,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_participants_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "public_tournaments"
             referencedColumns: ["id"]
           },
           {
@@ -3424,6 +3452,28 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      public_tournaments: {
+        Row: {
+          advance_per_group: number | null
+          entry_fee: number | null
+          format: string | null
+          game: string | null
+          group_size: number | null
+          id: string | null
+          max_participants: number | null
+          name: string | null
+          participant_count: number | null
+          prize_pool: number | null
+          starts_at: string | null
+          status: string | null
+          venue_city: string | null
+          venue_cover: string | null
+          venue_name: string | null
+          venue_slug: string | null
+          venue_type: string | null
+        }
+        Relationships: []
       }
       public_venue_plans: {
         Row: {
