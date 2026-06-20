@@ -3988,6 +3988,7 @@ export type Database = {
         Args: { p_date?: string; p_venue_id: string }
         Returns: Json
       }
+      get_gamer_passport: { Args: never; Returns: Json }
       get_ghost_power_events: {
         Args: { p_from: string; p_to: string; p_venue_id: string }
         Returns: {
