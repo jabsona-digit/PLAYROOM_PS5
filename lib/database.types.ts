@@ -3047,10 +3047,13 @@ export type Database = {
           id: string
           is_public: boolean
           max_participants: number | null
+          min_participants: number | null
           name: string
           org_id: string | null
           phase: string | null
           prize_pool: number
+          prize_second: number
+          prize_third_minutes: number
           promoted_at: string | null
           promotion_status: string | null
           proposed_commission_pct: number | null
@@ -3075,10 +3078,13 @@ export type Database = {
           id?: string
           is_public?: boolean
           max_participants?: number | null
+          min_participants?: number | null
           name: string
           org_id?: string | null
           phase?: string | null
           prize_pool?: number
+          prize_second?: number
+          prize_third_minutes?: number
           promoted_at?: string | null
           promotion_status?: string | null
           proposed_commission_pct?: number | null
@@ -3103,10 +3109,13 @@ export type Database = {
           id?: string
           is_public?: boolean
           max_participants?: number | null
+          min_participants?: number | null
           name?: string
           org_id?: string | null
           phase?: string | null
           prize_pool?: number
+          prize_second?: number
+          prize_third_minutes?: number
           promoted_at?: string | null
           promotion_status?: string | null
           proposed_commission_pct?: number | null
@@ -3540,9 +3549,12 @@ export type Database = {
           group_size: number | null
           id: string | null
           max_participants: number | null
+          min_participants: number | null
           name: string | null
           participant_count: number | null
           prize_pool: number | null
+          prize_second: number | null
+          prize_third_minutes: number | null
           starts_at: string | null
           status: string | null
           venue_city: string | null
