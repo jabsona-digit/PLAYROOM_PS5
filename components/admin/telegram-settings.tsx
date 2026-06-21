@@ -68,11 +68,21 @@ export function TelegramSettings() {
         </button>
       </div>
 
+      {/* open the shared bot directly — owner doesn't create their own */}
+      <a
+        href="https://t.me/playmarteloungebot"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="nm-btn mb-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-primary"
+      >
+        <Send className="size-4" /> ბოტის გახსნა — @playmarteloungebot
+      </a>
+
       {/* generated code */}
       {code && (
         <div className="mb-4 rounded-2xl border border-[var(--status-warning5)]/40 p-4"
              style={{ background: 'color-mix(in oklch, var(--status-warning5) 10%, transparent)' }}>
-          <p className="mb-2 text-sm font-bold">გაუგზავნე შენს ბოტს (10 წუთი მოქმედებს):</p>
+          <p className="mb-2 text-sm font-bold">გაუგზავნე <span className="text-primary">@playmarteloungebot</span>-ს (30 წუთი მოქმედებს):</p>
           <div className="flex items-center gap-2">
             <code className="nm-inset flex-1 rounded-xl px-3 py-2.5 text-center font-mono text-base font-black tracking-widest">/link {code}</code>
             <button onClick={() => copy(`/link ${code}`)} className="nm-btn flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-bold text-primary">
@@ -94,11 +104,14 @@ export function TelegramSettings() {
       </button>
 
       <ol className="mt-4 space-y-1 text-[11px] text-muted-foreground">
-        <li>1. Telegram-ში გახსენი შენი ბოტი (BotFather-ით შექმნილი).</li>
-        <li>2. დააჭირე ზემოთ „კოდის გენერაცია".</li>
+        <li>1. გახსენი ჩვენი ბოტი <span className="text-foreground">@playmarteloungebot</span> (ღილაკით ზემოთ) და დააჭირე Start.</li>
+        <li>2. დააჭირე „დაკავშირების კოდის გენერაცია".</li>
         <li>3. გაუგზავნე ბოტს <code className="text-foreground">/link კოდი</code>.</li>
         <li>4. მერე: <code className="text-foreground">/revenue</code> · <code className="text-foreground">/consoles</code></li>
       </ol>
+      <p className="mt-2 text-[11px] text-muted-foreground text-pretty">
+        ℹ️ ცალკე ბოტის შექმნა <b>არ გჭირდება</b> — ყველა იყენებს ერთსა და იმავე ბოტს, შენი კლუბი მხოლოდ კოდით იბმება.
+      </p>
     </section>
   )
 }
