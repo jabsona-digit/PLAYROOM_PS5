@@ -50,6 +50,9 @@ interface Tournament {
   proposed_commission_pct?: number | null
   commission_pct?: number | null
   rejected_reason?: string | null
+  min_participants?: number | null
+  prize_second?: number
+  prize_third_minutes?: number
   participants?: { count: number }[]
 }
 interface Registration {
@@ -364,10 +367,12 @@ function DrawReveal({ draw, onClose }: { draw: DrawData; onClose: () => void }) 
 function RegistrationsPanel({
   tId,
   format,
+  min,
   onDrawn,
 }: {
   tId: string
   format: string
+  min: number
   onDrawn: () => void
 }) {
   const { pushToast } = usePlayroom()
@@ -396,6 +401,7 @@ function RegistrationsPanel({
   const collected = regs.reduce((s, r) => s + (r.status === 'checked_in' ? Number(r.paid_amount ?? 0) : 0), 0)
   const drawCount = checkedIn + walkIns.length
   const minPlayers = format === 'groups_knockout' ? 3 : 2
+  const need = Math.max(minPlayers, min || 0)
 
   const addWalkIn = async () => {
     if (!wName.trim() || !currentOrgId) return
@@ -447,11 +453,14 @@ function RegistrationsPanel({
     const { data, error } = await (supabase as any).rpc('draw_tournament_groups', { p_tournament: tId })
     setBusy(false)
     if (error) {
-      const m = /already_drawn/.test(error.message)
-        ? 'გათამაშება უკვე ჩატარდა'
-        : /need_two|need_three/.test(error.message)
-          ? 'საჭიროა მეტი დადასტურებული მონაწილე'
-          : error.message
+      const below = error.message.match(/below_minimum:(\d+):(\d+)/)
+      const m = below
+        ? `მინიმუმი ვერ შესრულდა — საჭიროა ${below[2]} მონაწილე, ახლა ${below[1]}. ტურნირი ვერ ეწყობა.`
+        : /already_drawn/.test(error.message)
+          ? 'გათამაშება უკვე ჩატარდა'
+          : /need_two|need_three/.test(error.message)
+            ? 'საჭიროა მეტი დადასტურებული მონაწილე'
+            : error.message
       return pushToast('danger', m)
     }
     setDraw(data as DrawData)
@@ -535,16 +544,18 @@ function RegistrationsPanel({
 
       <button
         onClick={runDraw}
-        disabled={busy || drawCount < minPlayers}
+        disabled={busy || drawCount < need}
         className={cn(
           'nm-daylight mt-5 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold text-primary',
-          (busy || drawCount < minPlayers) && 'cursor-not-allowed opacity-40',
+          (busy || drawCount < need) && 'cursor-not-allowed opacity-40',
         )}
       >
-        <Dices className="size-4" /> ვირტუალური დოლორა — გათამაშება და დაწყება ({drawCount})
+        <Dices className="size-4" /> ვირტუალური დოლორა — გათამაშება და დაწყება ({drawCount}/{need})
       </button>
-      {drawCount < minPlayers && (
-        <p className="mt-2 text-center text-xs text-muted-foreground">საჭიროა მინ. {minPlayers} მონაწილე (გავლილი + walk-in)</p>
+      {drawCount < need && (
+        <p className="mt-2 text-center text-xs text-muted-foreground">
+          {min > 0 ? `საჭიროა მინ. ${need} მონაწილე — ზარალისგან დაცვა` : `საჭიროა მინ. ${need} მონაწილე (გავლილი + walk-in)`}
+        </p>
       )}
 
       <BarcodeScanner open={scanOpen} onClose={() => setScanOpen(false)} onScan={handleScan} />
@@ -629,6 +640,9 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
   const promoPending = tournament.promotion_status === 'pending'
 
   const seed = async () => {
+    if (tournament.min_participants && participants.length < tournament.min_participants) {
+      return pushToast('danger', `საჭიროა მინ. ${tournament.min_participants} მონაწილე — ახლა ${participants.length}. ტურნირი ვერ ეწყობა.`)
+    }
     const { error } = await (supabase as any).rpc(isGroups ? 'seed_group_stage' : 'seed_tournament', { p_tournament: t.id })
     if (error) {
       const m = /need_two|need_three/.test(error.message)
@@ -692,6 +706,29 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
         )}
       </div>
 
+      {(Number(tournament.prize_pool) > 0 ||
+        Number(tournament.prize_second) > 0 ||
+        Number(tournament.prize_third_minutes) > 0 ||
+        tournament.min_participants) && (
+        <div className="flex flex-wrap gap-2 text-xs">
+          {Number(tournament.entry_fee) > 0 && (
+            <span className="nm-inset rounded-full px-3 py-1.5">💰 საწევრო {gel(tournament.entry_fee)}</span>
+          )}
+          {Number(tournament.prize_pool) > 0 && (
+            <span className="nm-inset rounded-full px-3 py-1.5">🥇 {gel(tournament.prize_pool)}</span>
+          )}
+          {Number(tournament.prize_second) > 0 && (
+            <span className="nm-inset rounded-full px-3 py-1.5">🥈 {gel(tournament.prize_second ?? 0)}</span>
+          )}
+          {Number(tournament.prize_third_minutes) > 0 && (
+            <span className="nm-inset rounded-full px-3 py-1.5">🥉 {tournament.prize_third_minutes} წთ უფასო</span>
+          )}
+          {tournament.min_participants ? (
+            <span className="nm-inset rounded-full px-3 py-1.5">👥 მინ. {tournament.min_participants}</span>
+          ) : null}
+        </div>
+      )}
+
       {champion && (
         <div className="nm-daylight flex items-center justify-center gap-3 rounded-3xl p-6 text-center">
           <Crown className="size-7 text-primary" />
@@ -724,6 +761,7 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
         <RegistrationsPanel
           tId={t.id}
           format={tournament.format}
+          min={tournament.min_participants ?? 0}
           onDrawn={() => {
             load()
             onChanged()
@@ -979,7 +1017,7 @@ export function Tournaments() {
   const [list, setList] = useState<Tournament[]>([])
   const [selected, setSelected] = useState<Tournament | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
-  const [form, setForm] = useState({ name: '', game: '', starts_at: '', entry_fee: '', prize_pool: '', format: 'groups_knockout', group_size: '4', advance_per_group: '2', scope: 'local', commission: '10' })
+  const [form, setForm] = useState({ name: '', game: '', starts_at: '', entry_fee: '', prize_pool: '', format: 'groups_knockout', group_size: '4', advance_per_group: '2', scope: 'local', commission: '10', min_enabled: false, min: '8', prize_second: '', prize_third_minutes: '' })
 
   const load = useCallback(async () => {
     if (!currentOrgId) return
@@ -1012,6 +1050,9 @@ export function Tournaments() {
         advance_per_group: Number(form.advance_per_group || 2),
         entry_fee: Number(form.entry_fee || 0),
         prize_pool: Number(form.prize_pool || 0),
+        prize_second: Number(form.prize_second || 0),
+        prize_third_minutes: Number(form.prize_third_minutes || 0),
+        min_participants: form.min_enabled ? Number(form.min || 0) : null,
         starts_at: form.starts_at || null,
       })
       .select('*')
@@ -1028,7 +1069,7 @@ export function Tournaments() {
       pushToast('success', 'ტურნირი შეიქმნა')
     }
     setCreateOpen(false)
-    setForm({ name: '', game: '', starts_at: '', entry_fee: '', prize_pool: '', format: 'groups_knockout', group_size: '4', advance_per_group: '2', scope: 'local', commission: '10' })
+    setForm({ name: '', game: '', starts_at: '', entry_fee: '', prize_pool: '', format: 'groups_knockout', group_size: '4', advance_per_group: '2', scope: 'local', commission: '10', min_enabled: false, min: '8', prize_second: '', prize_third_minutes: '' })
     load()
     setSelected(data as Tournament)
   }
@@ -1138,16 +1179,46 @@ export function Tournaments() {
               </label>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-xs text-muted-foreground">შესვლის ფასი</span>
-              <input type="number" value={form.entry_fee} onChange={(e) => setForm({ ...form, entry_fee: e.target.value })} placeholder="0" className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none" />
-            </label>
-            <label className="block">
-              <span className="text-xs text-muted-foreground">პრიზი</span>
-              <input type="number" value={form.prize_pool} onChange={(e) => setForm({ ...form, prize_pool: e.target.value })} placeholder="0" className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none" />
-            </label>
+          <label className="block">
+            <span className="text-xs text-muted-foreground">შესვლის ფასი (საწევრო ₾)</span>
+            <input type="number" value={form.entry_fee} onChange={(e) => setForm({ ...form, entry_fee: e.target.value })} placeholder="0" className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none" />
+          </label>
+
+          <div>
+            <span className="text-xs text-muted-foreground">საპრიზო სტრუქტურა</span>
+            <div className="mt-1 grid grid-cols-3 gap-2">
+              <label className="block">
+                <span className="text-[11px] text-muted-foreground">🥇 1 ადგ. (₾)</span>
+                <input type="number" value={form.prize_pool} onChange={(e) => setForm({ ...form, prize_pool: e.target.value })} placeholder="0" className="nm-inset mt-1 w-full rounded-xl px-3 py-2 text-sm outline-none" />
+              </label>
+              <label className="block">
+                <span className="text-[11px] text-muted-foreground">🥈 2 ადგ. (₾)</span>
+                <input type="number" value={form.prize_second} onChange={(e) => setForm({ ...form, prize_second: e.target.value })} placeholder="0" className="nm-inset mt-1 w-full rounded-xl px-3 py-2 text-sm outline-none" />
+              </label>
+              <label className="block">
+                <span className="text-[11px] text-muted-foreground">🥉 3 ადგ. (წთ)</span>
+                <input type="number" value={form.prize_third_minutes} onChange={(e) => setForm({ ...form, prize_third_minutes: e.target.value })} placeholder="0" className="nm-inset mt-1 w-full rounded-xl px-3 py-2 text-sm outline-none" />
+              </label>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">🥉 = უფასო სათამაშო წუთები</p>
           </div>
+
+          <div className="nm-inset rounded-xl p-3">
+            <label className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold">მინიმალური მონაწილეები</span>
+              <input type="checkbox" checked={form.min_enabled} onChange={(e) => setForm({ ...form, min_enabled: e.target.checked })} className="size-4 accent-[var(--primary)]" />
+            </label>
+            <p className="mt-1 text-[11px] text-muted-foreground text-pretty">
+              თუ ნაკლები მოვა, გათამაშება დაიბლოკება — ზარალისგან დაცვა (მაგ. 4×20₾=80₾ &lt; 200₾ პრიზი).
+            </p>
+            {form.min_enabled && (
+              <label className="mt-2 block">
+                <span className="text-[11px] text-muted-foreground">საჭირო მონაწილეთა მინიმუმი</span>
+                <input type="number" value={form.min} onChange={(e) => setForm({ ...form, min: e.target.value })} placeholder="8" className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none" />
+              </label>
+            )}
+          </div>
+
           <label className="block">
             <span className="text-xs text-muted-foreground">დაწყება (არასავალდებულო)</span>
             <input type="datetime-local" value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none" />
