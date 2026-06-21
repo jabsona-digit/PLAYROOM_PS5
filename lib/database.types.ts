@@ -4557,7 +4557,7 @@ export type Database = {
       slugify: { Args: { p: string }; Returns: string }
       start_knockout_from_groups: {
         Args: { p_tournament: string }
-        Returns: undefined
+        Returns: Json
       }
       start_open_session: {
         Args: {
