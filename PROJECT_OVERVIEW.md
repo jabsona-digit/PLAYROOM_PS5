@@ -12,15 +12,19 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
-> _Last updated **2026-06-16** — through migration **0076**. Since the previous (0036) revision:
-> tournaments, capacity/typed-resource booking, God-Mode tenant billing, **plan entitlements (0062)**, payroll/RBAC hardening,
-> team email-invites, operator shifts & attribution, shared cash drawer, abandoned sessions, bar COGS,
-> **In-Seat Ordering portal** (live-session + per-session PIN/QR access gate, 0060–0061),
-> **AI receipt OCR + anti-fraud audit** (+ Georgian↔Latin fuzzy product resolution), **per-tenant online payments (Phase 1)**,
-> **RevPACH analytics + AI advisor (0059)**, **hardware console control** (vendor-agnostic power/TV gating, 0063–0066),
-> **dynamic pricing — Happy Hour/Surge (0067)**, **predictive hardware maintenance (0068)**, **public real-time "Pulse" page (0069)**,
-> **AI Closing Brief (0070)**, **multi-venue-type / Entertainment Venue OS — billiard (0071) + lamp control with grace (0072)**,
-> **mobile-responsive admin**, and **bot-safe SEO + ISR caching** on both sites._
+> _Last updated **2026-06-21** — through migration **0116**. **Since the 0076 revision (the big additions):**
+> **Tournaments 2.0** — a full platform-promoted tournament product (groups+knockout / 3-1-0, host-bidding + tenant→Global
+> promotion with commission, public marketplace listing, paid online registration → **QR pass → scan check-in (pay-at-venue)**
+> → **„ვირტუალური დოლორა" server-fair group draw** → champion; min-participants gate + 1st/2nd/3rd prizes, 0106–0116);
+> **Telegram bot** `@playmarteloungebot` (owner: link + /revenue /consoles; platform God-Mode digest; push alerts — new
+> booking / low stock / nightly brief / fraud, 0100–0105/0116); **Gamer Passport** (player XP/level + computed badges on
+> /account, 0112); **3-domain marketing repositioning** (martelounge.ge = B2B "Gaming Venue OS" for owners,
+> play.martelounge.ge = B2C player brand + /tournaments + /live Pulse); **self-serve venues + price bump Pro 50/Ent 70
+> (0077)**, **org cross-venue overview (0078/0079)**, **In-Seat session tab + itemized bill + extend→confirm (0086/0087)**,
+> **guest AI Concierge (0085)**, **API keys + device gateway (0091/0092)**, and a **deep money-correctness audit** (stock
+> guards, cash_expected accuracy, tournament-fee→revenue, 0097–0099/0110). Plus the earlier 0037–0076 wave (capacity/typed
+> booking, plan entitlements, In-Seat portal, RevPACH+AI, hardware control, dynamic pricing, Pulse, Entertainment-Venue-OS
+> billiard). Both sites bot-safe SEO + ISR; admin mobile-responsive + PWA._
 
 > Product was renamed **Playroom OS → Martelounge** (martel-**OU**-nge; domain bought 2026-06-08).
 > "Playroom" survives only as a demo/tenant name.
@@ -158,7 +162,11 @@ components/admin/
   hardware-settings.tsx  Settings → 🔌 Hardware: per-console mode/driver/target + Force ON/OFF + Shelly Cloud creds + "require hw" toggle
   payment-settings.tsx  Settings: connect own TBC/BOG merchant (Vault-encrypted; BYO-merchant)
   team-settings.tsx     Settings: email-invite staff (each gets own login + role)
-  tournaments.tsx       single-elim PS5 brackets + TV mode
+  tournaments.tsx       Tournaments 2.0: groups+knockout / single-elim, TV mode, online registrations + QR scan
+                        check-in, „ვირტუალური დოლორა" group draw, walk-ins, min-participants + 1st/2nd/3rd prizes,
+                        tenant→Global promotion (proposes commission). God-Mode tournament create + host-offer accept
+                        live in platform.tsx (PlatformTournaments + TenantPromotionRequests)
+  telegram-settings.tsx Settings → Telegram: generate link code → owner sends /link CODE to @playmarteloungebot
   guide.tsx             in-app handbook (searchable; covers AI, In-Seat, payments, …)
   analytics-v2.tsx      RevPACH module — KPIs, per-console matrix, 7×24 heatmap, AI advisor button
   modal.tsx / toast.tsx
@@ -173,7 +181,10 @@ lib/
   ui.ts / hooks.ts / notify.ts / print.ts
 supabase/functions/ai-assistant/index.ts   Gemini function-calling agent (runs as caller's JWT)
 supabase/functions/hardware-control/index.ts  cloud power dispatch (Shelly Cloud; service-role reads the Vault secret)
-supabase/migrations/    0001–0066 (see §7)
+supabase/functions/telegram-bot/index.ts   @playmarteloungebot webhook — secret-token gated, /start /link /revenue
+                                           /consoles; resolves the org by chat_id (service-role). Deploy --no-verify-jwt
+supabase/functions/api-gateway/index.ts    public device relay (ESP32/Pi poll/ack, read sessions/analytics). --no-verify-jwt
+supabase/migrations/    0001–0116 (see §7)
 ```
 
 ### Modules & status
@@ -194,7 +205,7 @@ supabase/migrations/    0001–0066 (see §7)
 | **Online bookings (marketplace inbox + QR check-in)** | `online_bookings` | owner/admin/manager/cashier | ✅ |
 | Platform God Mode | `platform` | platform_admins | ✅ |
 | Billing | `billing` | owner | ✅ |
-| Tournaments (single-elim brackets + TV mode) | `tournaments` | owner/admin/manager | ✅ |
+| Tournaments 2.0 (groups+knockout, QR check-in, virtual draw, prizes, Global promotion) | `tournaments` | owner/admin/manager | ✅ |
 | Guide (in-app searchable handbook) | `guide` | all | ✅ |
 | AI assistant (Gemini, voice, actions) | `ai-assistant` | all | ✅ |
 | Analytics — RevPACH (matrix + 7×24 heatmap + AI advisor) | `analytics` | owner/admin/manager | ✅ |
@@ -214,11 +225,14 @@ Separate Next 16 SSR app (`@supabase/ssr`, OpenNext → Cloudflare Worker) at `p
 
 ```
 app/
-  layout.tsx            brand header (auth state + sign-out) / footer; Noto Sans Georgian
-  page.tsx              home: hero + popular venues (public_venues)
+  layout.tsx            brand header (Pulse · კლუბები · 🏆 ტურნირები · auth) / footer; Noto Sans Georgian
+  page.tsx              player-brand home: hero "იპოვე შენი შემდეგი ბრძოლა" + search + tournaments band + passport band
+                        + featured venues + how-it-works (public_venues + public_tournaments)
   venues/page.tsx       all venues
   [slug]/page.tsx       venue detail: profile, amenities, reviews (public_reviews), <BookingWidget/>
-  account/page.tsx      customer's bookings (auth-gated): QR pass + review on completed
+  tournaments/page.tsx  public tournaments (public_tournaments) — open-reg / coming / finished + register + prize breakdown
+  live/page.tsx         Pulse — real-time public gaming census (get_pulse_stats) + venue_type category tabs
+  account/page.tsx      auth-gated: GamerPassport (XP/level/badges) + bookings (QR pass + review) + tournament QR passes
   auth/login|register   email/password (auth-form.tsx)
 components/
   venue-card.tsx        listing card (rating, price_from)
@@ -226,6 +240,10 @@ components/
                         → create_marketplace_booking (handles booking_conflict)
   booking-pass.tsx      QR pass (qrcode.react, encodes "MLB:<bookingId>") for pending/confirmed bookings
   booking-review.tsx    star rating + comment → submit_review (one per completed booking)
+  tournament-card.tsx   public tournament card (prize 1st/2nd/3rd, host venue link, participants)
+  tournament-register.tsx  auth-gated online registration (valid mobile + email) → register_for_tournament
+  my-tournament-passes.tsx GamerPassport + tournament QR passes (MTLT:<registration_id>) on /account
+  pulse-live.tsx        live census client (polls get_pulse_stats), chat-concierge.tsx (guest AI)
   sign-out-button.tsx
 lib/supabase/{server,client}.ts   @supabase/ssr clients
 lib/auth.ts             getUser()
@@ -384,7 +402,41 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 0086  SESSION TAB + ITEMIZED BILL (hybrid pay-now/at-end): bar_sales stay paid-only; unpaid tab = delivered
       service_requests, settled at end into one paid bar_sale (settle_session_tab); compute/get/portal_get_bill
 0087  EXTEND REQUEST→CONFIRM: portal_request_extend (kind='extend') → operator confirm in inbox runs extend_session
+─ money-correctness · ops · API ───────────────────────────────────────────────────────────────────────
+0088–0090  in-seat tab/stock fixes        0091  API KEYS (per-owner + platform God-Mode; hash-only, scopes, revoke)
+0092  `api-gateway` edge fn (device relay poll/ack for ESP32/Pi; read sessions/analytics; deploy --no-verify-jwt)
+0093  booking-RPC drift fix (live 12-arg create_marketplace_booking + get_venue_consoles backfilled)
+0094–0099  MONEY AUDIT: nonneg-stock trigger (pay-now oversell), drop orphan end_session(uuid), cashier refund
+      accuracy, cash_expected timing/refunds (0098), create_bar_sale 8-arg method/bank validation (0099)
+─ Telegram bot (@playmarteloungebot) ───────────────────────────────────────────────────────────────────
+0100  TELEGRAM link: organizations.telegram_chat_id + telegram_alerts(jsonb) + telegram_link_codes +
+      create_telegram_link_code / telegram_link / telegram_org_summary (service-role) — owner links via /link CODE
+0101–0105  PUSH ALERTS: notify_telegram_org (Vault token + pg_net, toggle-gated) — new-booking trigger, low-stock,
+      nightly brief cron, **platform God-Mode** link + new-tenant + daily digest (notify_platform_telegram), fraud flags;
+      0104 pg_net timeout→15s
+─ Tournaments 2.0 (platform-promoted) ───────────────────────────────────────────────────────────────────
+0106  GROUP STAGE: format 'groups_knockout' — seed_group_stage (round-robin), report_match v2 (group draws),
+      get_group_standings (3/1/0, tiebreaks), start_knockout_from_groups (reuses 0037 bracket)
+0107  PLATFORM-CREATE + HOST-BIDDING: tournaments creator_scope/is_public/host_org_id/commission; nullable org/venue;
+      tournament_host_offers; create_platform_tournament (+Telegram invite all owners) / submit_host_offer / accept_host_offer
+0108  public_tournaments anon view (marketplace listing)
+0109  REGISTRATION + DRAW: tournament_registrations (customer_id=auth.uid(), QR='MTLT:<id>') + register_for_tournament /
+      checkin_tournament_registration (pay-at-venue) / draw_tournament_groups (server-fair random) + commission tracking
+0110  pay-at-venue ENTRY FEE → revenue: posted as bar_sales (source='tournament'); PRO bar-gate relaxed (gate_bar_sale_plan)
+0111  TENANT→GLOBAL promotion: promotion_status (pending→approved/rejected) + proposed_commission; submit/approve/reject_
+      tournament_promotion + list_tenant_promotion_requests; public_tournaments gate = is_public; draw includes walk-ins
+0112  GAMER PASSPORT: get_gamer_passport() — computed XP/level + 10 badges from bookings/tournaments/wins/reviews (no tables)
+0113  tournament_participants + tournament_matches RLS += is_platform_admin (God-Mode view-as can read brackets)
+0114  min_participants gate (draw blocked below min — anti-loss) + prize_second + prize_third_minutes (free play-time)
+0115  registration HARDENED: register_for_tournament requires valid GE mobile + email (server-side); email on the row
+0116  telegram link-code validity 10→30 min
 ```
+
+> **⚠️ Frontend gotchas hit while building God-Mode/tournaments (2026-06-21):** (1) `const x = supabase.rpc` DETACHES
+> `this` → "Cannot read … 'rest'" — always invoke as a member call (`(supabase as any).rpc(...)` or `.call(supabase,…)`).
+> (2) Embedding `tournament_participants(count)` is AMBIGUOUS (two FKs: participants.tournament_id + tournaments.winner_
+> participant_id) → PostgREST **300 Multiple Choices** → hint it: `tournament_participants!tournament_id(count)`.
+> (3) Telegram push is **toggle-gated** — a new alert `kind` must be enabled in `telegram_alerts` / `platform_telegram_config.alerts`.
 
 > **Multi-venue-type frontend (no migration):** dynamic labels via `lib/ui.ts` ASSET_LABELS (🎮 კონსოლი / 🎱
 > მაგიდა, RevPACH→RevPATH) on dashboard + analytics; venue_type selector in Marketplace profile; billiard/snooker
@@ -545,6 +597,16 @@ is_org_admin-gated); `mark_tenant_paid(org,months,…)` (God-Mode billing); `see
   `sessions` blocks starting a session on a console with no active hardware (`hardware_required`). Anti-fraud
   read `get_ghost_power_events` flags a console powered on with no session (agent state-poll, Phase 3).
 
+### Telegram bot (`@playmarteloungebot`, migrations 0100–0105 / 0116)
+- **ONE shared bot** for the whole platform — an owner does **NOT** build their own bot. They **LINK** their org:
+  Settings → Telegram → „კოდის გენერაცია" (`create_telegram_link_code`, **30-min** code) → send `/link CODE` to the bot
+  from their OWN Telegram → binds `organizations.telegram_chat_id` (one chat ↔ one org). Then `/revenue` · `/consoles`.
+- Edge fn `telegram-bot` (webhook, `X-Telegram-Bot-Api-Secret-Token`-gated, service-role) resolves the org by `chat_id`
+  via `telegram_link` / `telegram_org_summary`. A platform-scoped link (`platform_telegram_config`) drives God-Mode alerts.
+- **PUSH alerts** via `notify_telegram_org` / `notify_platform_telegram` (Vault bot token + `pg_net`, 15s timeout,
+  **toggle-gated** by `telegram_alerts->>kind`): new booking · low stock · nightly brief · fraud flags · platform
+  new-tenant · daily digest · **tournament Global-promotion request**. Deploy `--no-verify-jwt`. See `memory/telegram-bot.md`.
+
 ---
 
 ## 11. AI assistant
@@ -653,8 +715,11 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
   BOG/TBC logic, per-tenant Vault keys) → set `payment_status='paid'`/`payment_ref`. Phase 1 (credential
   storage) is DONE (0058); Phase 2 is blocked on the owner obtaining merchant keys.
 - 📲 **SMS/Email (Twilio)** — booking confirm + reminder to cut no-shows. Blocked on a Twilio account.
-- 🧠 **Proactive "AI Manager"** — nightly digest (RevPACH + fraud + inventory + COGS) → Telegram briefing with
-  one-tap actions; the *intelligence* moat, works from venue #1. See `memory/killer-features-pending.md`.
+- 🧠 **Proactive "AI Manager"** — ✅ largely DONE: AI Closing Brief (0070) + Telegram nightly brief + fraud flags
+  (0102/0105). Remaining: one-tap actions from the Telegram message.
+- 🏆 **Tournaments — Phase 4** — online PREPAYMENT of the entry fee (BYO TBC/BOG, blocked on keys) + multi-venue +
+  **automatic prize payout** at champion-time (2nd money + 3rd free-play-time credit — a new `customer_credits` concept).
+  Core (groups+knockout, host-bidding, tenant→Global, QR check-in, virtual draw, min/prizes) is LIVE.
 - 🔌 **Hardware control — Phase 2/3** — local **agent** (separate repo) for LAN relays (USR/Waveshare/Shelly-LAN,
   the Georgian "სოჩიკი") + HDMI matrix + state-poll ghost detection. Foundation + Shelly Cloud done (0063–0066).
 - 🧾 **RS.GE Fiscal Phase C** — local hardware bridge.
