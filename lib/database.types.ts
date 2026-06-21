@@ -818,6 +818,7 @@ export type Database = {
       }
       customer_credits: {
         Row: {
+          code: string | null
           created_at: string
           customer_id: string
           expires_at: string | null
@@ -832,6 +833,7 @@ export type Database = {
           venue_id: string | null
         }
         Insert: {
+          code?: string | null
           created_at?: string
           customer_id: string
           expires_at?: string | null
@@ -846,6 +848,7 @@ export type Database = {
           venue_id?: string | null
         }
         Update: {
+          code?: string | null
           created_at?: string
           customer_id?: string
           expires_at?: string | null
@@ -2459,6 +2462,9 @@ export type Database = {
           created_at: string
           created_by: number | null
           created_by_user: string | null
+          credit_discount: number
+          credit_id: string | null
+          credit_minutes: number
           customer_name: string | null
           duration_min: number | null
           ended_at: string | null
@@ -2487,6 +2493,9 @@ export type Database = {
           created_at?: string
           created_by?: number | null
           created_by_user?: string | null
+          credit_discount?: number
+          credit_id?: string | null
+          credit_minutes?: number
           customer_name?: string | null
           duration_min?: number | null
           ended_at?: string | null
@@ -2515,6 +2524,9 @@ export type Database = {
           created_at?: string
           created_by?: number | null
           created_by_user?: string | null
+          credit_discount?: number
+          credit_id?: string | null
+          credit_minutes?: number
           customer_name?: string | null
           duration_min?: number | null
           ended_at?: string | null
@@ -3963,6 +3975,10 @@ export type Database = {
         Args: { p_limit?: number; p_org_id: string }
         Returns: Json
       }
+      apply_credit_to_session: {
+        Args: { p_code: string; p_session_id: string }
+        Returns: Json
+      }
       approve_tournament_promotion: {
         Args: { p_commission: number; p_tournament: string }
         Returns: undefined
@@ -4448,6 +4464,10 @@ export type Database = {
         Args: { p_reason: string; p_tournament: string }
         Returns: undefined
       }
+      remove_credit_from_session: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
       reply_to_review: {
         Args: { p_id: string; p_reply: string }
         Returns: undefined
@@ -4554,6 +4574,9 @@ export type Database = {
           created_at: string
           created_by: number | null
           created_by_user: string | null
+          credit_discount: number
+          credit_id: string | null
+          credit_minutes: number
           customer_name: string | null
           duration_min: number | null
           ended_at: string | null
@@ -4599,6 +4622,9 @@ export type Database = {
           created_at: string
           created_by: number | null
           created_by_user: string | null
+          credit_discount: number
+          credit_id: string | null
+          credit_minutes: number
           customer_name: string | null
           duration_min: number | null
           ended_at: string | null
