@@ -43,7 +43,7 @@ interface Tournament {
   winner_participant_id: string | null
   created_at: string
   format: 'single_elim' | 'groups_knockout'
-  phase: 'groups' | 'knockout' | null
+  phase: 'groups' | 'knockout' | 'tiebreak' | null
   group_size: number
   advance_per_group: number
   creator_scope?: string
@@ -92,7 +92,7 @@ interface Match {
   score2: number | null
   status: 'pending' | 'live' | 'done'
   group_id?: string | null
-  stage?: 'group' | 'knockout' | 'bronze'
+  stage?: 'group' | 'knockout' | 'bronze' | 'tiebreak'
 }
 
 interface StandRow {
@@ -238,14 +238,17 @@ function GroupsView({
 }) {
   const [groups, setGroups] = useState<GroupStanding[]>([])
   const groupMatches = matches.filter((m) => m.stage === 'group')
+  const tiebreaks = matches.filter((m) => m.stage === 'tiebreak')
   const done = groupMatches.filter((m) => m.status === 'done').length
   const allDone = groupMatches.length > 0 && done === groupMatches.length
+  const tbPending = tiebreaks.some((m) => m.status !== 'done')
+  const tbDone = tiebreaks.filter((m) => m.status === 'done').length
 
   useEffect(() => {
     ;(supabase as any).rpc('get_group_standings', { p_tournament: tId }).then(({ data }: { data: unknown }) => {
       if (Array.isArray(data)) setGroups(data as GroupStanding[])
     })
-  }, [tId, done])
+  }, [tId, done, tbDone])
 
   return (
     <div className="space-y-5">
@@ -253,12 +256,28 @@ function GroupsView({
         <p className="text-sm text-muted-foreground">ჯგუფური ეტაპი · {done}/{groupMatches.length} მატჩი</p>
         <button
           onClick={onStartKnockout}
-          disabled={!allDone}
-          className={cn('nm-daylight rounded-2xl px-4 py-2.5 text-sm font-bold text-primary', !allDone && 'cursor-not-allowed opacity-40')}
+          disabled={!allDone || tbPending}
+          className={cn('nm-daylight rounded-2xl px-4 py-2.5 text-sm font-bold text-primary', (!allDone || tbPending) && 'cursor-not-allowed opacity-40')}
         >
-          🏆 ნოკაუტის დაწყება
+          {tbPending ? '🥅 ჯერ პენალტები ⬇️' : '🏆 ნოკაუტის დაწყება'}
         </button>
       </div>
+
+      {/* penalty deciders — created when players finish a group level on every stat */}
+      {tiebreaks.length > 0 && (
+        <div className="nm-raised rounded-3xl p-5" style={{ borderLeft: '4px solid var(--status-warning10)' }}>
+          <h3 className="mb-1 flex items-center gap-2 font-extrabold">🥅 პენალტები — ფრის გადასაწყვეტად</h3>
+          <p className="mb-3 text-xs text-muted-foreground text-pretty">
+            ეს მოთამაშეები ჯგუფში სრულიად თანაბრად დასრულდნენ. ჩაატარეთ პენალტები კონსოლზე და შეიყვანეთ
+            შედეგი — გამარჯვებული გადადის ნოკაუტში. შემდეგ ისევ დააჭირეთ „ნოკაუტის დაწყება".
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {tiebreaks.map((m) => (
+              <MatchCard key={m.id} match={m} names={names} onReport={onReport} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {groups.map((g) => {
         const gm = groupMatches.filter((m) => m.group_id === g.group_id)
@@ -680,7 +699,7 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
   }
 
   const startKnockout = async () => {
-    const { error } = await (supabase as any).rpc('start_knockout_from_groups', { p_tournament: t.id })
+    const { data, error } = await (supabase as any).rpc('start_knockout_from_groups', { p_tournament: t.id })
     if (error) {
       const m = /group_stage_incomplete/.test(error.message)
         ? 'ჯერ ყველა ჯგუფური მატჩი უნდა დასრულდეს'
@@ -689,7 +708,12 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
           : error.message
       return pushToast('danger', m)
     }
-    pushToast('success', '🏆 ნოკაუტი დაიწყო!')
+    const d = (data ?? {}) as { tiebreak_required?: boolean; count?: number }
+    if (d.tiebreak_required) {
+      pushToast('info', `⚖️ ფრეა — ${d.count ?? 1} პენალტი ჩასატარებელია. ჩაატარეთ და ისევ დააჭირეთ „ნოკაუტის დაწყება".`)
+    } else {
+      pushToast('success', '🏆 ნოკაუტი დაიწყო!')
+    }
     load()
     onChanged()
   }
@@ -930,7 +954,7 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
             <Play className="size-4" /> {promoPending ? 'დაელოდე დადასტურებას' : 'ბადის გენერაცია და დაწყება'}
           </button>
         </section>
-      ) : isGroups && tournament.phase === 'groups' ? (
+      ) : isGroups && (tournament.phase === 'groups' || tournament.phase === 'tiebreak') ? (
         <GroupsView
           tId={t.id}
           matches={matches}
