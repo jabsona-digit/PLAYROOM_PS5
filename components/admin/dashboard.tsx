@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useCountUp, use3dTilt } from '@/lib/hooks'
 import {
   Activity,
@@ -12,11 +13,13 @@ import {
   Coins,
   CreditCard,
   Gamepad2,
+  Gift,
   Landmark,
   Play,
   Plug,
   Plus,
   QrCode,
+  ScanLine,
   Square,
   Wrench,
 } from 'lucide-react'
@@ -31,6 +34,8 @@ import { Analytics } from './analytics'
 import { InSeatAccessModal } from './inseat-access-modal'
 import { DailyBrief } from './daily-brief'
 import { useFiscal } from '@/lib/fiscal'
+
+const BarcodeScanner = dynamic(() => import('./barcode-scanner'), { ssr: false })
 
 const METHOD_ICON: Record<PaymentMethod, typeof Banknote> = {
   cash: Banknote,
@@ -399,7 +404,7 @@ type SessionBill = {
   paid_items: BillItem[]; paid_bar_total: number
   tab_items: BillItem[]; tab_total: number
   tab_extension: number; red_total: number
-  grand_total: number
+  grand_total: number; credit_discount?: number
 }
 
 // Read-only live bill the OPERATOR sees mid-session — the SAME data the customer sees
@@ -476,11 +481,14 @@ function EndSessionModal({
   const [tip, setTip] = useState(0)
   const [bill, setBill] = useState<SessionBill | null>(null)
   const [settleM, setSettleM] = useState<{ m: string; b: string | null } | null>(null)
+  const [creditInput, setCreditInput] = useState('')
+  const [credit, setCredit] = useState<{ id: string; remaining: number; note: string | null } | null>(null)
+  const [scanOpen, setScanOpen] = useState(false)
   const now = useNow()
 
   const sid = unit.active_session?.id
   useEffect(() => {
-    if (!open || !sid) { setBill(null); setSettleM(null); return }
+    if (!open || !sid) { setBill(null); setSettleM(null); setCredit(null); setCreditInput(''); return }
     ;(supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: unknown }>)(
       'get_session_bill', { p_session_id: sid },
     ).then(({ data }) => {
@@ -488,6 +496,19 @@ function EndSessionModal({
       if (d && !d.error) setBill(d)
     })
   }, [open, sid])
+
+  // look up a tournament free-time credit by its short code (or scanned MTLC:<id>).
+  // RLS only exposes credits for the operator's own org → venue-scoped automatically.
+  const lookupCredit = async (raw: string) => {
+    const v = raw.trim().replace(/^MTLC:/i, '')
+    if (!v) { setCredit(null); return }
+    const isUuid = v.length > 20
+    const base = (supabase as unknown as { from: (t: string) => any }).from('customer_credits')
+      .select('id, minutes, minutes_used, note').eq('status', 'active')
+    const { data } = await (isUuid ? base.eq('id', v) : base.ilike('code', v)).limit(1)
+    const c = data?.[0]
+    setCredit(c ? { id: c.id, remaining: Number(c.minutes) - Number(c.minutes_used), note: c.note ?? null } : null)
+  }
 
   const s = unit.active_session
   if (!s) return null
@@ -500,6 +521,10 @@ function EndSessionModal({
   const elapsedMs = (now ?? Date.now()) - new Date(s.started_at).getTime()
   const openMinutes = openBillableMinutes(elapsedMs)
   const base = s.is_open ? (openMinutes / 60) * s.price_per_hour : s.price_total
+
+  // free-time credit discounts the PLAY charge: remaining minutes × rate, capped at the play total
+  const estDiscount = credit ? Math.min(Math.round((credit.remaining / 60) * s.price_per_hour * 100) / 100, base) : 0
+  const effBase = Math.max(0, base - estDiscount)
 
   return (
     <Modal open={open} onClose={onClose} title="სესიის დასრულება">
@@ -556,6 +581,33 @@ function EndSessionModal({
           </div>
         )}
 
+        {/* tournament free-time credit — operator enters/scans the player's code */}
+        <div className="nm-inset rounded-2xl p-4">
+          <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            <Gift className="size-3.5" /> უფასო წუთები (პრიზის კრედიტი)
+          </p>
+          <div className="flex gap-2">
+            <input
+              value={creditInput}
+              onChange={(e) => { setCreditInput(e.target.value); lookupCredit(e.target.value) }}
+              placeholder="კოდი (მაგ. A1B2C3)"
+              className="nm-inset min-w-0 flex-1 rounded-xl px-3 py-2 text-sm uppercase outline-none"
+            />
+            <button type="button" onClick={() => setScanOpen(true)} className="nm-btn flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-primary">
+              <ScanLine className="size-4" /> QR
+            </button>
+          </div>
+          {credit && (
+            <div className="mt-2 flex items-center justify-between text-sm">
+              <span className="text-[var(--status-free)]">🎁 {credit.note ?? 'უფასო დრო'} · {credit.remaining} წთ</span>
+              <span className="font-mono font-bold text-[var(--status-free)]">−{gel(estDiscount)}</span>
+            </div>
+          )}
+          {creditInput.trim() && !credit && (
+            <p className="mt-2 text-xs text-[var(--status-expired)]">კოდი ვერ მოიძებნა ან გამოყენებულია</p>
+          )}
+        </div>
+
         <label className="block">
           <span className="text-sm font-semibold text-muted-foreground">ჩაიანი (₾)</span>
           <input
@@ -569,9 +621,12 @@ function EndSessionModal({
         </label>
 
         <p className="text-sm text-center font-bold">
-          სულ: <span className="text-primary">{gel(base + (bill?.paid_bar_total ?? 0) + owedTab)}</span>
+          {estDiscount > 0 && (
+            <span className="block text-xs font-normal text-[var(--status-free)]">🎁 პრიზის ფასდაკლება: −{gel(estDiscount)}</span>
+          )}
+          სულ: <span className="text-primary">{gel(effBase + (bill?.paid_bar_total ?? 0) + owedTab)}</span>
           {bill && (bill.paid_bar_total + owedTab) > 0 && (
-            <span className="text-xs text-muted-foreground"> (თამაში {gel(base)} + ბარი/დრო {gel(bill.paid_bar_total + owedTab)})</span>
+            <span className="text-xs text-muted-foreground"> (თამაში {gel(effBase)} + ბარი/დრო {gel(bill.paid_bar_total + owedTab)})</span>
           )}
           {tip > 0 && <span className="text-amber-400"> + ჩაიანი {gel(tip)}</span>}
         </p>
@@ -588,13 +643,24 @@ function EndSessionModal({
             }
             if (fiscalEnabled && s) {
               await issueReceipt(
-                [{ name: `${unit.name} — სესია`, qty: 1, unitPrice: base }],
-                base,
+                [{ name: `${unit.name} — სესია`, qty: 1, unitPrice: effBase }],
+                effBase,
                 paymentMethodLabel[s.payment_method],
               )
             }
-            endSession(unit.id, tip)
-            setTip(0); setBill(null); setSettleM(null)
+            await endSession(unit.id, tip)
+            // free-time credit applies AFTER end (price_total is final) → reduces the recorded play revenue
+            if (credit && creditInput.trim()) {
+              const { data, error } = await (supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>)(
+                'apply_credit_to_session', { p_session_id: s.id, p_code: creditInput.trim() },
+              )
+              if (error) pushToast('danger', 'კრედიტი ვერ გამოყენდა — სცადე ხელახლა')
+              else {
+                const d = data as { discount: number; minutes: number }
+                pushToast('success', `🎁 ${d.minutes} წთ უფასო გამოყენდა (−${gel(d.discount)})`)
+              }
+            }
+            setTip(0); setBill(null); setSettleM(null); setCredit(null); setCreditInput('')
             onClose()
           }}
           className="nm-btn flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-extrabold text-[var(--status-expired)] disabled:opacity-50"
@@ -603,6 +669,12 @@ function EndSessionModal({
           {bill && owedTab > 0 ? 'გადახდა და დასრულება' : 'დადასტურება'}
         </button>
       </div>
+
+      <BarcodeScanner
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onScan={(raw: string) => { setScanOpen(false); const v = raw.replace(/^MTLC:/i, ''); setCreditInput(v); lookupCredit(raw) }}
+      />
     </Modal>
   )
 }
