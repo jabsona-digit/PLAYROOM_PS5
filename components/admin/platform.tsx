@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Coins,
   Eye,
+  LayoutDashboard,
   Pause,
   Play,
   ShieldCheck,
@@ -81,6 +82,7 @@ export function PlatformConsole({ onViewAs }: { onViewAs: () => void }) {
   const [payMonths, setPayMonths] = useState<Record<string, number>>({})
   const [tgLinked, setTgLinked] = useState<boolean | null>(null)
   const [tgCode, setTgCode] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'tournaments'>('overview')
 
   const load = async () => {
     const { data } = await supabase
@@ -142,54 +144,90 @@ export function PlatformConsole({ onViewAs }: { onViewAs: () => void }) {
 
   return (
     <div className="space-y-6">
-      {/* KPIs */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Kpi icon={Coins} label="MRR (აქტიური)" value={gel(mrr)} accent="var(--status-free)" />
-        <Kpi
-          icon={AlertTriangle}
-          label="ვადაგადაცილებული"
-          value={`${overdueRows.length} • ${gel(overdueAmount)}`}
-          accent={overdueRows.length ? 'var(--status-expired)' : undefined}
-        />
-        <Kpi icon={ShieldCheck} label="აქტიური / საცდელი" value={`${activeCount} / ${trialCount}`} />
-        <Kpi icon={Wallet} label="შემოსული გადახდები" value={gel(collected)} accent="var(--status-free)" />
+      {/* God Mode Tabs */}
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-background/50 p-1.5 ring-1 ring-[var(--border)]">
+        {[
+          { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
+          { id: 'tenants', label: 'Tenants', icon: Building2 },
+          { id: 'tournaments', label: 'Tournaments', icon: Trophy },
+        ].map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setActiveTab(t.id as any)}
+            className={cn(
+              'flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all duration-300',
+              activeTab === t.id
+                ? 'nm-inset text-primary scale-105'
+                : 'text-muted-foreground hover:bg-[var(--border)]/50 hover:text-foreground'
+            )}
+          >
+            <t.icon className="size-4" />
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {/* Platform Telegram alerts */}
-      <div className="nm-raised flex flex-col gap-3 rounded-3xl p-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h3 className="flex items-center gap-2 text-base font-extrabold">
-            <Send className="size-5 text-primary" /> Telegram alert-ები (პლატფორმა)
-          </h3>
-          <p className="mt-1 text-xs text-muted-foreground text-pretty">
-            🆕 ახალი tenant · 👑 დღის digest (MRR / overdue / საცდელი) — შენს Telegram-ში.
-            {tgLinked === true ? ' ✅ დაკავშირებულია' : tgLinked === false ? ' ⚪ არ არის დაკავშირებული' : ''}
-          </p>
-          {tgCode && (
-            <p className="mt-2 text-sm">
-              გაუგზავნე ბოტს: <code className="nm-inset rounded-lg px-2 py-1 font-mono font-bold tracking-wider">/link {tgCode}</code>
-            </p>
-          )}
+      {activeTab === 'overview' && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          {/* KPIs */}
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <Kpi icon={Coins} label="MRR (აქტიური)" value={gel(mrr)} accent="var(--status-free)" />
+            <Kpi
+              icon={AlertTriangle}
+              label="ვადაგადაცილებული"
+              value={`${overdueRows.length} • ${gel(overdueAmount)}`}
+              accent={overdueRows.length ? 'var(--status-expired)' : undefined}
+            />
+            <Kpi icon={ShieldCheck} label="აქტიური / საცდელი" value={`${activeCount} / ${trialCount}`} />
+            <Kpi icon={Wallet} label="შემოსული გადახდები" value={gel(collected)} accent="var(--status-free)" />
+          </div>
+
+          {/* Platform Telegram alerts */}
+          <div className="nm-raised flex flex-col gap-3 rounded-3xl p-5 sm:flex-row sm:items-center sm:justify-between transition-all duration-300 hover:scale-[1.01]">
+            <div className="min-w-0">
+              <h3 className="flex items-center gap-2 text-base font-extrabold">
+                <Send className="size-5 text-primary" /> Telegram alert-ები (პლატფორმა)
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground text-pretty">
+                🆕 ახალი tenant · 👑 დღის digest (MRR / overdue / საცდელი) — შენს Telegram-ში.
+                {tgLinked === true ? ' ✅ დაკავშირებულია' : tgLinked === false ? ' ⚪ არ არის დაკავშირებული' : ''}
+              </p>
+              {tgCode && (
+                <p className="mt-2 text-sm">
+                  გაუგზავნე ბოტს: <code className="nm-inset rounded-lg px-2 py-1 font-mono font-bold tracking-wider">/link {tgCode}</code>
+                </p>
+              )}
+            </div>
+            <button onClick={genTelegramCode} className="nm-btn shrink-0 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary">
+              კოდის გენერაცია
+            </button>
+          </div>
+
+          {/* Platform-wide API keys (God Mode) */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <ApiKeysPanel platform />
+          </div>
         </div>
-        <button onClick={genTelegramCode} className="nm-btn shrink-0 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary">
-          კოდის გენერაცია
-        </button>
-      </div>
+      )}
 
-      {/* Platform tournaments */}
-      <PlatformTournaments />
+      {activeTab === 'tournaments' && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <PlatformTournaments />
+          <TenantPromotionRequests />
+        </div>
+      )}
 
-      {/* Tenant global-promotion requests */}
-      <TenantPromotionRequests />
+      {activeTab === 'tenants' && (
+        <div className="nm-raised rounded-3xl p-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="flex items-center gap-2 text-base font-extrabold">
+              <Users2 className="size-5 text-primary" />
+              ორგანიზაციები (Tenants)
+            </h3>
+            <p className="text-sm font-bold text-muted-foreground">{rows.length} ორგანიზაცია</p>
+          </div>
 
-      {/* Tenants */}
-      <div className="nm-raised rounded-3xl p-6">
-        <h3 className="flex items-center gap-2 text-base font-extrabold">
-          <Users2 className="size-5 text-primary" />
-          ორგანიზაციები (Tenants)
-        </h3>
-
-        <div className="mt-5 space-y-3">
+          <div className="mt-5 space-y-4">
           {rows.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
               ორგანიზაციები ვერ მოიძებნა
@@ -352,13 +390,9 @@ export function PlatformConsole({ onViewAs }: { onViewAs: () => void }) {
               )
             })
           )}
+          </div>
         </div>
-      </div>
-
-      {/* Platform-wide API keys (God Mode) */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ApiKeysPanel platform />
-      </div>
+      )}
     </div>
   )
 }
@@ -501,80 +535,99 @@ function PlatformTournaments() {
       </p>
 
       {open && (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <input
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="ტურნირის სახელი"
-            className="nm-inset rounded-xl px-4 py-2.5 text-sm outline-none sm:col-span-2"
-          />
-          <input
-            value={form.game}
-            onChange={(e) => setForm({ ...form, game: e.target.value })}
-            placeholder="თამაში (მაგ. EA FC 25)"
-            className="nm-inset rounded-xl px-4 py-2.5 text-sm outline-none sm:col-span-2"
-          />
-          <label className="block">
-            <span className="text-xs text-muted-foreground">საწევრო (₾)</span>
-            <input
-              type="number"
-              value={form.entry_fee}
-              onChange={(e) => setForm({ ...form, entry_fee: e.target.value })}
-              className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs text-muted-foreground">პრიზი (₾)</span>
-            <input
-              type="number"
-              value={form.prize_pool}
-              onChange={(e) => setForm({ ...form, prize_pool: e.target.value })}
-              className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs text-muted-foreground">ჯგუფში მოთამაშე</span>
-            <input
-              type="number"
-              value={form.group_size}
-              onChange={(e) => setForm({ ...form, group_size: e.target.value })}
-              className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs text-muted-foreground">გადადის ნოკაუტში</span>
-            <input
-              type="number"
-              value={form.advance_per_group}
-              onChange={(e) => setForm({ ...form, advance_per_group: e.target.value })}
-              className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs text-muted-foreground">მაქს. მონაწილე</span>
-            <input
-              type="number"
-              value={form.max}
-              onChange={(e) => setForm({ ...form, max: e.target.value })}
-              className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs text-muted-foreground">დაწყება</span>
-            <input
-              type="datetime-local"
-              value={form.starts_at}
-              onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
-              className="nm-inset mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
-            />
-          </label>
-          <button
-            disabled={busy}
-            onClick={create}
-            className="nm-btn rounded-2xl px-4 py-2.5 text-sm font-bold text-primary disabled:opacity-50 sm:col-span-2"
-          >
-            შექმნა + owner-ების მოწვევა
-          </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="nm-raised relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="mb-5 flex items-center justify-between border-b border-[var(--border)] pb-3">
+              <h3 className="text-lg font-extrabold text-primary flex items-center gap-2">
+                <Trophy className="size-5" /> ახალი ტურნირი
+              </h3>
+              <button onClick={() => setOpen(false)} className="nm-btn flex size-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground">
+                ✕
+              </button>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block sm:col-span-2">
+                <span className="text-xs font-bold text-muted-foreground mb-1 block">ტურნირის სახელი</span>
+                <input
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="მაგ. გაზაფხულის თასი"
+                  className="nm-inset w-full rounded-xl px-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+                />
+              </label>
+              <label className="block sm:col-span-2">
+                <span className="text-xs font-bold text-muted-foreground mb-1 block">თამაში (არჩევითი)</span>
+                <input
+                  value={form.game}
+                  onChange={(e) => setForm({ ...form, game: e.target.value })}
+                  placeholder="მაგ. EA FC 25"
+                  className="nm-inset w-full rounded-xl px-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-bold text-muted-foreground mb-1 block">საწევრო (₾)</span>
+                <input
+                  type="number"
+                  value={form.entry_fee}
+                  onChange={(e) => setForm({ ...form, entry_fee: e.target.value })}
+                  className="nm-inset w-full rounded-xl px-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-bold text-muted-foreground mb-1 block">საპრიზო ფონდი (₾)</span>
+                <input
+                  type="number"
+                  value={form.prize_pool}
+                  onChange={(e) => setForm({ ...form, prize_pool: e.target.value })}
+                  className="nm-inset w-full rounded-xl px-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-bold text-muted-foreground mb-1 block">ჯგუფში მოთამაშე</span>
+                <input
+                  type="number"
+                  value={form.group_size}
+                  onChange={(e) => setForm({ ...form, group_size: e.target.value })}
+                  className="nm-inset w-full rounded-xl px-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-bold text-muted-foreground mb-1 block">გადადის ჯგუფიდან</span>
+                <input
+                  type="number"
+                  value={form.advance_per_group}
+                  onChange={(e) => setForm({ ...form, advance_per_group: e.target.value })}
+                  className="nm-inset w-full rounded-xl px-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-bold text-muted-foreground mb-1 block">მაქს. მონაწილე</span>
+                <input
+                  type="number"
+                  value={form.max}
+                  onChange={(e) => setForm({ ...form, max: e.target.value })}
+                  className="nm-inset w-full rounded-xl px-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-bold text-muted-foreground mb-1 block">დაწყების დრო</span>
+                <input
+                  type="datetime-local"
+                  value={form.starts_at}
+                  onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
+                  className="nm-inset w-full rounded-xl px-4 py-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+                />
+              </label>
+              <button
+                disabled={busy}
+                onClick={create}
+                className="nm-btn mt-4 rounded-2xl px-4 py-3.5 text-sm font-extrabold text-primary disabled:opacity-50 sm:col-span-2 transition-all hover:scale-[1.02]"
+              >
+                შექმნა & მოწვევების გაგზავნა
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
