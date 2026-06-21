@@ -59,6 +59,7 @@ interface Registration {
   id: string
   display_name: string
   phone: string | null
+  email: string | null
   status: 'registered' | 'checked_in' | 'cancelled'
   paid_amount: number | null
   paid_method: string | null
@@ -497,7 +498,10 @@ function RegistrationsPanel({
           <div key={r.id} className="nm-raised-sm flex items-center justify-between gap-2 rounded-xl px-4 py-2.5">
             <span className="min-w-0 text-sm">
               <span className="font-semibold">{r.display_name}</span>
-              {r.phone && <span className="ml-2 text-xs text-muted-foreground">{r.phone}</span>}
+              <span className="block text-xs text-muted-foreground">
+                {r.phone}
+                {r.email && <span className="ml-2">· {r.email}</span>}
+              </span>
             </span>
             {r.status === 'checked_in' ? (
               <span className="flex shrink-0 items-center gap-1 text-xs font-bold text-[var(--status-free)]">
