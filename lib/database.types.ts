@@ -2974,6 +2974,7 @@ export type Database = {
           created_at: string
           customer_id: string
           display_name: string
+          email: string | null
           id: string
           paid_amount: number | null
           paid_at: string | null
@@ -2989,6 +2990,7 @@ export type Database = {
           created_at?: string
           customer_id: string
           display_name: string
+          email?: string | null
           id?: string
           paid_amount?: number | null
           paid_at?: string | null
@@ -3004,6 +3006,7 @@ export type Database = {
           created_at?: string
           customer_id?: string
           display_name?: string
+          email?: string | null
           id?: string
           paid_amount?: number | null
           paid_at?: string | null
@@ -4242,7 +4245,12 @@ export type Database = {
         Returns: undefined
       }
       register_for_tournament: {
-        Args: { p_name: string; p_phone: string; p_tournament: string }
+        Args: {
+          p_email: string
+          p_name: string
+          p_phone: string
+          p_tournament: string
+        }
         Returns: string
       }
       reject_tournament_promotion: {
