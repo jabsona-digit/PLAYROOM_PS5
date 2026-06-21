@@ -4304,6 +4304,7 @@ export type Database = {
           p_lat?: number
           p_limit?: number
           p_lng?: number
+          p_query?: string
           p_require_bar?: boolean
           p_require_billiard?: boolean
           p_require_vip?: boolean
