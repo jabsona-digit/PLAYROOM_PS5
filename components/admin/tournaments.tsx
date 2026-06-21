@@ -983,8 +983,11 @@ export function Tournaments() {
 
   const load = useCallback(async () => {
     if (!currentOrgId) return
+    // disambiguate the embed: tournaments↔tournament_participants has TWO FKs
+    // (participants.tournament_id AND tournaments.winner_participant_id) → without the
+    // !tournament_id hint PostgREST returns 300 Multiple Choices → the whole list is empty.
     const { data } = await (supabase as any).from('tournaments')
-      .select('*, participants:tournament_participants(count)')
+      .select('*, participants:tournament_participants!tournament_id(count)')
       .eq('org_id', currentOrgId)
       .order('created_at', { ascending: false })
     setList((data ?? []) as Tournament[])
