@@ -17,6 +17,8 @@ import {
   ScanLine,
   Dices,
   Check,
+  Award,
+  Gift,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useOrg } from '@/lib/org'
@@ -53,7 +55,16 @@ interface Tournament {
   min_participants?: number | null
   prize_second?: number
   prize_third_minutes?: number
+  prizes_awarded_at?: string | null
   participants?: { count: number }[]
+}
+interface Payout {
+  place: number
+  participant_id: string | null
+  amount: number
+  minutes: number
+  prize_type: 'money' | 'free_minutes'
+  manual: boolean
 }
 interface Registration {
   id: string
@@ -81,7 +92,7 @@ interface Match {
   score2: number | null
   status: 'pending' | 'live' | 'done'
   group_id?: string | null
-  stage?: 'group' | 'knockout'
+  stage?: 'group' | 'knockout' | 'bronze'
 }
 
 interface StandRow {
@@ -582,9 +593,11 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
   const [tournament, setTournament] = useState<Tournament>(t)
   const [participants, setParticipants] = useState<Participant[]>([])
   const [matches, setMatches] = useState<Match[]>([])
+  const [payouts, setPayouts] = useState<Payout[]>([])
   const [pName, setPName] = useState('')
   const [pPhone, setPPhone] = useState('')
   const [tv, setTv] = useState(false)
+  const [awarding, setAwarding] = useState(false)
 
   const names = new Map(participants.map((p) => [p.id, p.name]))
   const total = tournament.bracket_size ? Math.log2(tournament.bracket_size) : 0
@@ -593,7 +606,7 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
     : null
 
   const load = useCallback(async () => {
-    const [{ data: tt }, { data: ps }, { data: ms }] = await Promise.all([
+    const [{ data: tt }, { data: ps }, { data: ms }, { data: po }] = await Promise.all([
       (supabase as any).from('tournaments').select('*').eq('id', t.id).single(),
       (supabase as any).from('tournament_participants')
         .select('id, name, phone')
@@ -604,10 +617,15 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
         .eq('tournament_id', t.id)
         .order('round')
         .order('position'),
+      (supabase as any).from('tournament_payouts')
+        .select('place, participant_id, amount, minutes, prize_type, manual')
+        .eq('tournament_id', t.id)
+        .order('place'),
     ])
     if (tt) setTournament(tt as Tournament)
     setParticipants((ps ?? []) as Participant[])
     setMatches((ms ?? []) as Match[])
+    setPayouts((po ?? []) as Payout[])
   }, [t.id])
 
   useEffect(() => {
@@ -689,6 +707,33 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
     onChanged()
   }
 
+  const award = async () => {
+    setAwarding(true)
+    const { data, error } = await (supabase as any).rpc('award_tournament_prizes', { p_tournament: t.id })
+    setAwarding(false)
+    if (error) {
+      const m = /bronze_pending/.test(error.message)
+        ? 'ჯერ ბრინჯაოს მატჩი (მე-3 ადგილი) ჩაატარე — შემდეგ გასცემ ჯილდოებს'
+        : /already_awarded/.test(error.message)
+          ? 'ჯილდოები უკვე გაცემულია'
+          : /no_champion/.test(error.message)
+            ? 'ჯერ ჩემპიონი არ დადგინდა'
+            : error.message
+      return pushToast('danger', m)
+    }
+    const n = ((data as { awards?: unknown[] })?.awards ?? []).length
+    pushToast('success', `🏁 ჯილდოები გაიცა — ${n} ადგილი დაჯილდოვდა`)
+    load()
+    onChanged()
+  }
+
+  const bronze = matches.find((m) => m.stage === 'bronze')
+  const hasPrizes =
+    Number(tournament.prize_pool) > 0 ||
+    Number(tournament.prize_second) > 0 ||
+    Number(tournament.prize_third_minutes) > 0
+  const awarded = !!tournament.prizes_awarded_at
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -738,6 +783,67 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
           <Crown className="size-7 text-primary" />
           <span className="text-xl font-extrabold text-primary text-glow">ჩემპიონი: {champion}</span>
         </div>
+      )}
+
+      {/* prize payout — appears once a champion is set */}
+      {champion && hasPrizes && (
+        <section className="nm-raised rounded-3xl p-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Award className="size-5 text-primary" />
+            <h3 className="font-bold">ჯილდოები</h3>
+          </div>
+
+          {awarded ? (
+            <>
+              <p className="mb-3 text-sm font-bold text-[var(--status-free)]">✅ ჯილდოები გაცემულია</p>
+              <div className="space-y-2">
+                {payouts.map((p) => {
+                  const medal = p.place === 1 ? '🥇' : p.place === 2 ? '🥈' : '🥉'
+                  const nm = p.participant_id ? names.get(p.participant_id) ?? '—' : '—'
+                  return (
+                    <div key={p.place} className="nm-inset flex items-center justify-between gap-2 rounded-xl px-4 py-2.5">
+                      <span className="min-w-0 text-sm">
+                        <span className="mr-1.5">{medal}</span>
+                        <span className="font-semibold">{nm}</span>
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2 text-sm">
+                        <span className="font-bold text-primary">
+                          {p.prize_type === 'money' ? gel(p.amount) : `${p.minutes} წთ უფასო`}
+                        </span>
+                        {p.manual && (
+                          <span className="nm-raised-sm rounded-full px-2 py-0.5 text-[10px] font-bold text-muted-foreground" title="walk-in — ხელით გადაეცი">
+                            ხელით
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              <p className="mt-3 text-[11px] text-muted-foreground text-pretty">
+                ფულადი პრიზი აღრიცხულია ხარჯად (P&L). უფასო წუთები კლიენტს დაერიცხა — გამოჩნდება მის account-ში. „ხელით" ნიშნავს walk-in-ს ანგარიშის გარეშე — პრიზი პირადად გადაეცი.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mb-3 text-sm text-muted-foreground text-pretty">
+                ჩემპიონი დადგინდა. დააჭირე და სისტემა ავტომატურად დააჯილდოვებს 🥇 1-ლ, 🥈 მე-2 და 🥉 მე-3 ადგილს (ფული → ხარჯად; უფასო წუთები → კლიენტის კრედიტად).
+              </p>
+              {bronze && bronze.status !== 'done' && (
+                <p className="mb-3 text-xs font-bold text-[var(--status-warning10)]">
+                  ⚠️ ჯერ ჩაატარე 🥉 ბრინჯაოს მატჩი (ქვემოთ) — მე-3 ადგილის დასადგენად.
+                </p>
+              )}
+              <button
+                onClick={award}
+                disabled={awarding}
+                className="nm-daylight flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold text-primary disabled:opacity-50"
+              >
+                <Gift className="size-4" /> {awarding ? '...' : '🏁 ჯილდოების გაცემა'}
+              </button>
+            </>
+          )}
+        </section>
       )}
 
       {tournament.promotion_status && (
@@ -835,7 +941,15 @@ function Detail({ t, onBack, onChanged }: { t: Tournament; onBack: () => void; o
         />
       ) : (
         <section className="nm-raised rounded-3xl p-6">
-          <Bracket matches={matches.filter((m) => m.stage !== 'group')} names={names} total={total} onReport={report} />
+          <Bracket matches={matches.filter((m) => m.stage === 'knockout')} names={names} total={total} onReport={report} />
+          {bronze && (
+            <div className="mt-6 border-t border-border pt-5">
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                🥉 ბრინჯაოს მატჩი — მე-3 ადგილი
+              </p>
+              <MatchCard match={bronze} names={names} onReport={report} />
+            </div>
+          )}
         </section>
       )}
 
