@@ -75,10 +75,11 @@ const toolDeclarations = [
 const GUEST_TOOLS = [
   {
     name: 'search_venues',
-    description: 'Finds venues based on location and preferred amenities. Only searches public published playrooms. Returns id, slug, name, price, rating, and if VIP/Bar/Billiard is present.',
+    description: 'Searches the published gaming venues (clubs/playrooms) in the database. ALWAYS call this before answering anything about which clubs/venues exist, their names, prices or locations — never answer from memory. Pass `query` to look up a venue by NAME or CITY (e.g. "nikaragua", "Tbilisi"); pass amenity flags to filter; with no args it lists the top venues. Returns id, slug, name, city, price, rating, amenities (VIP/Bar/Billiard).',
     parameters: {
       type: 'object',
       properties: {
+        query: { type: 'string', description: 'Venue/club name or city to search for (partial OK). Use this whenever the user names a specific club or city.' },
         lat: { type: 'number' },
         lng: { type: 'number' },
         require_vip: { type: 'boolean' },
@@ -501,11 +502,12 @@ Rules:
         try {
           if (fnCall.name === 'search_venues') {
             const { data, error } = await db.rpc('search_venues_for_ai', {
+              p_query: fnCall.args.query ?? null,
               p_lat: fnCall.args.lat, p_lng: fnCall.args.lng,
               p_require_vip: fnCall.args.require_vip,
               p_require_billiard: fnCall.args.require_billiard,
               p_require_bar: fnCall.args.require_bar,
-              p_limit: fnCall.args.limit ?? 3
+              p_limit: fnCall.args.limit ?? 8
             })
             if (error) throw error
             result = data
