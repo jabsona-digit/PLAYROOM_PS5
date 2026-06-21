@@ -99,6 +99,16 @@ const GUEST_TOOLS = [
       },
       required: ['venue_id']
     }
+  },
+  {
+    name: 'search_tournaments',
+    description: 'Lists upcoming and active gaming TOURNAMENTS (competitions/championships/events). ALWAYS call this before answering anything about tournaments — never from memory. Returns each tournament name, game, venue + city, date (starts_at), entry_fee, prizes (prize_pool=1st GEL, prize_second=2nd GEL, prize_third_minutes=3rd free play-time), how many registered, and status (registration=open to sign up). Pass `query` to filter by tournament/game/venue/city name.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Tournament, game, venue or city name to filter by (partial OK).' }
+      }
+    }
   }
 ]
 
@@ -513,6 +523,10 @@ Rules:
             result = data
           } else if (fnCall.name === 'check_live_availability') {
             const { data, error } = await db.rpc('check_venue_availability_for_ai', { p_venue_id: fnCall.args.venue_id })
+            if (error) throw error
+            result = data
+          } else if (fnCall.name === 'search_tournaments') {
+            const { data, error } = await db.rpc('search_tournaments_for_ai', { p_query: fnCall.args.query ?? null })
             if (error) throw error
             result = data
           } else {
