@@ -816,6 +816,101 @@ export type Database = {
           },
         ]
       }
+      customer_credits: {
+        Row: {
+          created_at: string
+          customer_id: string
+          expires_at: string | null
+          id: string
+          minutes: number
+          minutes_used: number
+          note: string | null
+          org_id: string
+          source: string
+          status: string
+          tournament_id: string | null
+          venue_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          expires_at?: string | null
+          id?: string
+          minutes: number
+          minutes_used?: number
+          note?: string | null
+          org_id: string
+          source?: string
+          status?: string
+          tournament_id?: string | null
+          venue_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          expires_at?: string | null
+          id?: string
+          minutes?: number
+          minutes_used?: number
+          note?: string | null
+          org_id?: string
+          source?: string
+          status?: string
+          tournament_id?: string | null
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_credits_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_credits_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_credits_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "public_tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_credits_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_credits_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "customer_credits_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_credits_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           created_at: string
@@ -2968,6 +3063,83 @@ export type Database = {
           },
         ]
       }
+      tournament_payouts: {
+        Row: {
+          amount: number
+          created_at: string
+          credit_id: string | null
+          customer_id: string | null
+          expense_id: string | null
+          id: string
+          manual: boolean
+          minutes: number
+          org_id: string
+          participant_id: string | null
+          place: number
+          prize_type: string
+          tournament_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          credit_id?: string | null
+          customer_id?: string | null
+          expense_id?: string | null
+          id?: string
+          manual?: boolean
+          minutes?: number
+          org_id: string
+          participant_id?: string | null
+          place: number
+          prize_type: string
+          tournament_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          credit_id?: string | null
+          customer_id?: string | null
+          expense_id?: string | null
+          id?: string
+          manual?: boolean
+          minutes?: number
+          org_id?: string
+          participant_id?: string | null
+          place?: number
+          prize_type?: string
+          tournament_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_payouts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_payouts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_payouts_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "public_tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_payouts_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournament_registrations: {
         Row: {
           checked_in_at: string | null
@@ -3057,6 +3229,7 @@ export type Database = {
           prize_pool: number
           prize_second: number
           prize_third_minutes: number
+          prizes_awarded_at: string | null
           promoted_at: string | null
           promotion_status: string | null
           proposed_commission_pct: number | null
@@ -3088,6 +3261,7 @@ export type Database = {
           prize_pool?: number
           prize_second?: number
           prize_third_minutes?: number
+          prizes_awarded_at?: string | null
           promoted_at?: string | null
           promotion_status?: string | null
           proposed_commission_pct?: number | null
@@ -3119,6 +3293,7 @@ export type Database = {
           prize_pool?: number
           prize_second?: number
           prize_third_minutes?: number
+          prizes_awarded_at?: string | null
           promoted_at?: string | null
           promotion_status?: string | null
           proposed_commission_pct?: number | null
@@ -3741,6 +3916,20 @@ export type Database = {
         Args: { p_match: string; p_winner: string }
         Returns: undefined
       }
+      _grant_tournament_prize: {
+        Args: {
+          p_amount: number
+          p_minutes: number
+          p_org: string
+          p_participant: string
+          p_place: number
+          p_tname: string
+          p_tournament: string
+          p_type: string
+          p_venue: string
+        }
+        Returns: Json
+      }
       accept_host_offer: {
         Args: { p_agreed: number; p_offer: string }
         Returns: undefined
@@ -3778,6 +3967,7 @@ export type Database = {
         Args: { p_commission: number; p_tournament: string }
         Returns: undefined
       }
+      award_tournament_prizes: { Args: { p_tournament: string }; Returns: Json }
       cancel_reservation: {
         Args: { p_reason?: string; p_reservation_id: string }
         Returns: undefined
@@ -4019,6 +4209,7 @@ export type Database = {
         Returns: Json
       }
       get_hardware_settings: { Args: { p_venue_id: string }; Returns: Json }
+      get_my_credits: { Args: never; Returns: Json }
       get_my_tournament_registrations: { Args: never; Returns: Json }
       get_open_drawer: { Args: { p_venue_id: string }; Returns: Json }
       get_operator_integrity: {
