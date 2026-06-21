@@ -400,10 +400,20 @@ const T_STATUS: Record<string, { label: string; color: string }> = {
   cancelled: { label: 'გაუქმდა', color: 'var(--status-expired)' },
 }
 
-const rpcAny = supabase.rpc as unknown as (
+// IMPORTANT: invoke `.rpc` as a MEMBER call so `this` stays bound to the supabase client.
+// Assigning `supabase.rpc` to a const detaches `this` → supabase-js reads `this.rest` on
+// undefined → throws "Cannot read properties of undefined (reading 'rest')" (same class of
+// bug as the booking-widget fix in marketplace). `.call(supabase, …)` preserves the binding.
+const rpcAny = (
   f: string,
   a: Record<string, unknown>,
-) => Promise<{ data: unknown; error: { message: string } | null }>
+): Promise<{ data: unknown; error: { message: string } | null }> =>
+  (
+    supabase.rpc as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: unknown; error: { message: string } | null }>
+  ).call(supabase, f, a)
 
 const EMPTY_T_FORM = {
   name: '',
