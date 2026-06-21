@@ -4299,6 +4299,7 @@ export type Database = {
         }
         Returns: Json
       }
+      search_tournaments_for_ai: { Args: { p_query?: string }; Returns: Json }
       search_venues_for_ai: {
         Args: {
           p_lat?: number
