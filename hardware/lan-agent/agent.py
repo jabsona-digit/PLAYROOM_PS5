@@ -255,14 +255,29 @@ def reconcile(gw: Gateway, cfg: Config, applied: dict) -> None:
         if applied.get(cid) == desired:
             continue  # already in the right state
 
-        driver = _MOCK if cfg.dry_run else DRIVERS.get(d.get("driver", "none"))
-        if driver is None:
-            LOG.warning("console %s: unknown driver %r -> simulating (mock)", cid, d.get("driver"))
+        if cfg.dry_run:
             driver = _MOCK
+        else:
+            driver = DRIVERS.get(d.get("driver", "none"))
+            if driver is None:
+                # NEVER fake success in production: an unimplemented driver is a config
+                # error. Report failure (visible in the panel) and retry next poll —
+                # do not mark it applied, so it stays honestly "broken" until fixed.
+                LOG.error(
+                    "console %s: driver %r not implemented by this agent "
+                    "(supported: shelly_lan, tasmota, http_generic) — reporting failure",
+                    cid, d.get("driver"),
+                )
+                try:
+                    gw.report_state(int(cid), applied.get(cid, "off"), success=False,
+                                    error=f"driver_not_implemented:{d.get('driver')}")
+                except requests.RequestException:
+                    pass
+                continue
         LOG.info(
             "console %s (%s): %s -> %s via %s%s",
             cid, d.get("name", "?"), applied.get(cid, "unknown"), desired,
-            d.get("driver", "none"), "  [dry-run]" if cfg.dry_run else "",
+            "mock" if cfg.dry_run else d.get("driver", "none"), "  [dry-run]" if cfg.dry_run else "",
         )
         ok = driver.set_power(d.get("config") or {}, desired == "on")
         if ok:

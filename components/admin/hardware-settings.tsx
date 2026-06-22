@@ -22,12 +22,16 @@ const DRIVERS: Record<string, { v: string; t: string }[]> = {
     { v: 'shelly_cloud', t: 'Shelly Cloud (სმარტ-როზეტი)' },
     { v: 'tuya', t: 'Tuya / Smart Life' },
   ],
+  // LIVE = the LAN agent (hardware/lan-agent) drives these today. "(მალე)" =
+  // valid config but the agent's driver isn't implemented yet, so it will report
+  // a failure rather than silently no-op. Keep this list in sync with agent.py.
   agent: [
-    { v: 'relay_modbus', t: 'Ethernet Relay — Modbus TCP (USR/Waveshare)' },
-    { v: 'relay_tcp', t: 'Ethernet Relay — TCP Socket (USR-R8)' },
-    { v: 'shelly_lan', t: 'Shelly — LAN (HTTP)' },
-    { v: 'hdmi_rs232', t: 'HDMI Matrix — RS232/HTTP' },
-    { v: 'unifi', t: 'UniFi — MAC block' },
+    { v: 'shelly_lan', t: 'Shelly — LAN (HTTP) ✅' },
+    { v: 'tasmota', t: 'Tasmota — LAN (HTTP) ✅' },
+    { v: 'relay_modbus', t: 'Ethernet Relay — Modbus TCP (მალე)' },
+    { v: 'relay_tcp', t: 'Ethernet Relay — TCP Socket (მალე)' },
+    { v: 'hdmi_rs232', t: 'HDMI Matrix — RS232/HTTP (მალე)' },
+    { v: 'unifi', t: 'UniFi — MAC block (მალე)' },
   ],
 }
 
