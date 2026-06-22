@@ -1409,6 +1409,8 @@ export type Database = {
           payment_ref: string | null
           payment_status: string
           pricing_plan_id: number | null
+          reminder_channel: string | null
+          reminder_sent_at: string | null
           reservation_id: string | null
           start_time: string
           status: string
@@ -1437,6 +1439,8 @@ export type Database = {
           payment_ref?: string | null
           payment_status?: string
           pricing_plan_id?: number | null
+          reminder_channel?: string | null
+          reminder_sent_at?: string | null
           reservation_id?: string | null
           start_time: string
           status?: string
@@ -1465,6 +1469,8 @@ export type Database = {
           payment_ref?: string | null
           payment_status?: string
           pricing_plan_id?: number | null
+          reminder_channel?: string | null
+          reminder_sent_at?: string | null
           reservation_id?: string | null
           start_time?: string
           status?: string
@@ -1661,6 +1667,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notification_log: {
+        Row: {
+          booking_id: string | null
+          channel: string
+          created_at: string
+          id: string
+          kind: string
+          recipient: string | null
+          request_id: number | null
+          status: string | null
+        }
+        Insert: {
+          booking_id?: string | null
+          channel: string
+          created_at?: string
+          id?: string
+          kind: string
+          recipient?: string | null
+          request_id?: number | null
+          status?: string | null
+        }
+        Update: {
+          booking_id?: string | null
+          channel?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          recipient?: string | null
+          request_id?: number | null
+          status?: string | null
+        }
+        Relationships: []
       }
       org_invites: {
         Row: {
@@ -4365,6 +4404,10 @@ export type Database = {
       }
       next_fiscal_receipt_no: { Args: never; Returns: string }
       next_invoice_number: { Args: { p_org_id: string }; Returns: string }
+      notify_email: {
+        Args: { p_html: string; p_subject: string; p_to: string }
+        Returns: number
+      }
       notify_platform_telegram: {
         Args: { p_kind: string; p_text: string }
         Returns: undefined
@@ -4525,6 +4568,7 @@ export type Database = {
       }
       seed_group_stage: { Args: { p_tournament: string }; Returns: undefined }
       seed_tournament: { Args: { p_tournament: string }; Returns: undefined }
+      send_booking_reminders: { Args: never; Returns: undefined }
       set_console_power: {
         Args: {
           p_action: string
