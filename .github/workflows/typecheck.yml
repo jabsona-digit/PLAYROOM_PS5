@@ -1,0 +1,29 @@
+name: Type Check (tsc)
+
+# Safety net: `next build` has typescript.ignoreBuildErrors:true, so it does NOT
+# type-check. This workflow runs `tsc --noEmit` on every push/PR to main so a
+# broken type shows a red X (and can be made a required check in branch
+# protection to block merges). P0-4 of the senior review.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  tsc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check (tsc --noEmit)
+        run: npx tsc --noEmit
