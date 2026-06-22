@@ -96,6 +96,10 @@ See `memory/media-r2-uploads.md`.
 - Package manager: **npm**. Admin verify: `npm run build` **and `npx tsc --noEmit`**
   (admin `next.config.mjs` has `typescript.ignoreBuildErrors:true`, so `next build` skips type-check —
   always run `tsc` separately). Marketplace verify: `next build --webpack` (it does type-check).
+- **CI type-gate:** `.github/workflows/typecheck.yml` runs `tsc --noEmit` on every push/PR to `main`, so a
+  broken type shows a red X. ⚠️ It is **not yet a *required* check** — to actually BLOCK a merge it must be
+  marked required in GitHub branch protection (owner, one-click; matters mainly once PRs replace direct
+  pushes to `main`). Long-term goal: get admin type-clean, then drop `ignoreBuildErrors`.
 
 ---
 
@@ -733,7 +737,8 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
   no pnpm-lock (else CF picks pnpm + fails frozen-lockfile); `public/_redirects` sends `/app` & `/p` → app.martelounge.ge.
 - **Admin:** push `main` → GitHub `jabsona-digit/PLAYROOM_PS5` → Cloudflare Pages `playroom-ps5` auto-builds
   (`npm run build` → `out`) → **`app.martelounge.ge`** (noindexed; was the apex before the 2026-06-15 cutover).
-  Nameservers on Cloudflare (deborah/lennon.ns.cloudflare.com).
+  Nameservers on Cloudflare (deborah/lennon.ns.cloudflare.com). CI `typecheck.yml` runs `tsc --noEmit` on
+  push/PR (red X on type errors; **not yet a required gate** — mark it required in branch protection to block merges).
 - **Marketplace:** from `martelounge-web/`: `npx wrangler login` once, then **`npm run deploy`**
   (`opennextjs-cloudflare build && deploy`) → Worker at `play.martelounge.ge` (custom_domain auto-provisions DNS+SSL).
   Windows gotcha: if `.open-next` is EPERM-locked, stop workerd/wrangler + `Remove-Item -Recurse -Force .open-next` first.
@@ -758,7 +763,8 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
 
 - Never change DB/RLS/migrations from the frontend — request it from Claude.
 - Keep `payment_method`/`bank` (and marketplace status/payment) enums identical across modules.
-- Admin: keep `npm run build` **and `npx tsc --noEmit`** green (build ignores TS errors). Web: `next build --webpack` green.
+- Admin: keep `npm run build` **and `npx tsc --noEmit`** green (build ignores TS errors; CI `typecheck.yml`
+  runs `tsc --noEmit` on push/PR to main — make it a *required* branch-protection check to block merges). Web: `next build --webpack` green.
 - Regenerate `lib/database.types.ts` after every migration (both repos).
 - Never expose `service_role` client-side. Images → R2 (`uploadImage`), never Supabase Storage.
 - Keep open-session rounding in sync between `end_session` and `openBillableMinutes()`.

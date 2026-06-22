@@ -34,6 +34,7 @@
 - **Edge fn env secrets**: `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`.
 - **Sentry DSNs** are public (in the client bundle) — not secret.
 - If a secret leaks: rotate at the provider → update the Vault secret / GitHub secret / env var. (Resend key + the Supabase access token were pasted in chat 2026-06-22 → rotate when convenient.)
+- ⚠️ **`SUPABASE_ACCESS_TOKEN` is NEVER-expiring** (convenient, but never auto-invalidates). **If it leaks → revoke it immediately** at supabase.com → Account → Access Tokens, **reissue**, and update the GitHub secret + the Windows User env var. Prefer storing it outside a plain user env var if practical (it grants full Management-API control of the project).
 
 ## 4. Deploy cheat-sheet
 - Migrations: Management API query endpoint with `SUPABASE_ACCESS_TOKEN`; record in `schema_migrations`; regenerate `lib/database.types.ts` (CI does it on push). Georgian in SQL → manual-escape apply (see [[migration-apply-method]]).
