@@ -1061,7 +1061,7 @@ export function Dashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4">
         <div style={{ animation: 'slide-in-up 0.4s ease-out 0s both' }}>
           <StatCard icon={Activity} label="აქტიური სესია" value={String(stats.active)} countup={stats.active} hint={`სულ ${consoles.length} ${vl.singular}`} />
         </div>

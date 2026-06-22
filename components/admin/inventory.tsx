@@ -732,7 +732,7 @@ function ProductModal({ open, onClose, categories, product, initialBarcode, onSa
           </select>
         </label>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label className="block">
             <span className="text-xs font-semibold text-muted-foreground">შესყიდვის ფასი (₾)</span>
             <input
@@ -751,7 +751,7 @@ function ProductModal({ open, onClose, categories, product, initialBarcode, onSa
           </label>
         </div>
         
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label className="block">
             <span className="text-xs font-semibold text-muted-foreground">საწყისი ნაშთი (ცალი)</span>
             <input

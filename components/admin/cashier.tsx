@@ -635,7 +635,7 @@ export function Cashier() {
       )}
 
       {/* period breakdown */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4">
         {periods.map((p) => (
           <div
             key={p.label}
@@ -660,7 +660,7 @@ export function Cashier() {
       </div>
 
       {/* secondary stats */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="nm-raised flex items-center gap-3 rounded-3xl p-5">
           <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
             <Receipt className="size-5 text-primary" />

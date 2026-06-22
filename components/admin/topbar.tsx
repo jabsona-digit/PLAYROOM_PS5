@@ -56,8 +56,8 @@ export function Topbar({
   }
 
   return (
-    <header className="flex items-center justify-between gap-4">
-      <div className="flex min-w-0 items-center gap-3">
+    <header className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         {/* hamburger — mobile only, opens the sidebar drawer */}
         <button
           type="button"
