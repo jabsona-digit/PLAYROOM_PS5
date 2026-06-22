@@ -1,0 +1,28 @@
+name: DB Invariants
+
+# Turns the money-correctness proofs into a real regression GATE (senior-review P0-2/P0-3).
+# Each test is a rollback-only DO block (it RAISEs to undo everything), so this is safe to
+# run against the live project — no data is mutated. A broken money invariant fails the build.
+# (Until a paid staging branch exists — P1-1 — this runs against prod in rollback mode.)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run money invariants (rollback-only)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: python supabase/tests/run_invariants.py supabase/tests/money_invariants.sql
