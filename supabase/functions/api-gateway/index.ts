@@ -10,6 +10,7 @@
 //   GET  /v1/ping            -> any valid key: { org_id, scopes }
 //   GET  /v1/devices         -> device:hardware | read:sessions: relay desired-state poll
 //   POST /v1/devices/state   -> device:hardware: agent acks actual relay state
+//   POST /v1/devices/heartbeat -> device:hardware: agent liveness (online badge)
 //   GET  /v1/sessions?limit= -> read:sessions
 //   GET  /v1/analytics       -> read:analytics: today's headline numbers
 
@@ -81,6 +82,14 @@ Deno.serve(async (req) => {
         p_success: body.success ?? true,
         p_error: body.error ?? null,
       })
+      if (error) return json({ error: error.message }, 500)
+      return json(data)
+    }
+
+    // POST /v1/devices/heartbeat — agent liveness ping (bumps last_seen_at, no power_event)
+    if (req.method === 'POST' && path === '/v1/devices/heartbeat') {
+      need('device:hardware')
+      const { data, error } = await svc.rpc('api_device_heartbeat', { p_org_id: orgId })
       if (error) return json({ error: error.message }, 500)
       return json(data)
     }
