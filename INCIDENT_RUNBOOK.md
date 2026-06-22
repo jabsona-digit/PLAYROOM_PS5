@@ -42,6 +42,18 @@
 - Marketplace: `cd martelounge-web && npm run deploy`.
 - Edge functions: `npx --yes supabase@latest functions deploy <name> --project-ref rvlkimzqzwizcivkxtnd --use-api` (telegram-bot/api-gateway need `--no-verify-jwt`).
 
+## 5b. Pre-first-venue checklist (do BEFORE onboarding the FIRST real venue)
+Today migrations apply straight to prod (no staging). At 0 real venues that's safe — prod holds only
+test data. The moment a REAL venue's data exists, a bad migration (wrong backfill, accidental DROP, broken
+UPDATE) destroys someone's money history. ⚠️ The `db-invariants` CI suite does NOT cover this — it runs
+*after* a migration already hit prod and only checks that the RULES still hold; it cannot catch a destructive
+migration's data effect. **Staging covers a different risk.** So, as ONE checklist right before the first venue:
+1. **Stand up a Supabase branch** (staging): create branch → apply the migration there → run
+   `python supabase/tests/run_invariants.py supabase/tests/*.sql` against it → only then apply to prod.
+2. **Confirm PITR / backups are ON** for the project (Supabase dashboard → Database → Backups).
+3. **Do one restore drill** — restore a backup/PITR to a throwaway branch and confirm it works, once, while it's cheap to learn.
+From then on: branch → test → merge for every migration that touches real-venue data.
+
 ## 5. Uptime monitoring (DONE — two layers)
 1. **Sentry uptime monitors** (external, catches everything incl. Supabase-down) → emails the Sentry account email. `app.martelounge.ge` (5-min) + `play.martelounge.ge` (1-min), GET, env production, fail after 3 consecutive checks.
 2. **Self-check → Telegram** (migration 0124, `platform_uptime_check()`, pg_cron `platform-uptime-check` every 3 min). GETs both sites via pg_net; on an up→down or down→up *transition* (not every tick → no spam) sends 🔴/🟢 to the founder's Telegram via `notify_platform_telegram('uptime', …)` (chat in `platform_telegram_config`, toggle `alerts->>'uptime'`). State + de-dup in `public.platform_uptime_state`. Detection ~3–6 min. Diagnose: `select * from public.platform_uptime_state;` (is_down/last_status) + `net._http_response` for the last_request_id. Self-check can't catch its OWN platform (Supabase) being down — that's what Sentry layer 1 is for.

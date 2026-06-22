@@ -11,8 +11,8 @@
 -- SUITE_PASS. Safe against prod — rollback only.
 --
 -- COVERED: tournament prize payout idempotency + money-out reconciliation; credit
--- no-double-redeem + minutes cap + one-way status; create_bar_sale method/bank
--- validation (0099); non-negative stock guard on oversell.
+-- no-double-redeem + minutes cap + one-way status; min_participants draw gate
+-- (anti-loss); create_bar_sale method/bank validation (0099); non-negative stock guard.
 -- DEFERRED to the full audit (add blocks here): end_session 5-min rounding + open
 -- 1440 cap; cash_expected reconciliation over a shift; settle_session_tab → exactly one
 -- paid bar_sale matching the itemized bill; 5% marketplace commission base.
@@ -144,3 +144,25 @@ begin
   if v_fail <> '' then raise exception 'SUITE_FAIL stock_nonneg_guard%', v_fail;
   else raise exception 'SUITE_PASS stock_nonneg_guard oversell_blocked stock_intact'; end if;
 end $d$;
+
+-- @@TEST tournament_min_participants_gate
+-- draw_tournament_groups (0114) must REFUSE to draw when checked-in participants are
+-- below min_participants (anti-loss: don't run a paid tournament that can't fill).
+do $e$
+declare
+  v_owner uuid := 'bc2afd0f-dc14-4e0f-b073-cfe1d98344cc';
+  v_org   uuid := 'f5bdf043-9e6a-4efd-928c-109aead87dfb';
+  v_venue uuid := 'c95108ec-8b43-4c18-b228-483584788ec8';
+  v_t uuid; v_err text; v_fail text := '';
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', v_owner, 'role', 'authenticated')::text, true);
+  insert into public.tournaments (org_id, venue_id, name, game, format, status, entry_fee, prize_pool, min_participants)
+    values (v_org, v_venue, 'MIN_GATE_E', 'FC', 'groups_knockout', 'registration', 0, 0, 4) returning id into v_t;
+  insert into public.tournament_participants (tournament_id, org_id, name)
+    values (v_t, v_org, 'P1'), (v_t, v_org, 'P2');  -- only 2, below min 4
+  begin perform public.draw_tournament_groups(v_t); v_err := 'NO_RAISE';
+  exception when others then v_err := SQLERRM; end;
+  if v_err not like 'below_minimum:%' then v_fail := v_fail || ' draw_got=' || v_err; end if;
+  if v_fail <> '' then raise exception 'SUITE_FAIL tournament_min_participants_gate%', v_fail;
+  else raise exception 'SUITE_PASS tournament_min_participants_gate draw_blocked(%)', v_err; end if;
+end $e$;
