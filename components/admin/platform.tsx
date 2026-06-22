@@ -207,6 +207,9 @@ export function PlatformConsole({ onViewAs }: { onViewAs: () => void }) {
           {/* AI usage / cost metering (0125) */}
           <AiUsageCard />
 
+          {/* Edge-function error capture (0128) */}
+          <EdgeErrorsCard />
+
           {/* Platform-wide API keys (God Mode) */}
           <div className="grid gap-6 lg:grid-cols-2">
             <ApiKeysPanel platform />
@@ -1002,6 +1005,76 @@ function AiUsageCard() {
         <p className="mt-4 text-sm text-muted-foreground">
           ჯერ AI გამოყენება არ დაფიქსირებულა ამ პერიოდში.
         </p>
+      )}
+    </div>
+  )
+}
+
+interface EdgeError {
+  id: number
+  fn: string
+  message: string
+  context: Record<string, unknown>
+  at: string
+}
+
+// God-Mode edge-function error feed (0128): unhandled errors from the 4 edge functions.
+// Empty = green "all clean" (the common, reassuring case — errors should be rare).
+function EdgeErrorsCard() {
+  const [errors, setErrors] = useState<EdgeError[] | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    rpcAny('get_edge_errors', { p_limit: 50 }).then(({ data }) => {
+      setErrors((data as EdgeError[]) ?? [])
+      setLoading(false)
+    })
+  }, [])
+
+  const count = errors?.length ?? 0
+
+  return (
+    <div className="nm-raised rounded-3xl p-5 transition-all duration-300 hover:scale-[1.01]">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 text-base font-extrabold">
+          <AlertTriangle className="size-5" style={{ color: count ? 'var(--status-warning5)' : 'var(--status-free)' }} />
+          Edge შეცდომები
+        </h3>
+        <span
+          className="rounded-full px-3 py-1 text-xs font-bold"
+          style={{
+            color: count ? 'var(--status-warning5)' : 'var(--status-free)',
+            background: `color-mix(in oklch, ${count ? 'var(--status-warning5)' : 'var(--status-free)'} 14%, transparent)`,
+          }}
+        >
+          {count ? `${count}` : '0'}
+        </span>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground text-pretty">
+        ai-assistant · telegram-bot · hardware-control · api-gateway — დაუმუშავებელი შეცდომები (ბოლო 50).
+      </p>
+
+      {loading ? (
+        <p className="mt-4 text-sm text-muted-foreground">იტვირთება…</p>
+      ) : count === 0 ? (
+        <p className="mt-4 flex items-center gap-2 text-sm font-bold text-[var(--status-free)]">
+          ✅ ყველა edge-ფუნქცია სუფთაა — შეცდომა არ დაფიქსირებულა.
+        </p>
+      ) : (
+        <div className="mt-4 space-y-2 border-t border-[var(--border)] pt-3">
+          {errors!.slice(0, 8).map((e) => (
+            <div key={e.id} className="flex items-start justify-between gap-3 text-sm">
+              <div className="min-w-0">
+                <span className="nm-raised-sm mr-2 rounded-md px-2 py-0.5 text-[10px] font-bold text-primary">{e.fn}</span>
+                <span className="break-words text-muted-foreground">{e.message}</span>
+              </div>
+              <span className="shrink-0 text-[10px] text-muted-foreground">
+                {new Date(e.at).toLocaleString('ka-GE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          ))}
+          {count > 8 && <p className="text-[11px] text-muted-foreground">…და კიდევ {count - 8}</p>}
+        </div>
       )}
     </div>
   )
