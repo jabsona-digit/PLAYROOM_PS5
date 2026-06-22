@@ -762,8 +762,11 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
   rotation; also a GitHub secret for CI). `GEMINI_API_KEY`, `resend_api_key` (Vault), `telegram_bot_token` (Vault),
   future `TBC_PAY_API_KEY`/`BOG_PAY_API_KEY` live ONLY as Supabase secrets/Vault. Publishable (anon) key only on the client.
 - **Observability (2026-06-22):** **Sentry** client error-tracking on both apps (`martelounge-admin` + `martelounge-web`,
-  errors-only, public DSNs) + **uptime monitors** on both domains; plus a **self-hosted uptime self-check → founder
-  Telegram** (pg_cron 0124). Rollback/diagnose playbook = `INCIDENT_RUNBOOK.md` (repo root).
+  errors-only, public DSNs) + **uptime monitors** on both domains; a **self-hosted uptime self-check → founder
+  Telegram** (pg_cron 0124, **de-bounced** — alerts only after 2 consecutive fails, 0127); and **edge-function error
+  capture** (0128) — all 4 edge fns (`ai-assistant`/`telegram-bot`/`hardware-control`/`api-gateway`) log unhandled
+  errors fire-and-forget to `edge_error_log` (`log_edge_error`; founder reads via `get_edge_errors`). Rollback/diagnose
+  playbook = `INCIDENT_RUNBOOK.md` (repo root); pre-first-venue staging checklist = its §5b.
 
 ---
 
