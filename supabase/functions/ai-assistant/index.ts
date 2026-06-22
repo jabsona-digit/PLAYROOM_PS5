@@ -362,8 +362,27 @@ async function enrichAction(
   }
 }
 
+// Fire-and-forget Gemini usage metering (0125): logs token usage via the caller's
+// JWT (log_ai_usage resolves user+org server-side). Never throws / never blocks.
+function meterUsage(db: any, model: string, data: any) {
+  if (!db) return
+  const u = data?.usageMetadata ?? {}
+  try {
+    const p = Promise.resolve(
+      db.rpc('log_ai_usage', {
+        p_model: model,
+        p_prompt: u.promptTokenCount ?? 0,
+        p_candidates: u.candidatesTokenCount ?? 0,
+        p_total: u.totalTokenCount ?? 0,
+      }),
+    ).then(() => {}, () => {})
+    // @ts-ignore — Supabase Edge keeps the isolate alive to finish the insert
+    if (typeof EdgeRuntime !== 'undefined' && (EdgeRuntime as any)?.waitUntil) (EdgeRuntime as any).waitUntil(p)
+  } catch { /* metering must never affect the AI response */ }
+}
+
 // Gemini call with model fallback + retry on transient 429/503.
-async function callGemini(systemPrompt: string, contents: unknown[], tools: any[] = toolDeclarations) {
+async function callGemini(systemPrompt: string, contents: unknown[], tools: any[] = toolDeclarations, db?: any) {
   const base = {
     system_instruction: { parts: [{ text: systemPrompt }] },
     contents,
@@ -385,7 +404,11 @@ async function callGemini(systemPrompt: string, contents: unknown[], tools: any[
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload },
       )
-      if (res.ok) return await res.json()
+      if (res.ok) {
+        const data = await res.json()
+        meterUsage(db, model, data)
+        return data
+      }
       const errTxt = await res.text()
       console.error('GEMINI_HTTP', model, res.status, errTxt)
       if (res.status === 429 || res.status === 503) {
@@ -501,7 +524,7 @@ Rules:
     const contents: unknown[] = (body.messages ?? []).map((m: any) => ({ role: m.role, parts: [{ text: m.text }] }))
     try {
       for (let hop = 0; hop < 4; hop++) {
-        const g = await callGemini(guestSys, contents, GUEST_TOOLS)
+        const g = await callGemini(guestSys, contents, GUEST_TOOLS, db)
         const parts = g?.candidates?.[0]?.content?.parts ?? []
         const fnCall = parts.find((p: any) => p.functionCall)?.functionCall as { name: string; args: Record<string, any> } | undefined
         if (!fnCall) {
@@ -578,7 +601,7 @@ Use neat markdown formatting.`
 
       const rawLogs = logs && logs.length > 0 ? logs : [{ info: 'ამ პერიოდში საეჭვო ლოგები (void/cancel) არ მოიძებნა.' }]
 
-      const g = await callGemini(auditSys, [{ role: 'user', parts: [{ text: JSON.stringify(rawLogs) }] }])
+      const g = await callGemini(auditSys, [{ role: 'user', parts: [{ text: JSON.stringify(rawLogs) }] }], undefined, db)
       const text = g?.candidates?.[0]?.content?.parts?.find((p: { text?: string }) => p.text)?.text ?? 'აუდიტი ვერ მოხერხდა.'
       return json({ type: 'text', text })
     } catch (e) {
@@ -609,7 +632,7 @@ Write a SHORT, SPECIFIC, ACTIONABLE report in GEORGIAN markdown:
 3. **ფასი / ტევადობა** — ერთი ჭკვიანი დასკვნა.
 Use the real numbers from the data (RevPACH, occupancy %, gold hour). Keep it under ~180 words. No preamble, do not echo the JSON.`
 
-      const g = await callGemini(advSys, [{ role: 'user', parts: [{ text: JSON.stringify(analytics) }] }])
+      const g = await callGemini(advSys, [{ role: 'user', parts: [{ text: JSON.stringify(analytics) }] }], undefined, db)
       const text = g?.candidates?.[0]?.content?.parts?.find((p: { text?: string }) => p.text)?.text ?? 'რეკომენდაცია ვერ მომზადდა.'
       return json({ type: 'text', text })
     } catch (e) {
@@ -658,7 +681,7 @@ Write a crisp, highly analytical, and strategic end-of-day brief in GEORGIAN mar
 
 Be ruthless with insights, precise with REAL numbers, and never just echo the JSON. Keep it professional, sharp, under ~200 words. No preamble.`
 
-      const g = await callGemini(briefSys, [{ role: 'user', parts: [{ text: JSON.stringify(briefPayload) }] }])
+      const g = await callGemini(briefSys, [{ role: 'user', parts: [{ text: JSON.stringify(briefPayload) }] }], undefined, db)
       const text = g?.candidates?.[0]?.content?.parts?.find((p: { text?: string }) => p.text)?.text ?? 'ანგარიში ვერ მომზადდა.'
       return json({ type: 'text', text })
     } catch (e) {
@@ -688,7 +711,7 @@ Be ruthless with insights, precise with REAL numbers, and never just echo the JS
         }),
         { role: 'user', parts: [{ text: `მოქმედება "${name}" შესრულდა. შედეგი: ${JSON.stringify(result)}. დაუდასტურე მომხმარებელს მოკლედ ქართულად.` }] },
       ]
-      const g = await callGemini(sys, contents)
+      const g = await callGemini(sys, contents, undefined, db)
       const text = g?.candidates?.[0]?.content?.parts?.find((p: { text?: string }) => p.text)?.text ?? 'მზადაა ✅'
       return json({ type: 'text', text })
     } catch (e) {
@@ -714,7 +737,7 @@ Be ruthless with insights, precise with REAL numbers, and never just echo the JS
   try {
     let nudged = false
     for (let hop = 0; hop < 6; hop++) {
-      const g = await callGemini(sys, contents)
+      const g = await callGemini(sys, contents, undefined, db)
       const parts = g?.candidates?.[0]?.content?.parts ?? []
       const fnCall = parts.find((p: { functionCall?: unknown }) => p.functionCall)?.functionCall as
         | { name: string; args: Record<string, unknown> }

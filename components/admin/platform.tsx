@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import {
   AlertTriangle,
+  Bot,
   Building2,
   CalendarClock,
   CheckCircle2,
@@ -202,6 +203,9 @@ export function PlatformConsole({ onViewAs }: { onViewAs: () => void }) {
               კოდის გენერაცია
             </button>
           </div>
+
+          {/* AI usage / cost metering (0125) */}
+          <AiUsageCard />
 
           {/* Platform-wide API keys (God Mode) */}
           <div className="grid gap-6 lg:grid-cols-2">
@@ -895,6 +899,110 @@ function TenantPromotionRequests() {
           )
         })}
       </div>
+    </div>
+  )
+}
+
+interface AiUsageStats {
+  days: number
+  total_calls: number
+  total_tokens: number
+  total_cost_usd: number
+  by_org: {
+    org_id: string | null
+    org_name: string
+    calls: number
+    total_tokens: number
+    est_cost_usd: number
+  }[]
+}
+
+function fmtTokens(n: number): string {
+  if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'M'
+  if (n >= 1e3) return (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'K'
+  return String(n)
+}
+
+// God-Mode AI cost metering (0125): per-org Gemini token usage + estimated USD.
+function AiUsageCard() {
+  const [stats, setStats] = useState<AiUsageStats | null>(null)
+  const [days, setDays] = useState(30)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    rpcAny('get_ai_usage_stats', { p_days: days }).then(({ data }) => {
+      setStats((data as AiUsageStats) ?? null)
+      setLoading(false)
+    })
+  }, [days])
+
+  return (
+    <div className="nm-raised rounded-3xl p-5 transition-all duration-300 hover:scale-[1.01]">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 text-base font-extrabold">
+          <Bot className="size-5 text-primary" /> AI ხარჯი (Gemini)
+        </h3>
+        <div className="nm-inset flex rounded-xl p-0.5 text-xs font-bold">
+          {[7, 30].map((d) => (
+            <button
+              key={d}
+              onClick={() => setDays(d)}
+              className={cn(
+                'rounded-lg px-3 py-1.5 transition-all',
+                days === d ? 'nm-raised-sm text-primary' : 'text-muted-foreground',
+              )}
+            >
+              {d} დღე
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground text-pretty">
+        ასისტენტის token-ხარჯვა ყველა ორგანიზაციაზე. ღირებულება სავარაუდოა (Gemini-ს საჯარო ფასებით).
+      </p>
+
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        <div className="nm-inset rounded-2xl px-3 py-3">
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">გამოძახება</p>
+          <p className="font-mono text-lg font-extrabold">{stats?.total_calls ?? 0}</p>
+        </div>
+        <div className="nm-inset rounded-2xl px-3 py-3">
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Tokens</p>
+          <p className="font-mono text-lg font-extrabold">{fmtTokens(stats?.total_tokens ?? 0)}</p>
+        </div>
+        <div className="nm-inset rounded-2xl px-3 py-3">
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">~ ღირებულება</p>
+          <p className="font-mono text-lg font-extrabold text-primary">
+            ${(stats?.total_cost_usd ?? 0).toFixed(2)}
+          </p>
+        </div>
+      </div>
+
+      {(stats?.by_org?.length ?? 0) > 0 && (
+        <div className="mt-4 space-y-2 border-t border-[var(--border)] pt-3">
+          {stats!.by_org.slice(0, 6).map((o) => (
+            <div
+              key={o.org_id ?? o.org_name}
+              className="flex items-center justify-between gap-2 text-sm"
+            >
+              <span className="truncate font-semibold">{o.org_name}</span>
+              <span className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
+                <span>{o.calls} გამოძ.</span>
+                <span>{fmtTokens(o.total_tokens)} tok</span>
+                <span className="font-mono font-bold text-primary">
+                  ${Number(o.est_cost_usd).toFixed(2)}
+                </span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {!loading && (stats?.total_calls ?? 0) === 0 && (
+        <p className="mt-4 text-sm text-muted-foreground">
+          ჯერ AI გამოყენება არ დაფიქსირებულა ამ პერიოდში.
+        </p>
+      )}
     </div>
   )
 }
