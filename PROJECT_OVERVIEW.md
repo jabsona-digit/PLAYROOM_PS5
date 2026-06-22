@@ -12,7 +12,9 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
-> 📌 **For a future reviewer (e.g. Opus 4.8):** THIS file is the **current, live** state (through migration **0126**, 2026-06-22). A separate `SENIOR_REVIEW_HANDOFF.md` in the repo root was an **earlier independent review of the 0122 snapshot** — its entire **P0 + P1 (launch-critical) tier is now DONE** (token rotation, tsc CI gate, money-invariant proofs, RLS cross-tenant audit, AI red-team, observability) plus P2-1 (Gemini cost metering). Read THIS overview for what's real today; treat the handoff as historical context, not an open to-do list.
+> 📌 **For a future reviewer (e.g. Opus 4.8):** THIS file is the **current, live** state (through migration **0126**, 2026-06-22). The repo root holds two prior review handoffs — `SENIOR_REVIEW_HANDOFF.md` (v1, of the 0122 snapshot) and **`SENIOR_REVIEW_HANDOFF_v2.md`** (v2, re-review of 0126). **Their entire engineering tier is now CLOSED:** P0/P1 launch-critical (token rotation, a **required** `tsc` branch-protection check, observability) PLUS v2's "proof→regression-suite" upgrade — the **money + RLS invariants now run as a CI gate on every push** (`.github/workflows/db-invariants.yml`, see §13) and the AI threat model is written down (`SECURITY_AI_THREAT_MODEL.md`). The only deferred hardening item is a **paid staging branch** (v2 P1-1 — deferred to first-venue onboarding). Read THIS overview for current reality; the handoffs are historical, not an open to-do list.
+
+> 🩺 **Current diagnosis & phase (2026-06-22):** the product is **feature-complete, launch-hardened, and self-testing** (money + tenant-isolation invariants gate every commit; Sentry + uptime live; AI is RLS-bound). **0 real venues use it yet** — only the founder tests; demand is waiting on a polished product. **DECISION (owner + senior): FREEZE net-new feature surface.** The bottleneck is no longer code — it is **real venues using it**. Next phase = **harden + onboard the first ~10 Tbilisi venues**, sold on the anti-fraud / **"see every lari, catch theft"** + RS.ge-compliance wedge (Trust Score, hardware-tied sessions, audit log, nightly Telegram brief) — NOT a feature list. New feature work is paused until venue density exists.
 
 > _Last updated **2026-06-22** — through migration **0126**. **Since the 0076 revision (the big additions):**
 > **Tournaments 2.0** — a full platform-promoted tournament product (groups+knockout / 3-1-0, host-bidding + tenant→Global
@@ -39,6 +41,12 @@ This document is the single source of truth for anyone (human or AI) joining the
 > token/USD logging + God-Mode card, 0125); and the **Hardware LAN Agent** — a Python Pi daemon (`hardware/lan-agent/`)
 > that drives venue LAN relays off the existing api-gateway, **built + proven end-to-end against prod** (poll/ack/heartbeat,
 > 0126), pending only a physical relay test. The product is **launch-hardened**._
+>
+> _**Self-testing wave (2026-06-22, post-v2-review):** the money + RLS proofs are now a **CI regression GATE** —
+> `supabase/tests/{money_invariants,rls_isolation}.sql` (rollback-only `SUITE_PASS/FAIL` blocks) run via
+> `run_invariants.py` in `.github/workflows/db-invariants.yml` on every push/PR (8/8 green); the `tsc` check is now a
+> **required** branch-protection gate; AI threat model documented (`SECURITY_AI_THREAT_MODEL.md`). The product now
+> **defends its own money-correctness + tenant-isolation on every commit.**_
 
 > Product was renamed **Playroom OS → Martelounge** (martel-**OU**-nge; domain bought 2026-06-08).
 > "Playroom" survives only as a demo/tenant name.
@@ -96,10 +104,11 @@ See `memory/media-r2-uploads.md`.
 - Package manager: **npm**. Admin verify: `npm run build` **and `npx tsc --noEmit`**
   (admin `next.config.mjs` has `typescript.ignoreBuildErrors:true`, so `next build` skips type-check —
   always run `tsc` separately). Marketplace verify: `next build --webpack` (it does type-check).
-- **CI type-gate:** `.github/workflows/typecheck.yml` runs `tsc --noEmit` on every push/PR to `main`, so a
-  broken type shows a red X. ⚠️ It is **not yet a *required* check** — to actually BLOCK a merge it must be
-  marked required in GitHub branch protection (owner, one-click; matters mainly once PRs replace direct
-  pushes to `main`). Long-term goal: get admin type-clean, then drop `ignoreBuildErrors`.
+- **CI gates (2 workflows):** `.github/workflows/typecheck.yml` runs `tsc --noEmit` on every push/PR to `main`
+  — and is now a **REQUIRED** branch-protection status check (set 2026-06-22), so a broken type blocks a PR merge
+  (solo direct-push to `main` still admin-bypasses; the red X is the signal). `.github/workflows/db-invariants.yml`
+  runs the **money + RLS regression suites** (`supabase/tests/*.sql` via `run_invariants.py`) on every push/PR —
+  rollback-only, safe against prod. Long-term: get admin type-clean, then drop `ignoreBuildErrors`.
 
 ---
 
@@ -205,6 +214,10 @@ supabase/functions/api-gateway/index.ts    public device relay (ESP32/Pi poll/ac
 hardware/lan-agent/     Hardware LAN Agent — Python Pi daemon (agent.py + install.sh + systemd + README). Drives venue
                         LAN relays off the api-gateway; cloud-authoritative, fail-safe. NOT deployed via CF (runs on a Pi).
 supabase/migrations/    0001–0126 (see §7)
+supabase/tests/         money_invariants.sql + rls_isolation.sql (rollback-only SUITE_PASS/FAIL blocks) +
+                        run_invariants.py (CI runner). The db-invariants.yml gate runs these on every push.
+(repo root)             INCIDENT_RUNBOOK.md (ops/rollback) · SECURITY_AI_THREAT_MODEL.md (AI P1-3) ·
+                        SENIOR_REVIEW_HANDOFF{,_v2}.md (historical reviews — engineering tier closed)
 ```
 
 ### Modules & status
@@ -737,8 +750,8 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
   no pnpm-lock (else CF picks pnpm + fails frozen-lockfile); `public/_redirects` sends `/app` & `/p` → app.martelounge.ge.
 - **Admin:** push `main` → GitHub `jabsona-digit/PLAYROOM_PS5` → Cloudflare Pages `playroom-ps5` auto-builds
   (`npm run build` → `out`) → **`app.martelounge.ge`** (noindexed; was the apex before the 2026-06-15 cutover).
-  Nameservers on Cloudflare (deborah/lennon.ns.cloudflare.com). CI `typecheck.yml` runs `tsc --noEmit` on
-  push/PR (red X on type errors; **not yet a required gate** — mark it required in branch protection to block merges).
+  Nameservers on Cloudflare (deborah/lennon.ns.cloudflare.com). CI: `typecheck.yml` (`tsc --noEmit`, a **required**
+  branch-protection check) + `db-invariants.yml` (money + RLS regression suites, rollback-only) run on every push/PR.
 - **Marketplace:** from `martelounge-web/`: `npx wrangler login` once, then **`npm run deploy`**
   (`opennextjs-cloudflare build && deploy`) → Worker at `play.martelounge.ge` (custom_domain auto-provisions DNS+SSL).
   Windows gotcha: if `.open-next` is EPERM-locked, stop workerd/wrangler + `Remove-Item -Recurse -Force .open-next` first.
@@ -772,6 +785,13 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
 ---
 
 ## 15. Roadmap (remaining)
+
+> ⛔ **FEATURE FREEZE in effect (2026-06-22 — see the Current-diagnosis callout up top).** Net-new feature
+> surface is paused: breadth outran validation, so the priority is **harden the existing product + onboard the
+> first ~10 Tbilisi venues**, not more code. The items below are the **backlog for AFTER venue density** (or when
+> an external blocker like merchant keys clears) — don't pick them up as net-new work while the freeze holds.
+> **Hardening is essentially closed:** P0/P1 launch-critical + v2's CI regression suites (money + RLS) are LIVE;
+> the only deferred hardening item is a **paid staging branch** (do it just before the first real venue onboards).
 
 - 💳 **Online payments — Phase 2** — live checkout + bank callbacks as edge functions (reuse the Kale-group
   BOG/TBC logic, per-tenant Vault keys) → set `payment_status='paid'`/`payment_ref`. Phase 1 (credential
