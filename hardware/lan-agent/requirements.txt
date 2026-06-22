@@ -1,0 +1,4 @@
+# Martelounge LAN agent — only hard dependency.
+# Relay-specific libs (pymodbus, RPi.GPIO) are added per-venue when those
+# drivers are actually used; the core agent and all HTTP relays need only this.
+requests>=2.31,<3

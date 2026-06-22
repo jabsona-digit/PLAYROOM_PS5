@@ -1,0 +1,7 @@
+# NEVER commit the real config (contains the API key) or runtime state.
+martelounge-agent.env
+agent-state.json
+*.tmp
+.venv/
+__pycache__/
+*.pyc
