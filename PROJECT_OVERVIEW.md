@@ -12,7 +12,9 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
-> _Last updated **2026-06-22** — through migration **0122**. **Since the 0076 revision (the big additions):**
+> 📌 **For a future reviewer (e.g. Opus 4.8):** THIS file is the **current, live** state (through migration **0126**, 2026-06-22). A separate `SENIOR_REVIEW_HANDOFF.md` in the repo root was an **earlier independent review of the 0122 snapshot** — its entire **P0 + P1 (launch-critical) tier is now DONE** (token rotation, tsc CI gate, money-invariant proofs, RLS cross-tenant audit, AI red-team, observability) plus P2-1 (Gemini cost metering). Read THIS overview for what's real today; treat the handoff as historical context, not an open to-do list.
+
+> _Last updated **2026-06-22** — through migration **0126**. **Since the 0076 revision (the big additions):**
 > **Tournaments 2.0** — a full platform-promoted tournament product (groups+knockout / 3-1-0, host-bidding + tenant→Global
 > promotion with commission, public marketplace listing, paid online registration → **QR pass → scan check-in (pay-at-venue)**
 > → **„ვირტუალური დოლორა" server-fair group draw** → champion; min-participants gate + 1st/2nd/3rd prizes; the **FULL money
@@ -29,6 +31,14 @@ This document is the single source of truth for anyone (human or AI) joining the
 > guards, cash_expected accuracy, tournament-fee→revenue, 0097–0099/0110). Plus the earlier 0037–0076 wave (capacity/typed
 > booking, plan entitlements, In-Seat portal, RevPACH+AI, hardware control, dynamic pricing, Pulse, Entertainment-Venue-OS
 > billiard). Both sites bot-safe SEO + ISR; admin mobile-responsive + PWA._
+>
+> _**Latest wave (0123–0126, 2026-06-22):** **email no-show reminders** (pg_cron → Resend via pg_net, 0123);
+> **launch-hardening** — the SENIOR_REVIEW P0+P1 tier closed (NEVER-token rotation, tsc CI gate, money-invariant +
+> RLS-isolation + AI red-team proofs, **Sentry** client error-tracking on both apps + **uptime monitors**, incident
+> runbook); **self-hosted uptime → founder Telegram** (pg_cron self-check, 0124); **Gemini AI cost metering** (per-org
+> token/USD logging + God-Mode card, 0125); and the **Hardware LAN Agent** — a Python Pi daemon (`hardware/lan-agent/`)
+> that drives venue LAN relays off the existing api-gateway, **built + proven end-to-end against prod** (poll/ack/heartbeat,
+> 0126), pending only a physical relay test. The product is **launch-hardened**._
 
 > Product was renamed **Playroom OS → Martelounge** (martel-**OU**-nge; domain bought 2026-06-08).
 > "Playroom" survives only as a demo/tenant name.
@@ -183,12 +193,14 @@ lib/
   fiscal.ts             useFiscal() + printFiscalReceipt() (RS.GE Phase B)
   upload.ts             optimizeImage() + uploadImage(file, folder) + slugify() — shared R2 upload helper
   ui.ts / hooks.ts / notify.ts / print.ts
-supabase/functions/ai-assistant/index.ts   Gemini function-calling agent (runs as caller's JWT)
+supabase/functions/ai-assistant/index.ts   Gemini function-calling agent (runs as caller's JWT) + usage metering (0125)
 supabase/functions/hardware-control/index.ts  cloud power dispatch (Shelly Cloud; service-role reads the Vault secret)
 supabase/functions/telegram-bot/index.ts   @playmarteloungebot webhook — secret-token gated, /start /link /revenue
                                            /consoles; resolves the org by chat_id (service-role). Deploy --no-verify-jwt
-supabase/functions/api-gateway/index.ts    public device relay (ESP32/Pi poll/ack, read sessions/analytics). --no-verify-jwt
-supabase/migrations/    0001–0116 (see §7)
+supabase/functions/api-gateway/index.ts    public device relay (ESP32/Pi poll/ack/heartbeat, read sessions/analytics). --no-verify-jwt
+hardware/lan-agent/     Hardware LAN Agent — Python Pi daemon (agent.py + install.sh + systemd + README). Drives venue
+                        LAN relays off the api-gateway; cloud-authoritative, fail-safe. NOT deployed via CF (runs on a Pi).
+supabase/migrations/    0001–0126 (see §7)
 ```
 
 ### Modules & status
@@ -446,6 +458,18 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 0121  FAIR GROUP TIEBREAKS: start_knockout_from_groups → jsonb + resolves boundary ties via head-to-head → PENALTIES
       (stage='tiebreak' decider, operator reports) → LOTS (stable random md5); report_match handles 'tiebreak' like 'bronze'
 0122  TELEGRAM ALERT PREFS: set_telegram_alerts (owner/admin) + telegram_link_status v2 returns prefs → toggle UI in Settings
+─ email reminders · launch-hardening · uptime · AI metering · LAN agent ──────────────────────────────────
+0123  EMAIL NO-SHOW REMINDERS: notify_email(to,subj,html) (pg_net→Resend, Vault resend_api_key, from noreply@martelounge.ge)
+      + send_booking_reminders() (upcoming pending/confirmed in (now,now+3h], reminder_sent_at guard) + notification_log;
+      pg_cron 'booking-reminders' */30. SMS (Twilio) deferred. martelounge.ge verified in Resend.
+0124  UPTIME SELF-CHECK → founder Telegram: platform_uptime_state + platform_uptime_check() (pg_cron */3 GETs app+play via
+      pg_net; alerts on up↔down TRANSITION only via notify_platform_telegram('uptime') — de-dup, no spam). Complements the
+      external Sentry uptime monitors (which also catch Supabase-down + email).
+0125  AI USAGE / COST METERING: ai_usage_log + log_ai_usage (caller-JWT, resolves user+org, guests skipped) — callGemini
+      meters every call fire-and-forget (EdgeRuntime.waitUntil, never blocks/breaks the AI) + get_ai_usage_stats
+      (platform-admin; per-org tokens/calls + ESTIMATED USD at read-time) → God-Mode AiUsageCard (7/30-day).
+0126  AGENT HEARTBEAT: api_device_heartbeat(org) bumps console_hardware.last_seen_at for 'agent' consoles (no power_event) +
+      api-gateway route POST /v1/devices/heartbeat → the "agent online" signal for the Hardware LAN Agent (see §9).
 ```
 
 > **⚠️ Frontend gotchas hit while building God-Mode/tournaments (2026-06-21):** (1) `const x = supabase.rpc` DETACHES
@@ -552,7 +576,7 @@ suspension-aware), `portal_request_service(venue,console,kind,code)`. Every writ
 + matching `portal_code` (else `no_active_session` / `bad_code`). + `resolve_service_request(id,status,method?,bank?)`
 (operator-only → rings up `create_bar_sale`).
 
-**Hardware control** (vendor-agnostic): `set_console_power(console,action,session?,trigger)` — member-gated, Force=admin; sets `desired_state` and for manual/no-device logs the event immediately. `log_power_event(...)` + `get_ghost_power_events(venue,from,to)` (anti-fraud). `save_hardware_credentials` / `get_hardware_settings` / `delete_hardware_credentials` (admin; Vault-backed) + **`get_hardware_secret`** (granted to **`service_role` only** — the Shelly auth_key, for the edge fn). `enforce_hardware_required` trigger blocks session start when `venues.hardware_required` and the console has no active hardware. Cloud devices dispatch via the `hardware-control` edge fn (Shelly Cloud); LAN relays via a local agent (planned, Phase 2).
+**Hardware control** (vendor-agnostic): `set_console_power(console,action,session?,trigger)` — member-gated, Force=admin; sets `desired_state` and for manual/no-device logs the event immediately. `log_power_event(...)` + `get_ghost_power_events(venue,from,to)` (anti-fraud). `save_hardware_credentials` / `get_hardware_settings` / `delete_hardware_credentials` (admin; Vault-backed) + **`get_hardware_secret`** (granted to **`service_role` only** — the Shelly auth_key, for the edge fn). `enforce_hardware_required` trigger blocks session start when `venues.hardware_required` and the console has no active hardware. Cloud devices dispatch via the `hardware-control` edge fn (Shelly Cloud); LAN relays via the **Hardware LAN Agent** (`hardware/lan-agent/`, BUILT — see §10) which polls `api_device_list` + acks `api_device_report` + `api_device_heartbeat` through the api-gateway.
 
 **Payments / platform / tournaments:** `save_payment_credentials` / `get_payment_settings` /
 `set_payment_provider_active` / `delete_payment_credentials` (per-tenant BYO merchant, Vault-backed,
@@ -609,8 +633,15 @@ is_org_admin-gated); `mark_tenant_paid(org,months,…)` (God-Mode billing); `see
 - **Dispatch:** session start/end fire `set_console_power` (fire-and-forget, never blocks the session); it sets
   `desired_state`. **Cloud** devices (Shelly Cloud) → the `hardware-control` edge fn (caller JWT authorises via
   RLS; **service-role** reads the Vault auth_key via `get_hardware_secret`; POSTs the vendor cloud) → logs
-  `power_events`. **Agent** (LAN relays — USR/Waveshare/Shelly-LAN, the Georgian "სოჩიკი") = planned Phase 2:
-  a local bridge subscribes to `desired_state` and drives the relay locally (cloud can't reach 192.168.x.x).
+  `power_events`. **Agent** (LAN relays — Shelly-LAN/Tasmota, USR/Waveshare, the Georgian "სოჩიკი") = the
+  **Hardware LAN Agent** (`hardware/lan-agent/`, a Python systemd daemon, **BUILT + proven against prod 2026-06-22**):
+  one Pi per venue PULLS `GET /v1/devices` (desired-state) → drives the LAN relay via a cloud-authoritative driver
+  registry → acks `POST /v1/devices/state` + `…/heartbeat` (firewall-friendly; cloud can't reach 192.168.x.x).
+  **Cloud-authoritative** (driver+config come from `console_hardware.config`, zero-config Pi), **fail-safe** (holds last
+  state on network loss — never cuts a paying customer), owns only `control_mode='agent'` consoles. LIVE drivers:
+  `shelly_lan` + `tasmota`; modbus/tcp/hdmi/unifi are registry stubs ("მალე"). ⏭️ only the physical relay test (owner
+  buys a Pi+relay) + the "agent online" badge remain. ⚠️ the "სოჩიკი" relay may be Modbus/TCP → add that driver class
+  when its model is confirmed. See `memory/hardware-control.md`.
 - **Opt-in enforcement:** `venues.hardware_required` (default off). When on, a BEFORE-INSERT trigger on
   `sessions` blocks starting a session on a console with no active hardware (`hardware_required`). Anti-fraud
   read `get_ghost_power_events` flags a console powered on with no session (agent state-poll, Phase 3).
@@ -709,9 +740,12 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
 - **Migrations:** applied to live via Supabase MCP `apply_migration` (or `db push`), then committed under
   `supabase/migrations/`; the `gen-types.yml` GitHub Action regenerates `lib/database.types.ts` on push.
   (Re-sync the marketplace repo's `lib/database.types.ts` copy after migrations.)
-- **Secrets:** `SUPABASE_ACCESS_TOKEN` = a User-level Windows env var (expires **2026-07-06** — renew;
-  also a GitHub secret for CI). `GEMINI_API_KEY`, `TWILIO_*`, future `TBC_PAY_API_KEY`/`BOG_PAY_API_KEY`
-  live ONLY as Supabase secrets. Publishable (anon) key only on the client.
+- **Secrets:** `SUPABASE_ACCESS_TOKEN` = a User-level Windows env var (**NEVER-expiring** as of 2026-06-22
+  rotation; also a GitHub secret for CI). `GEMINI_API_KEY`, `resend_api_key` (Vault), `telegram_bot_token` (Vault),
+  future `TBC_PAY_API_KEY`/`BOG_PAY_API_KEY` live ONLY as Supabase secrets/Vault. Publishable (anon) key only on the client.
+- **Observability (2026-06-22):** **Sentry** client error-tracking on both apps (`martelounge-admin` + `martelounge-web`,
+  errors-only, public DSNs) + **uptime monitors** on both domains; plus a **self-hosted uptime self-check → founder
+  Telegram** (pg_cron 0124). Rollback/diagnose playbook = `INCIDENT_RUNBOOK.md` (repo root).
 
 ---
 
@@ -736,7 +770,8 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
 - 💳 **Online payments — Phase 2** — live checkout + bank callbacks as edge functions (reuse the Kale-group
   BOG/TBC logic, per-tenant Vault keys) → set `payment_status='paid'`/`payment_ref`. Phase 1 (credential
   storage) is DONE (0058); Phase 2 is blocked on the owner obtaining merchant keys.
-- 📲 **SMS/Email (Twilio)** — booking confirm + reminder to cut no-shows. Blocked on a Twilio account.
+- 📲 **No-show reminders** — ✅ **EMAIL DONE & LIVE** (0123: pg_cron → Resend, martelounge.ge verified). **SMS** (Twilio)
+  still pending a Twilio account.
 - 🧠 **Proactive "AI Manager"** — ✅ largely DONE: AI Closing Brief (0070) + Telegram nightly brief + fraud flags
   (0102/0105). Remaining: one-tap actions from the Telegram message.
 - 🏆 **Tournaments — Phase 4** — online PREPAYMENT of the entry fee (BYO TBC/BOG, blocked on keys). The rest of the
@@ -744,8 +779,10 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
   **automatic prize payout** (1st/2nd money + bronze-match-decided 3rd free-time, 0119), **in-venue credit redemption**
   (0120), **fair group tiebreaks** h2h/penalties/lots (0121). Remaining nice-to-haves: online-booking credit discount
   (other surface), God-Mode create min/prize fields, marketplace rules/regulations reference (ცნობარი). Multi-venue = YAGNI.
-- 🔌 **Hardware control — Phase 2/3** — local **agent** (separate repo) for LAN relays (USR/Waveshare/Shelly-LAN,
-  the Georgian "სოჩიკი") + HDMI matrix + state-poll ghost detection. Foundation + Shelly Cloud done (0063–0066).
+- 🔌 **Hardware control — Phase 2/3** — local **Hardware LAN Agent** ✅ **BUILT + prod-proven** (`hardware/lan-agent/`,
+  0124–0126: shelly_lan/tasmota drivers, poll/ack/heartbeat, fail-safe). Remaining: physical relay test (owner buys
+  Pi+relay), "agent online" badge, and a Modbus/TCP driver IF the "სოჩიკი" relay needs it (confirm model first) +
+  HDMI matrix + state-poll ghost detection. Foundation + Shelly Cloud done earlier (0063–0066).
 - 🧾 **RS.GE Fiscal Phase C** — local hardware bridge.
 - 🧑‍💼 **External accountant read-only** — RLS redesign so `accountant` is truly read-only (split SELECT vs write).
 - 🌐 ✅ DONE (2026-06-15): admin → `app.martelounge.ge`, apex `martelounge.ge` = new marketing site (separate repo).
