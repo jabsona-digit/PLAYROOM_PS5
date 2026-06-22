@@ -12,12 +12,16 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
-> _Last updated **2026-06-21** — through migration **0116**. **Since the 0076 revision (the big additions):**
+> _Last updated **2026-06-22** — through migration **0122**. **Since the 0076 revision (the big additions):**
 > **Tournaments 2.0** — a full platform-promoted tournament product (groups+knockout / 3-1-0, host-bidding + tenant→Global
 > promotion with commission, public marketplace listing, paid online registration → **QR pass → scan check-in (pay-at-venue)**
-> → **„ვირტუალური დოლორა" server-fair group draw** → champion; min-participants gate + 1st/2nd/3rd prizes, 0106–0116);
+> → **„ვირტუალური დოლორა" server-fair group draw** → champion; min-participants gate + 1st/2nd/3rd prizes; the **FULL money
+> loop** — automatic **prize payout** at champion-time (1st/2nd money→expenses, World-Cup **bronze match** decides 3rd,
+> free play-time→`customer_credits`) + **in-venue credit REDEMPTION** at the cashier (scan code → discount the play charge)
+> + **fair group tiebreaks** (head-to-head → penalties → lots), 0106–0121);
 > **Telegram bot** `@playmarteloungebot` (owner: link + /revenue /consoles; platform God-Mode digest; push alerts — new
-> booking / low stock / nightly brief / fraud, 0100–0105/0116); **Gamer Passport** (player XP/level + computed badges on
+> booking / low stock / nightly brief / fraud + **owner alert-prefs toggles in Settings**, 0100–0105/0116/0122);
+> **AI Concierge** now searches venues **by name** + knows live **tournaments** (0117/0118); **Gamer Passport** (player XP/level + computed badges on
 > /account, 0112); **3-domain marketing repositioning** (martelounge.ge = B2B "Gaming Venue OS" for owners,
 > play.martelounge.ge = B2C player brand + /tournaments + /live Pulse); **self-serve venues + price bump Pro 50/Ent 70
 > (0077)**, **org cross-venue overview (0078/0079)**, **In-Seat session tab + itemized bill + extend→confirm (0086/0087)**,
@@ -430,6 +434,18 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 0114  min_participants gate (draw blocked below min — anti-loss) + prize_second + prize_third_minutes (free play-time)
 0115  registration HARDENED: register_for_tournament requires valid GE mobile + email (server-side); email on the row
 0116  telegram link-code validity 10→30 min
+─ AI concierge tools · tournament money loop · tiebreaks · telegram prefs ────────────────────────────────
+0117  AI CONCIERGE venue search by NAME: search_venues_for_ai gains p_query (name/city/address ILIKE) + limit 3→8
+0118  search_tournaments_for_ai (public_tournaments) — the guest AI now answers about live/upcoming tournaments
+0119  TOURNAMENT PRIZE PAYOUT: award_tournament_prizes — 1st=prize_pool + 2nd=prize_second (money → expenses, P&L) +
+      World-Cup BRONZE MATCH (report_match auto-creates a 3rd-place playoff) → 3rd=prize_third_minutes → customer_credits;
+      idempotent via tournament_payouts; walk-ins flagged manual; get_my_credits() for /account
+0120  CREDIT REDEMPTION (in-venue cashier): apply_credit_to_session(session,code) discounts price_total by the free
+      minutes (forgone revenue, venue-scoped) + remove_credit_from_session; customer_credits.code + QR MTLC:<id>;
+      compute_session_bill v3 keeps tab_extension + surfaces credit_discount
+0121  FAIR GROUP TIEBREAKS: start_knockout_from_groups → jsonb + resolves boundary ties via head-to-head → PENALTIES
+      (stage='tiebreak' decider, operator reports) → LOTS (stable random md5); report_match handles 'tiebreak' like 'bronze'
+0122  TELEGRAM ALERT PREFS: set_telegram_alerts (owner/admin) + telegram_link_status v2 returns prefs → toggle UI in Settings
 ```
 
 > **⚠️ Frontend gotchas hit while building God-Mode/tournaments (2026-06-21):** (1) `const x = supabase.rpc` DETACHES
@@ -493,7 +509,9 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 | `service_requests` | id, org_id, venue_id, console_id(int), session_id?, **kind** (order/battery/call), items(jsonb snapshot), total, **status** (pending/done/dismissed), resolved_by, sale_id → bar_sales. RLS org-scoped; anon revoked (portal RPCs only); in realtime publication |
 | `org_payment_credentials` | id, org_id, **provider** (tbc/bog), merchant_id, **secret_ref** → `vault.secrets` (encrypted), is_active, status, last_tested_at; unique(org_id,provider). RLS ON, ZERO authenticated grants — RPC-only |
 | `platform_payments` | tenant subscription payments log (platform-only RLS); `organizations.current_period_end` = paid-until |
-| `tournaments` / `tournament_participants` / `tournament_matches` | single-elim bracket (seed_tournament + report_match auto-advance + champion) |
+| `tournaments` / `tournament_participants` / `tournament_matches` | groups+knockout / single-elim; matches `stage` (group/knockout/**bronze**/**tiebreak**); tournaments += prize_second/prize_third_minutes/min_participants/promotion_status/commission_pct/**prizes_awarded_at** |
+| `tournament_payouts` | per-(tournament,place) payout ledger, idempotent: participant_id, customer_id, place, prize_type (money/free_minutes), amount, minutes, expense_id, credit_id, **manual** (walk-in handed over by hand) |
+| `customer_credits` | free play-time won (tournament 3rd prize): org_id, venue_id, customer_id, source, tournament_id, minutes, minutes_used, **code** (+ QR MTLC:<id>), status (active/redeemed/expired). RLS: own (customer_id=auth.uid) OR org member/platform. `sessions` gained credit_id/credit_minutes/credit_discount (applied at checkout) |
 | `console_hardware` | id, org_id, venue_id, console_id, **control_mode** (manual/cloud/agent), driver, **target** (tv/console/hdmi/network — default `tv`, SSD-safe), config(jsonb), secret_ref, desired_state, last_known_state. RLS member-read / admin-write |
 | `power_events` | console on/off audit (uuid session_id; **triggered_by**; success/error). Ghost partial index → anti-fraud read |
 | `hardware_credentials` | per-venue cloud account (**provider** shelly/tuya, server, **secret_ref** → Vault auth_key). RLS admin; key readable only by `service_role` |
@@ -597,7 +615,7 @@ is_org_admin-gated); `mark_tenant_paid(org,months,…)` (God-Mode billing); `see
   `sessions` blocks starting a session on a console with no active hardware (`hardware_required`). Anti-fraud
   read `get_ghost_power_events` flags a console powered on with no session (agent state-poll, Phase 3).
 
-### Telegram bot (`@playmarteloungebot`, migrations 0100–0105 / 0116)
+### Telegram bot (`@playmarteloungebot`, migrations 0100–0105 / 0116 / 0122)
 - **ONE shared bot** for the whole platform — an owner does **NOT** build their own bot. They **LINK** their org:
   Settings → Telegram → „კოდის გენერაცია" (`create_telegram_link_code`, **30-min** code) → send `/link CODE` to the bot
   from their OWN Telegram → binds `organizations.telegram_chat_id` (one chat ↔ one org). Then `/revenue` · `/consoles`.
@@ -606,6 +624,10 @@ is_org_admin-gated); `mark_tenant_paid(org,months,…)` (God-Mode billing); `see
 - **PUSH alerts** via `notify_telegram_org` / `notify_platform_telegram` (Vault bot token + `pg_net`, 15s timeout,
   **toggle-gated** by `telegram_alerts->>kind`): new booking · low stock · nightly brief · fraud flags · platform
   new-tenant · daily digest · **tournament Global-promotion request**. Deploy `--no-verify-jwt`. See `memory/telegram-bot.md`.
+- **Alert preferences (0122):** the owner picks which pushes the club gets via toggle switches in Settings → Telegram
+  (`set_telegram_alerts`, admin-gated; `telegram_link_status` returns current prefs). Was SQL-only before.
+- **🔒 Tenant-isolated (audited 2026-06-22):** a UNIQUE partial index binds one chat ↔ exactly one org; every summary/
+  brief/alert filters by that org — one owner NEVER sees another's data.
 
 ---
 
@@ -717,9 +739,11 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
 - 📲 **SMS/Email (Twilio)** — booking confirm + reminder to cut no-shows. Blocked on a Twilio account.
 - 🧠 **Proactive "AI Manager"** — ✅ largely DONE: AI Closing Brief (0070) + Telegram nightly brief + fraud flags
   (0102/0105). Remaining: one-tap actions from the Telegram message.
-- 🏆 **Tournaments — Phase 4** — online PREPAYMENT of the entry fee (BYO TBC/BOG, blocked on keys) + multi-venue +
-  **automatic prize payout** at champion-time (2nd money + 3rd free-play-time credit — a new `customer_credits` concept).
-  Core (groups+knockout, host-bidding, tenant→Global, QR check-in, virtual draw, min/prizes) is LIVE.
+- 🏆 **Tournaments — Phase 4** — online PREPAYMENT of the entry fee (BYO TBC/BOG, blocked on keys). The rest of the
+  product is **LIVE & complete**: groups+knockout, host-bidding, tenant→Global, QR check-in, virtual draw, min/prizes,
+  **automatic prize payout** (1st/2nd money + bronze-match-decided 3rd free-time, 0119), **in-venue credit redemption**
+  (0120), **fair group tiebreaks** h2h/penalties/lots (0121). Remaining nice-to-haves: online-booking credit discount
+  (other surface), God-Mode create min/prize fields, marketplace rules/regulations reference (ცნობარი). Multi-venue = YAGNI.
 - 🔌 **Hardware control — Phase 2/3** — local **agent** (separate repo) for LAN relays (USR/Waveshare/Shelly-LAN,
   the Georgian "სოჩიკი") + HDMI matrix + state-poll ghost detection. Foundation + Shelly Cloud done (0063–0066).
 - 🧾 **RS.GE Fiscal Phase C** — local hardware bridge.
