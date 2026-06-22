@@ -4077,6 +4077,7 @@ export type Database = {
       }
       ai_rate_limit: { Args: { p_limit?: number }; Returns: undefined }
       api_analytics_summary: { Args: { p_org_id: string }; Returns: Json }
+      api_device_heartbeat: { Args: { p_org_id: string }; Returns: Json }
       api_device_list: { Args: { p_org_id: string }; Returns: Json }
       api_device_report: {
         Args: {
