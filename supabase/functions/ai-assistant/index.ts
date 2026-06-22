@@ -381,6 +381,18 @@ function meterUsage(db: any, model: string, data: any) {
   } catch { /* metering must never affect the AI response */ }
 }
 
+// Fire-and-forget error capture (0128): surfaces unhandled failures to edge_error_log via the
+// CALLER's JWT client (preserves the no-service_role invariant). NEVER throws / never blocks.
+function logEdgeError(client: any, message: string, context: Record<string, unknown> = {}) {
+  try {
+    const p = Promise.resolve(
+      client.rpc('log_edge_error', { p_fn: 'ai-assistant', p_message: String(message ?? '').slice(0, 2000), p_context: context }),
+    ).then(() => {}, () => {})
+    // @ts-ignore Supabase Edge keeps the isolate alive to finish the insert
+    if (typeof EdgeRuntime !== 'undefined' && (EdgeRuntime as any)?.waitUntil) (EdgeRuntime as any).waitUntil(p)
+  } catch { /* logging must never break the function */ }
+}
+
 // Gemini call with model fallback + retry on transient 429/503.
 async function callGemini(systemPrompt: string, contents: unknown[], tools: any[] = toolDeclarations, db?: any) {
   const base = {
@@ -717,6 +729,7 @@ Be ruthless with insights, precise with REAL numbers, and never just echo the JS
     } catch (e) {
       if ((e as Error).message === 'OVERLOADED') return json({ type: 'text', text: 'შესრულდა ✅' })
       console.error('CONFIRM_ERROR', (e as Error).message)
+      logEdgeError(db, (e as Error).message, { path: 'confirm', action: name })
       return json({ type: 'error', text: `ვერ შესრულდა: ${(e as Error).message}` })
     }
   }
@@ -792,6 +805,7 @@ Be ruthless with insights, precise with REAL numbers, and never just echo the JS
   } catch (e) {
     if ((e as Error).message === 'OVERLOADED') return json({ type: 'error', text: overloadMsg })
     console.error('AGENT_LOOP_ERROR', (e as Error).message)
+    logEdgeError(db, (e as Error).message, { path: 'agent_loop' })
     return json({ type: 'error', text: 'შეცდომა: ' + (e as Error).message })
   }
 })

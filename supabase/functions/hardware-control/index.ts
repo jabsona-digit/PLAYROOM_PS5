@@ -20,6 +20,18 @@ const cors = {
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 
+// Fire-and-forget error capture (0128): a relay-control failure is wedge-critical, so surface
+// it to edge_error_log (in addition to power_events). NEVER throws / never blocks.
+function logEdgeError(client: any, fn: string, message: string, context: Record<string, unknown> = {}) {
+  try {
+    const p = Promise.resolve(
+      client.rpc('log_edge_error', { p_fn: fn, p_message: String(message ?? '').slice(0, 2000), p_context: context }),
+    ).then(() => {}, () => {})
+    // @ts-ignore Supabase Edge keeps the isolate alive to finish the insert
+    if (typeof EdgeRuntime !== 'undefined' && (EdgeRuntime as any)?.waitUntil) (EdgeRuntime as any).waitUntil(p)
+  } catch { /* logging must never break the function */ }
+}
+
 interface Body {
   console_id: number
   action: 'on' | 'off' | 'force_on' | 'force_off'
@@ -96,6 +108,7 @@ Deno.serve(async (req) => {
     }
   } catch (e) {
     errorMsg = (e as Error).message
+    logEdgeError(svc, 'hardware-control', errorMsg, { console_id: body.console_id, action: body.action })
   }
 
   // 4. audit (as the caller → records operator_id; member-gated RPC)

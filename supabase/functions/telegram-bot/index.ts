@@ -19,6 +19,18 @@ async function send(token: string, chatId: number, text: string) {
   })
 }
 
+// Fire-and-forget error capture (0128): surfaces unhandled failures to edge_error_log.
+// NEVER throws / never blocks.
+function logEdgeError(client: any, fn: string, message: string, context: Record<string, unknown> = {}) {
+  try {
+    const p = Promise.resolve(
+      client.rpc('log_edge_error', { p_fn: fn, p_message: String(message ?? '').slice(0, 2000), p_context: context }),
+    ).then(() => {}, () => {})
+    // @ts-ignore Supabase Edge keeps the isolate alive to finish the insert
+    if (typeof EdgeRuntime !== 'undefined' && (EdgeRuntime as any)?.waitUntil) (EdgeRuntime as any).waitUntil(p)
+  } catch { /* logging must never break the function */ }
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('ok')
 
@@ -105,7 +117,8 @@ Deno.serve(async (req) => {
     } else {
       await reply('არ მესმის 🤔 — სცადე /revenue · /consoles · /help')
     }
-  } catch (_e) {
+  } catch (e) {
+    logEdgeError(svc, 'telegram-bot', (e as Error).message)
     await reply('დროებითი შეცდომა. სცადე ცოტა ხანში.')
   }
 

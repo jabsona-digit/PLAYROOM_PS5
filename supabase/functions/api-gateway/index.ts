@@ -24,6 +24,18 @@ const cors = {
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 
+// Fire-and-forget error capture (0128): surfaces unhandled failures to edge_error_log so
+// they're not silent. NEVER throws / never blocks the response.
+function logEdgeError(client: any, fn: string, message: string, context: Record<string, unknown> = {}) {
+  try {
+    const p = Promise.resolve(
+      client.rpc('log_edge_error', { p_fn: fn, p_message: String(message ?? '').slice(0, 2000), p_context: context }),
+    ).then(() => {}, () => {})
+    // @ts-ignore Supabase Edge keeps the isolate alive to finish the insert
+    if (typeof EdgeRuntime !== 'undefined' && (EdgeRuntime as any)?.waitUntil) (EdgeRuntime as any).waitUntil(p)
+  } catch { /* logging must never break the function */ }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
@@ -114,6 +126,7 @@ Deno.serve(async (req) => {
     return json({ error: 'not_found', path }, 404)
   } catch (e) {
     if (e instanceof Response) return e
+    logEdgeError(svc, 'api-gateway', (e as Error).message, { path, method: req.method })
     return json({ error: 'server_error', detail: (e as Error).message }, 500)
   }
 })
