@@ -2052,6 +2052,36 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_uptime_state: {
+        Row: {
+          down_since: string | null
+          is_down: boolean
+          last_checked_at: string | null
+          last_request_id: number | null
+          last_status: number | null
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          down_since?: string | null
+          is_down?: boolean
+          last_checked_at?: string | null
+          last_request_id?: number | null
+          last_status?: number | null
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          down_since?: string | null
+          is_down?: boolean
+          last_checked_at?: string | null
+          last_request_id?: number | null
+          last_status?: number | null
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       power_events: {
         Row: {
           action: string
@@ -4426,6 +4456,7 @@ export type Database = {
       plan_rank: { Args: { p: string }; Returns: number }
       platform_daily_digest: { Args: never; Returns: undefined }
       platform_telegram_status: { Args: never; Returns: Json }
+      platform_uptime_check: { Args: never; Returns: undefined }
       portal_get_bill: {
         Args: { p_code: string; p_console_id: number }
         Returns: Json
