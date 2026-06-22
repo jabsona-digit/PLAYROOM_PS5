@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage_log: {
+        Row: {
+          candidates_tokens: number
+          created_at: string
+          id: number
+          model: string
+          org_id: string | null
+          prompt_tokens: number
+          total_tokens: number
+          user_id: string | null
+        }
+        Insert: {
+          candidates_tokens?: number
+          created_at?: string
+          id?: never
+          model: string
+          org_id?: string | null
+          prompt_tokens?: number
+          total_tokens?: number
+          user_id?: string | null
+        }
+        Update: {
+          candidates_tokens?: number
+          created_at?: string
+          id?: never
+          model?: string
+          org_id?: string | null
+          prompt_tokens?: number
+          total_tokens?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_usage_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_keys: {
         Row: {
           created_at: string
@@ -4265,6 +4313,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_ai_usage_stats: { Args: { p_days?: number }; Returns: Json }
       get_console_analytics: {
         Args: {
           p_daily_hours?: number
@@ -4378,6 +4427,15 @@ export type Database = {
       }
       list_platform_tournaments: { Args: never; Returns: Json }
       list_tenant_promotion_requests: { Args: never; Returns: Json }
+      log_ai_usage: {
+        Args: {
+          p_candidates: number
+          p_model: string
+          p_prompt: number
+          p_total: number
+        }
+        Returns: undefined
+      }
       log_audit: {
         Args: {
           p_action: string
