@@ -4542,6 +4542,10 @@ export type Database = {
         Args: { p_active: boolean; p_org_id: string; p_provider: string }
         Returns: Json
       }
+      set_telegram_alerts: {
+        Args: { p_alerts: Json; p_org_id: string }
+        Returns: Json
+      }
       set_tournament_commission: {
         Args: { p_pct: number; p_tournament: string }
         Returns: undefined
