@@ -376,8 +376,62 @@ export function Guide() {
             <b>ჯავშნები:</b> შეგიძლიათ წინასწარ დაჯავშნოთ კონსოლი. martelounge.ge-დან ონლაინ ჯავშნები ტევადობაზეა დაფუძნებული, მოიცავს QR check-in-ს და კონსოლის ტიპის არჩევას.
           </p>
           <p>
-            <b>ტურნირები:</b> Single-elimination PS5 ბადე. მოიცავს seed-ებს, power-of-2 გამოთვლებს, byes მოთამაშეებს და მოსახერხებელ TV-რეჟიმს ეკრანზე გამოსატანად.
+            <b>ტურნირები:</b> სრული ტურნირ-პროდუქტი — ონლაინ რეგისტრაცია, QR check-in, „ვირტუალური დოლორა", ჯგუფები + ბადე, ავტომატური ჯილდოს გაცემა და TV-რეჟიმი. ნაბიჯ-ნაბიჯ იხ. ქვემოთ „ტურნირები — სრული ციკლი".
           </p>
+        </div>
+      ),
+    },
+    {
+      category: 'customers',
+      title: 'ტურნირები — სრული ციკლი 🏆',
+      content: (
+        <div className="space-y-3">
+          <p><b>1. შექმნა:</b> ქმნი ტურნირს — საწევრო, საპრიზო ფონდი, ფორმატი (ჯგუფები + ბადე ან single-elim) და მინიმალური მონაწილეები (ამ რიცხვამდე გათამაშება არ დაიწყება).</p>
+          <p><b>2. ონლაინ რეგისტრაცია:</b> მოთამაშე რეგისტრირდება play.martelounge.ge-ზე და იღებს QR-პასს თავის /account-ში.</p>
+          <p><b>3. Check-in ადგილზე:</b> სკანერავ მოთამაშის QR-ს → ადგილზე იხდის საწევროს (თანხა ავტომატურად ბარის შემოსავალში ჩაითვლება).</p>
+          <p><b>4. „ვირტუალური დოლორა":</b> სამართლიანი შემთხვევითი გათამაშება — ანაწილებს ჯგუფებში (ქულები 3/1/0) ან პირდაპირ ბადეში.</p>
+          <p><b>5. მატჩები:</b> შედეგებს შენ აფიქსირებ; გამარჯვებული ავტომატურად გადადის. ჯგუფში ფრე-ჩიხი წყდება ასე: პირადი შეხვედრა → პენალები → წილისყრა.</p>
+          <div className="rounded-2xl p-4 text-sm" style={{ background: 'color-mix(in oklch, var(--status-free) 12%, transparent)' }}>
+            <div className="flex items-start gap-2">
+              <Trophy className="size-5 shrink-0" style={{ color: 'var(--status-free)' }} />
+              <p>
+                <b>6. 🏁 ჯილდოების გაცემა:</b> ერთი ღილაკით — 1-ლი და მე-2 ადგილი იღებენ ფულს (ავტომატურად ჩაიწერება ხარჯებში / P&L-ში), მე-3 ადგილი წყდება <b>ბრინჯაოს მატჩით</b> და იგებს უფასო სათამაშო დროს (კრედიტი). walk-in-ებს ჯილდოს ხელით გადასცემ.
+              </p>
+            </div>
+          </div>
+          <div className="rounded-2xl p-4 text-sm" style={{ background: 'color-mix(in oklch, var(--status-active) 12%, transparent)' }}>
+            <div className="flex items-start gap-2">
+              <Lightbulb className="size-5 shrink-0" style={{ color: 'var(--status-active)' }} />
+              <p>
+                <b>კრედიტის გამოყენება (კასაზე):</b> მოგებული უფასო დრო მოთამაშეს კოდად (QR „MTLC") უჩანს /account-ში. ადგილზე, სესიის დახურვისას, ოპერატორი სკანერავს ან შეჰყავს ამ კოდს → უფასო წუთები ავტომატურად აკლდება ანგარიშს.
+              </p>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      category: 'settings',
+      title: 'Telegram ბოტი & შეტყობინებები 📱',
+      content: (
+        <div className="space-y-3">
+          <p>
+            <b>ერთი საერთო ბოტი:</b> @playmarteloungebot — საკუთარს არ ქმნი, უბრალოდ აბამ შენს ორგანიზაციას.
+          </p>
+          <p>
+            <b>დაკავშირება:</b> პარამეტრები → Telegram → „კოდის გენერაცია" → შენი Telegram-იდან ბოტს მისწერე <code className="rounded bg-black/20 px-1.5 py-0.5 font-mono text-xs">/link კოდი</code>. ერთი chat ↔ ერთი ორგანიზაცია (მხოლოდ შენი მონაცემი ჩანს).
+          </p>
+          <p>
+            <b>ბრძანებები:</b> <code className="rounded bg-black/20 px-1.5 py-0.5 font-mono text-xs">/revenue</code> — დღევანდელი შემოსავალი · <code className="rounded bg-black/20 px-1.5 py-0.5 font-mono text-xs">/consoles</code> — კონსოლების სტატუსი · <code className="rounded bg-black/20 px-1.5 py-0.5 font-mono text-xs">/help</code>.
+          </p>
+          <div className="rounded-2xl p-4 text-sm" style={{ background: 'color-mix(in oklch, var(--status-free) 12%, transparent)' }}>
+            <div className="flex items-start gap-2">
+              <Lightbulb className="size-5 shrink-0" style={{ color: 'var(--status-free)' }} />
+              <p>
+                <b>Push შეტყობინებები</b> (ჩართვა/გამორთვა იქვე, პარამეტრები → Telegram): ახალი ონლაინ ჯავშანი · მარაგი იწურება · ღამის შეჯამება · თაღლითობის ეჭვი.
+              </p>
+            </div>
+          </div>
         </div>
       ),
     },
