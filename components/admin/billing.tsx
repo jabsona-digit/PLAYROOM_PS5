@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { use3dTilt } from '@/lib/hooks'
 import {
   BadgeCheck,
   Building2,
@@ -391,8 +392,9 @@ function Stat({
   label: string
   value: string
 }) {
+  const { style, onMouseMove, onMouseLeave } = use3dTilt(5)
   return (
-    <div className="nm-inset flex items-center gap-3 rounded-2xl p-3">
+    <div className="nm-inset flex items-center gap-3 rounded-2xl p-3" style={style} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
       <Icon className="size-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>

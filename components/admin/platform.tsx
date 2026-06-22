@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { use3dTilt } from '@/lib/hooks'
 import {
   AlertTriangle,
   Bot,
@@ -1113,8 +1114,9 @@ function Kpi({
   value: string
   accent?: string
 }) {
+  const { style, onMouseMove, onMouseLeave } = use3dTilt(5)
   return (
-    <div className="nm-raised flex items-center gap-3 rounded-3xl p-5">
+    <div className="nm-raised flex items-center gap-3 rounded-3xl p-5" style={style} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
       <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
         <Icon className="size-5" style={{ color: accent ?? 'var(--primary)' }} />
       </div>

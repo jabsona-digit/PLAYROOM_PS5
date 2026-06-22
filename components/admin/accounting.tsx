@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { use3dTilt } from '@/lib/hooks'
 import { 
   CalendarDays, Receipt, Trash2, Plus, FileDown, FileUp, 
   LoaderCircle, LayoutDashboard, Calculator, Target, FileText,
@@ -33,6 +34,15 @@ function toIsoDate(d: Date) {
 }
 
 type TabKey = 'pnl' | 'vat' | 'budgets' | 'invoices'
+
+function AccKpiCard({ children, className = '' }: { children: ReactNode; className?: string }) {
+  const { style, onMouseMove, onMouseLeave } = use3dTilt(5)
+  return (
+    <div className={className} style={style} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
+      {children}
+    </div>
+  )
+}
 
 export function Accounting() {
   const isAuthorized = useModuleAccess('accounting')
@@ -480,7 +490,7 @@ export function Accounting() {
           {activeTab === 'pnl' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                <div className="nm-raised rounded-3xl p-6">
+                <AccKpiCard className="nm-raised rounded-3xl p-6">
                   <p className="text-sm font-semibold mb-3">სულ შემოსავალი</p>
                   <p className="font-mono text-2xl font-extrabold text-primary">{gel(pnl?.total_revenue || 0)}</p>
                   <div className="mt-4 space-y-2 text-xs text-muted-foreground">
@@ -493,12 +503,12 @@ export function Accounting() {
                       <span className="font-bold text-foreground">{gel(pnl?.bar_revenue || 0)}</span>
                     </div>
                   </div>
-                </div>
-                <div className="nm-raised rounded-3xl p-6">
+                </AccKpiCard>
+                <AccKpiCard className="nm-raised rounded-3xl p-6">
                   <p className="text-sm font-semibold mb-3 text-amber-500">დაბრუნებები</p>
                   <p className="font-mono text-2xl font-extrabold text-amber-500">{gel(pnl?.session_refunds || 0)}</p>
-                </div>
-                <div className="nm-raised rounded-3xl p-6">
+                </AccKpiCard>
+                <AccKpiCard className="nm-raised rounded-3xl p-6">
                   <p className="text-sm font-semibold mb-3 text-red-500">ხარჯები</p>
                   <p className="font-mono text-2xl font-extrabold text-red-500">{gel((pnl?.total_expenses || 0) + (pnl?.bar_cogs || 0))}</p>
                   <div className="mt-4 space-y-2 text-xs text-muted-foreground">
@@ -511,13 +521,13 @@ export function Accounting() {
                       <span className="font-bold text-foreground">{gel(pnl?.bar_cogs || 0)}</span>
                     </div>
                   </div>
-                </div>
-                <div className="nm-daylight rounded-3xl p-6">
+                </AccKpiCard>
+                <AccKpiCard className="nm-daylight rounded-3xl p-6">
                   <p className="text-sm font-semibold mb-3 text-muted-foreground">სუფთა მოგება</p>
                   <p className={cn("font-mono text-2xl sm:text-3xl font-extrabold tabular-nums break-words", (pnl?.net_profit || 0) >= 0 ? "text-green-500" : "text-red-500")}>
                     {gel(pnl?.net_profit || 0)}
                   </p>
-                </div>
+                </AccKpiCard>
               </div>
 
               <div className="grid gap-6 lg:grid-cols-3">
@@ -673,32 +683,32 @@ export function Accounting() {
               )}
               
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-                <div className="nm-raised rounded-3xl p-6">
+                <AccKpiCard className="nm-raised rounded-3xl p-6">
                   <p className="text-xs font-black uppercase text-muted-foreground mb-4 tracking-widest">Gross Sales (Net)</p>
                   <p className="font-mono text-2xl font-black text-slate-800">{gel(vatSummary?.gross_sales || 0)}</p>
                   <div className="h-1 w-full bg-slate-100 rounded-full mt-4 overflow-hidden">
                     <div className="h-full bg-slate-400 w-full" />
                   </div>
-                </div>
-                <div className="nm-raised rounded-3xl p-6">
+                </AccKpiCard>
+                <AccKpiCard className="nm-raised rounded-3xl p-6">
                   <p className="text-xs font-black uppercase text-muted-foreground mb-4 tracking-widest">Output VAT (18%)</p>
                   <p className="font-mono text-2xl font-black text-primary">{gel(vatSummary?.output_vat || 0)}</p>
                   <div className="h-1 w-full bg-primary/10 rounded-full mt-4 overflow-hidden">
                     <div className="h-full bg-primary w-full shadow-[0_0_8px_var(--primary)]" />
                   </div>
-                </div>
-                <div className="nm-raised rounded-3xl p-6">
+                </AccKpiCard>
+                <AccKpiCard className="nm-raised rounded-3xl p-6">
                   <p className="text-xs font-black uppercase text-muted-foreground mb-4 tracking-widest">Input VAT (Credits)</p>
                   <p className="font-mono text-2xl font-black text-amber-500">{gel(vatSummary?.input_vat || 0)}</p>
                   <div className="h-1 w-full bg-amber-500/10 rounded-full mt-4 overflow-hidden">
                     <div className="h-full bg-amber-500 w-full" />
                   </div>
-                </div>
-                <div className="nm-daylight rounded-3xl p-6 border border-white/50">
+                </AccKpiCard>
+                <AccKpiCard className="nm-daylight rounded-3xl p-6 border border-white/50">
                   <p className="text-xs font-black uppercase text-primary mb-4 tracking-widest">Net VAT Payable</p>
                   <p className="font-mono text-2xl sm:text-3xl font-black text-primary tabular-nums break-words">{gel(vatSummary?.net_vat_payable || 0)}</p>
                   <p className="text-[10px] font-bold text-muted-foreground mt-2 uppercase">გადასახდელი დღგ</p>
-                </div>
+                </AccKpiCard>
               </div>
 
               <div className="nm-raised rounded-3xl p-8">

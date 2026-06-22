@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useMemo, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { use3dTilt } from '@/lib/hooks'
 import {
   ArrowLeftRight,
   Banknote,
@@ -164,6 +165,29 @@ type OrgOverviewData = {
   payments?: { cash: number; card: number; transfer: number }
 }
 
+function OrgPeriodCard({ label, value, highlight }: { label: string; value: number; highlight: boolean }) {
+  const { style, onMouseMove, onMouseLeave } = use3dTilt(5)
+  return (
+    <div className={highlight ? 'nm-daylight rounded-2xl p-4' : 'nm-inset rounded-2xl p-4'} style={style} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={`mt-1 font-mono text-xl font-extrabold ${highlight ? 'text-primary text-glow' : ''}`}>{gel(value)}</p>
+    </div>
+  )
+}
+
+function OrgPayCard({ icon: Icon, label, value }: { icon: typeof Banknote; label: string; value: number }) {
+  const { style, onMouseMove, onMouseLeave } = use3dTilt(5)
+  return (
+    <div className="nm-inset flex items-center gap-2 rounded-2xl px-3 py-2.5" style={style} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
+      <Icon className="size-4 shrink-0 text-primary" />
+      <div className="min-w-0">
+        <p className="truncate text-[10px] text-muted-foreground">{label}</p>
+        <p className="font-mono text-sm font-extrabold">{gel(value)}</p>
+      </div>
+    </div>
+  )
+}
+
 // OWNER "all venues combined" view. The cashier below is single-venue; this top
 // panel rolls up revenue (sessions + bar) across every venue of the org via the
 // get_org_overview RPC (0078). Owner/admin only, and only when the org has >1 venue.
@@ -223,12 +247,7 @@ function OrgOverview() {
         <>
           <div className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
             {periods.map((p, i) => (
-              <div key={p.key} className={i === 0 ? 'nm-daylight rounded-2xl p-4' : 'nm-inset rounded-2xl p-4'}>
-                <p className="text-xs text-muted-foreground">{p.label}</p>
-                <p className={`mt-1 font-mono text-xl font-extrabold ${i === 0 ? 'text-primary text-glow' : ''}`}>
-                  {gel(data.totals[p.key])}
-                </p>
-              </div>
+              <OrgPeriodCard key={p.key} label={p.label} value={data.totals[p.key]} highlight={i === 0} />
             ))}
           </div>
 
@@ -240,15 +259,7 @@ function OrgOverview() {
               <div className="grid grid-cols-3 gap-3">
                 {(['cash', 'card', 'transfer'] as PaymentMethod[]).map((m) => {
                   const Icon = METHOD_ICON[m]
-                  return (
-                    <div key={m} className="nm-inset flex items-center gap-2 rounded-2xl px-3 py-2.5">
-                      <Icon className="size-4 shrink-0 text-primary" />
-                      <div className="min-w-0">
-                        <p className="truncate text-[10px] text-muted-foreground">{paymentMethodLabel[m]}</p>
-                        <p className="font-mono text-sm font-extrabold">{gel(pay[m])}</p>
-                      </div>
-                    </div>
-                  )
+                  return <OrgPayCard key={m} icon={Icon} label={paymentMethodLabel[m]} value={pay[m]} />
                 })}
               </div>
             </div>
@@ -289,6 +300,56 @@ function OrgOverview() {
           <p className="mt-3 text-xs text-muted-foreground">დააკლიკე ფილიალს მის კასაზე გადასართავად.</p>
         </>
       )}
+    </div>
+  )
+}
+
+function SummaryCard({ label, rev, tip, profit, highlight }: { label: string; rev: number; tip: number; profit: number; highlight: boolean }) {
+  const { style, onMouseMove, onMouseLeave } = use3dTilt(5)
+  return (
+    <div className={highlight ? 'nm-daylight rounded-2xl p-4' : 'nm-inset rounded-2xl p-4'} style={style} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
+      <p className="text-sm font-semibold">{label}</p>
+      <div className="mt-3 space-y-2">
+        <div className="flex justify-between items-center border-b border-white/5 pb-2">
+          <span className="text-xs text-muted-foreground">შემოსავალი</span>
+          <span className={`font-mono text-sm font-extrabold ${highlight ? 'text-primary text-glow' : ''}`}>{gel(rev)}</span>
+        </div>
+        <div className="flex justify-between items-center border-b border-white/5 pb-2">
+          <span className="text-xs text-amber-400">ჩაიანი</span>
+          <span className="font-mono text-sm font-extrabold text-amber-400">{gel(tip)}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-xs text-muted-foreground">მოგება</span>
+          <span className={`font-mono text-sm font-extrabold ${highlight ? 'text-primary' : 'text-green-500'}`}>{gel(profit)}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PeriodCard({ icon: Icon, label, value, hint, highlight }: { icon: typeof Receipt; label: string; value: number; hint: string; highlight: boolean }) {
+  const { style, onMouseMove, onMouseLeave } = use3dTilt(5)
+  return (
+    <div className={highlight ? 'nm-daylight rounded-3xl p-6' : 'nm-raised rounded-3xl p-6'} style={style} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
+      <div className="flex items-center gap-3">
+        <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
+          <Icon className="size-5 text-primary" />
+        </div>
+        <p className="text-sm text-muted-foreground">{label}</p>
+      </div>
+      <p className={`mt-4 font-mono text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums ${highlight ? 'text-primary text-glow' : ''}`}>
+        {gel(value)}
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+    </div>
+  )
+}
+
+function TiltCard({ children, className }: { children: ReactNode; className: string }) {
+  const { style, onMouseMove, onMouseLeave } = use3dTilt(5)
+  return (
+    <div className={className} style={style} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
+      {children}
     </div>
   )
 }
@@ -532,23 +593,7 @@ export function Cashier() {
         </div>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {summary.map(p => (
-            <div key={p.label} className={p.highlight ? 'nm-daylight rounded-2xl p-4' : 'nm-inset rounded-2xl p-4'}>
-              <p className="text-sm font-semibold">{p.label}</p>
-              <div className="mt-3 space-y-2">
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-xs text-muted-foreground">შემოსავალი</span>
-                  <span className={`font-mono text-sm font-extrabold ${p.highlight ? 'text-primary text-glow' : ''}`}>{gel(p.rev)}</span>
-                </div>
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-xs text-amber-400">ჩაიანი</span>
-                  <span className={`font-mono text-sm font-extrabold text-amber-400`}>{gel(p.tip)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-muted-foreground">მოგება</span>
-                  <span className={`font-mono text-sm font-extrabold ${p.highlight ? 'text-primary' : 'text-green-500'}`}>{gel(p.profit)}</span>
-                </div>
-              </div>
-            </div>
+            <SummaryCard key={p.label} label={p.label} rev={p.rev} tip={p.tip} profit={p.profit} highlight={p.highlight ?? false} />
           ))}
         </div>
       </div>
@@ -610,58 +655,40 @@ export function Cashier() {
             <span className="text-xs font-semibold text-muted-foreground">· მთლიანი ფილიალი</span>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div className="nm-inset rounded-2xl p-4">
+            <TiltCard className="nm-inset rounded-2xl p-4">
               <p className="text-xs text-muted-foreground">ნაღდი</p>
               <p className="font-mono text-xl font-extrabold">{gel(dataAll.byMethod.cash + barData.byMethod.cash)}</p>
-            </div>
-            <div className="nm-inset rounded-2xl p-4">
+            </TiltCard>
+            <TiltCard className="nm-inset rounded-2xl p-4">
               <p className="text-xs text-muted-foreground">ბარათი</p>
               <p className="font-mono text-xl font-extrabold">{gel(dataAll.byMethod.card + barData.byMethod.card)}</p>
-            </div>
-            <div className="nm-inset rounded-2xl p-4">
+            </TiltCard>
+            <TiltCard className="nm-inset rounded-2xl p-4">
               <p className="text-xs text-muted-foreground">გადარიცხვა</p>
               <p className="font-mono text-xl font-extrabold">{gel(dataAll.byMethod.transfer + barData.byMethod.transfer)}</p>
-            </div>
-            <div className="nm-daylight rounded-2xl p-4">
+            </TiltCard>
+            <TiltCard className="nm-daylight rounded-2xl p-4">
               <p className="text-xs text-muted-foreground">სულ დღეს</p>
               <p className="font-mono text-xl font-extrabold text-primary">{gel(dataAll.today + barData.todayRev)}</p>
-            </div>
+            </TiltCard>
           </div>
-          <div className="nm-inset flex items-center justify-between rounded-2xl px-5 py-4">
+          <TiltCard className="nm-inset flex items-center justify-between rounded-2xl px-5 py-4">
             <span className="text-sm font-semibold">სალაროში მოსალოდნელია (ხურდა + ნაღდი ცვლის გახსნიდან):</span>
             <span className="font-mono text-lg font-extrabold text-primary">{gel(expectedCash)}</span>
-          </div>
+          </TiltCard>
         </div>
       )}
 
       {/* period breakdown */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4">
         {periods.map((p) => (
-          <div
-            key={p.label}
-            className={p.highlight ? 'nm-daylight rounded-3xl p-6' : 'nm-raised rounded-3xl p-6'}
-          >
-            <div className="flex items-center gap-3">
-              <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
-                <p.icon className="size-5 text-primary" />
-              </div>
-              <p className="text-sm text-muted-foreground">{p.label}</p>
-            </div>
-            <p
-              className={`mt-4 font-mono text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums ${
-                p.highlight ? 'text-primary text-glow' : ''
-              }`}
-            >
-              {gel(p.value)}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">{p.hint}</p>
-          </div>
+          <PeriodCard key={p.label} icon={p.icon} label={p.label} value={p.value} hint={p.hint} highlight={p.highlight ?? false} />
         ))}
       </div>
 
       {/* secondary stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="nm-raised flex items-center gap-3 rounded-3xl p-5">
+        <TiltCard className="nm-raised flex items-center gap-3 rounded-3xl p-5">
           <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
             <Receipt className="size-5 text-primary" />
           </div>
@@ -669,8 +696,8 @@ export function Cashier() {
             <p className="text-sm text-muted-foreground">სესიები დღეს</p>
             <p className="font-mono text-2xl font-extrabold">{data.todayCount}</p>
           </div>
-        </div>
-        <div className="nm-raised flex items-center gap-3 rounded-3xl p-5">
+        </TiltCard>
+        <TiltCard className="nm-raised flex items-center gap-3 rounded-3xl p-5">
           <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
             <Coins className="size-5 text-primary" />
           </div>
@@ -678,7 +705,7 @@ export function Cashier() {
             <p className="text-sm text-muted-foreground">საშუალო ჩეკი (დღეს)</p>
             <p className="font-mono text-2xl font-extrabold">{gel(data.avg)}</p>
           </div>
-        </div>
+        </TiltCard>
       </div>
 
       {/* payment channels — today (cash vs card vs transfer, by bank) */}

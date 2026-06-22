@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, ReactNode } from 'react'
+import { use3dTilt } from '@/lib/hooks'
 import {
   BarChart3, TrendingUp, Gauge, Coins, Gamepad2, Flame, Snowflake,
   Lightbulb, LoaderCircle, Clock, Sparkles,
@@ -64,9 +65,19 @@ function renderAdvice(text: string) {
   })
 }
 
-function Kpi({ icon: Icon, label, value, hint }: { icon: typeof Gauge; label: string; value: string; hint?: string }) {
+function InsightCard({ children, maxDeg = 4 }: { children: ReactNode; maxDeg?: number }) {
+  const { style, onMouseMove, onMouseLeave } = use3dTilt(maxDeg)
   return (
-    <div className="nm-raised rounded-3xl p-5">
+    <div className="nm-raised rounded-3xl p-5" style={style} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
+      {children}
+    </div>
+  )
+}
+
+function Kpi({ icon: Icon, label, value, hint }: { icon: typeof Gauge; label: string; value: string; hint?: string }) {
+  const { style, onMouseMove, onMouseLeave } = use3dTilt(5)
+  return (
+    <div className="nm-raised rounded-3xl p-5" style={style} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
       <div className="flex items-center gap-2 text-muted-foreground">
         <Icon className="size-4 text-primary" />
         <span className="text-xs font-bold uppercase tracking-wider">{label}</span>
@@ -216,7 +227,7 @@ export function RevpachAnalytics() {
           {/* Insights */}
           {insight && (
             <div className="grid gap-4 lg:grid-cols-3">
-              <div className="nm-raised rounded-3xl p-5">
+              <InsightCard>
                 <div className="mb-1 flex items-center gap-2 text-[var(--status-warning5)]">
                   <Lightbulb className="size-4" /><span className="text-xs font-bold uppercase tracking-wider">დაკარგული შემოსავალი</span>
                 </div>
@@ -224,8 +235,8 @@ export function RevpachAnalytics() {
                 <p className="mt-1 text-xs text-muted-foreground">
                   დატვირთვა {data.occupancy_pct}% → 50%-მდე რომ გაიზარდოს, ≈ ამდენი დამატებითი შემოსავალი ამ პერიოდში.
                 </p>
-              </div>
-              <div className="nm-raised rounded-3xl p-5">
+              </InsightCard>
+              <InsightCard>
                 <div className="mb-1 flex items-center gap-2 text-[var(--status-free)]">
                   <Flame className="size-4" /><span className="text-xs font-bold uppercase tracking-wider">საუკეთესო საათი</span>
                 </div>
@@ -235,14 +246,14 @@ export function RevpachAnalytics() {
                 <p className="mt-1 text-xs text-muted-foreground">
                   {goldHour ? `${gel(goldHour.revenue)} · ${goldHour.sessions} სესია` : 'მონაცემი არ არის'}
                 </p>
-              </div>
-              <div className="nm-raised rounded-3xl p-5">
+              </InsightCard>
+              <InsightCard>
                 <div className="mb-1 flex items-center gap-2 text-primary">
                   <TrendingUp className="size-4" /><span className="text-xs font-bold uppercase tracking-wider">ლიდერი / სუსტი</span>
                 </div>
                 <p className="text-sm font-black">🥇 {insight.top?.name ?? '—'} · {gel(insight.top?.revpach ?? 0)}</p>
                 <p className="mt-1 text-sm font-bold text-muted-foreground">🔻 {insight.weak?.name ?? '—'} · {gel(insight.weak?.revpach ?? 0)}</p>
-              </div>
+              </InsightCard>
             </div>
           )}
 
