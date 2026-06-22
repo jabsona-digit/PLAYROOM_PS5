@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
 import { useFiscal } from '@/lib/fiscal'
-import { statusMeta } from '@/lib/ui'
+import { statusMeta, venueLabels } from '@/lib/ui'
 import type { ConsoleUnit } from '@/lib/types'
 import { supabase } from '@/lib/supabase/client'
 import { Modal } from './modal'
@@ -555,8 +555,9 @@ function VenuesSettings() {
 }
 
 export function Settings() {
-  const { settings, updateSettings, consoles, addConsole, resetSettings } =
+  const { settings, updateSettings, consoles, addConsole, resetSettings, venueType } =
     usePlayroom()
+  const vl = venueLabels(venueType)   // billiard venue → "მაგიდა / მაგიდები"
   const [addOpen, setAddOpen] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [newName, setNewName] = useState('')
@@ -693,9 +694,9 @@ export function Settings() {
               <Gamepad2 className="size-5 text-primary" />
             </div>
             <div>
-              <h2 className="text-lg font-extrabold tracking-tight">კონსოლები</h2>
+              <h2 className="text-lg font-extrabold tracking-tight">{vl.plural}</h2>
               <p className="text-xs text-muted-foreground">
-                {consoles.length} კონსოლი დარეგისტრირებულია
+                {consoles.length} {vl.singular} დარეგისტრირებულია
               </p>
             </div>
           </div>
@@ -718,7 +719,7 @@ export function Settings() {
               className="nm-btn flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary"
             >
               <Plus className="size-4" />
-              <span className="hidden sm:inline">კონსოლის დამატება</span>
+              <span className="hidden sm:inline">{vl.genitive} დამატება</span>
             </button>
           </div>
         </div>
@@ -729,7 +730,7 @@ export function Settings() {
           ))}
           {consoles.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              კონსოლები არ არის. დაამატე პირველი.
+              {vl.plural} არ არის. დაამატე პირველი.
             </p>
           ) : null}
         </div>
@@ -749,15 +750,15 @@ export function Settings() {
 
       <TelegramSettings />
 
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="ახალი კონსოლი">
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={`ახალი ${vl.singular}`}>
         <div className="space-y-5">
           <label className="block">
-            <span className="text-sm text-muted-foreground">კონსოლის სახელი</span>
+            <span className="text-sm text-muted-foreground">{vl.genitive} სახელი</span>
             <input
               autoFocus
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder={`PS5 - ${consoles.length + 1}`}
+              placeholder={venueType === 'playroom' ? `PS5 - ${consoles.length + 1}` : `${vl.singular} ${consoles.length + 1}`}
               className="nm-inset mt-2 w-full rounded-xl px-4 py-2.5 text-sm font-semibold outline-none placeholder:text-muted-foreground"
             />
           </label>

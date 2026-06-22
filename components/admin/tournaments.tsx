@@ -268,7 +268,7 @@ function GroupsView({
         <div className="nm-raised rounded-3xl p-5" style={{ borderLeft: '4px solid var(--status-warning10)' }}>
           <h3 className="mb-1 flex items-center gap-2 font-extrabold">🥅 პენალტები — ფრის გადასაწყვეტად</h3>
           <p className="mb-3 text-xs text-muted-foreground text-pretty">
-            ეს მოთამაშეები ჯგუფში სრულიად თანაბრად დასრულდნენ. ჩაატარეთ პენალტები კონსოლზე და შეიყვანეთ
+            ეს მოთამაშეები ჯგუფში სრულიად თანაბრად დასრულდნენ. ჩაატარეთ პენალტები და შეიყვანეთ
             შედეგი — გამარჯვებული გადადის ნოკაუტში. შემდეგ ისევ დააჭირეთ „ნოკაუტის დაწყება".
           </p>
           <div className="flex flex-wrap gap-2">
