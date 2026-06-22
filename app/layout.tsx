@@ -52,6 +52,7 @@ export const viewport = {
 }
 
 import PwaRegister from '@/components/pwa-register'
+import { SentryInit } from '@/components/sentry-init'
 
 export default function RootLayout({
   children,
@@ -64,6 +65,7 @@ export default function RootLayout({
       className={`dark ${notoGeorgian.variable} ${geistMono.variable} bg-background`}
     >
       <body className="font-sans antialiased bg-background">
+        <SentryInit />
         <PwaRegister />
         {children}
       </body>
