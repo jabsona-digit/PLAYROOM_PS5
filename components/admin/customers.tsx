@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Search, Star, Phone, Edit2, Gift, TrendingUp, Save, X, Trash2 } from 'lucide-react'
+import { Plus, Search, Star, Phone, Edit2, Gift, TrendingUp, Save, X, Trash2, QrCode } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
@@ -26,6 +27,7 @@ export function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [qrCustomer, setQrCustomer] = useState<Customer | null>(null)
   const [editing, setEditing] = useState<Customer | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -182,6 +184,13 @@ export function Customers() {
                     ) : (
                       <div className="flex items-center gap-2">
                         <button
+                          onClick={() => setQrCustomer(c)}
+                          title="QR ბარათი"
+                          className="nm-btn rounded-xl p-2 text-primary"
+                        >
+                          <QrCode className="size-4" />
+                        </button>
+                        <button
                           onClick={() => { setEditing(c); setModalOpen(true) }}
                           className="nm-btn rounded-xl p-2 text-muted-foreground"
                         >
@@ -211,6 +220,26 @@ export function Customers() {
         customer={editing}
         onSaved={fetchCustomers}
       />
+
+      {qrCustomer && (
+        <Modal open onClose={() => setQrCustomer(null)} title={`${qrCustomer.name} — QR ბარათი`}>
+          <div className="flex flex-col items-center gap-4 py-2">
+            <div className="rounded-3xl bg-white p-5">
+              <QRCodeSVG value={`MTLP:${qrCustomer.id}`} size={200} />
+            </div>
+            <p className="text-center text-sm text-muted-foreground text-pretty">
+              ასკანერე „სესიის დაწყებისას" → კლიენტი მიება სესიას და ქულები ავტომატურად დაერიცხება.
+              ბეჭდე ბარათად ან აჩვენე ეკრანიდან.
+            </p>
+            <button
+              onClick={() => window.print()}
+              className="nm-btn rounded-2xl px-5 py-2.5 text-sm font-bold text-primary"
+            >
+              🖨️ ბეჭდვა
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
@@ -240,8 +269,15 @@ function CustomerModal({ open, onClose, customer, onSaved }: {
     }
   }, [open, customer])
 
+  // Map the 0129 server-side validation errors to friendly Georgian.
+  const custErr = (m: string) =>
+    m.includes('invalid_phone') ? 'ტელეფონი არასწორია — ქართული მობილური (5XX XXX XXX)'
+      : m.includes('customer_name_required') ? 'სახელი სავალდებულოა'
+      : m
+
   const handleSave = async () => {
     if (!name.trim()) return pushToast('danger', 'სახელი სავალდებულოა')
+    if (!phone.trim()) return pushToast('danger', 'ტელეფონი სავალდებულოა')
     setSaving(true)
     if (customer) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -249,14 +285,14 @@ function CustomerModal({ open, onClose, customer, onSaved }: {
         .from('customers')
         .update({ name: name.trim(), phone: phone || null, points: +points, discount_pct: +discountPct })
         .eq('id', customer.id)
-      if (error) pushToast('danger', error.message)
+      if (error) pushToast('danger', custErr(error.message))
       else { pushToast('success', 'კლიენტი განახლდა'); onSaved(); onClose() }
     } else {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from('customers')
         .insert({ org_id: currentOrgId, name: name.trim(), phone: phone || null, points: +points, discount_pct: +discountPct, total_spent: 0, visit_count: 0 })
-      if (error) pushToast('danger', error.message)
+      if (error) pushToast('danger', custErr(error.message))
       else { pushToast('success', 'კლიენტი დაემატა'); onSaved(); onClose() }
     }
     setSaving(false)
@@ -271,7 +307,7 @@ function CustomerModal({ open, onClose, customer, onSaved }: {
             className="nm-inset mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none" />
         </label>
         <label className="block">
-          <span className="text-sm font-semibold text-muted-foreground">ტელეფონი</span>
+          <span className="text-sm font-semibold text-muted-foreground">ტელეფონი *</span>
           <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+995 5XX XXX XXX"
             className="nm-inset mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none" />
         </label>
