@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
+import { DecodeHintType, BarcodeFormat, type Result } from '@zxing/library';
 import { Modal } from '@/components/admin/modal';
 import { usePlayroom } from '@/lib/store';
 import { CameraOff, ScanLine } from 'lucide-react';
@@ -41,9 +42,21 @@ export default function BarcodeScanner({ open, onClose, onScan }: BarcodeScanner
   const startCamera = async () => {
     setError(null);
     if (!videoRef.current) return;
-    const reader = new BrowserMultiFormatReader();
+    // Hints: focus on QR (+ common 1D) and TRY_HARDER for reliable decode off video frames.
+    const hints = new Map();
+    hints.set(DecodeHintType.TRY_HARDER, true);
+    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+      BarcodeFormat.QR_CODE,
+      BarcodeFormat.EAN_13,
+      BarcodeFormat.EAN_8,
+      BarcodeFormat.CODE_128,
+      BarcodeFormat.CODE_39,
+      BarcodeFormat.UPC_A,
+      BarcodeFormat.UPC_E,
+    ]);
+    const reader = new BrowserMultiFormatReader(hints);
     // Continuous decode (QR + 1D); zxing owns the camera + binds it to the <video>.
-    const onHit = (result?: { getText: () => string }) => {
+    const onHit = (result?: Result) => {
       if (!result || handledRef.current) return;
       const code = result.getText();
       if (!code) return;
