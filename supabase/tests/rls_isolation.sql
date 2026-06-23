@@ -90,11 +90,12 @@ begin
   perform set_config('request.jwt.claims', '{"sub":"926fa80c-b19d-4fb8-b493-dc5604de78e3","role":"authenticated"}', true);
   perform set_config('role', 'authenticated', true);
   begin
-    insert into public.customers (org_id, name) values ('0124e0bd-e350-454b-891e-17e19a2b16e6', 'rls-write-test');
+    -- valid phone so the customer-validation trigger (0129) passes -> RLS WITH CHECK is what blocks
+    insert into public.customers (org_id, name, phone) values ('0124e0bd-e350-454b-891e-17e19a2b16e6', 'rls-write-test', '555000111');
     v_res := 'INSERT_ALLOWED';
-  exception when others then v_res := 'denied'; end;
-  if v_res <> 'denied' then raise exception 'SUITE_FAIL rls_write_insert_denied cross_org_insert=%', v_res;
-  else raise exception 'SUITE_PASS rls_write_insert_denied cross_org_insert_blocked'; end if;
+  exception when others then v_res := SQLERRM; end;
+  if v_res not ilike '%row-level security%' then raise exception 'SUITE_FAIL rls_write_insert_denied got=%', v_res;
+  else raise exception 'SUITE_PASS rls_write_insert_denied cross_org_insert_blocked_by_RLS'; end if;
 end $$;
 
 -- @@TEST rls_write_update_zero
