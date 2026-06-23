@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { BrowserMultiFormatReader } from '@zxing/browser';
-import { DecodeHintType, BarcodeFormat, type Result } from '@zxing/library';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { Modal } from '@/components/admin/modal';
 import { usePlayroom } from '@/lib/store';
 import { CameraOff, ScanLine } from 'lucide-react';
@@ -13,118 +12,102 @@ interface BarcodeScannerProps {
   onScan: (code: string) => void;
 }
 
+// Dedicated, battle-tested QR/barcode scanner (html5-qrcode). It owns the camera + the
+// decode loop and renders the live preview into REGION_ID. Far more reliable for QR off a
+// phone/laptop camera than the previous hand-rolled zxing loop.
+const REGION_ID = 'mtl-qr-reader';
+
 export default function BarcodeScanner({ open, onClose, onScan }: BarcodeScannerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const controlsRef = useRef<{ stop: () => void } | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
   const handledRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const { pushToast } = usePlayroom();
 
   useEffect(() => {
-    if (!open) {
-      stopCamera();
-      return;
-    }
+    if (!open) return;
     handledRef.current = false;
-    startCamera();
+    setError(null);
+    let cancelled = false;
+
+    const stop = async () => {
+      const s = scannerRef.current;
+      scannerRef.current = null;
+      if (!s) return;
+      try { if (s.isScanning) await s.stop(); } catch { /* ignore */ }
+      try { s.clear(); } catch { /* ignore */ }
+    };
+
+    const start = async () => {
+      try {
+        const scanner = new Html5Qrcode(REGION_ID, {
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+          ],
+          verbose: false,
+        });
+        scannerRef.current = scanner;
+        if (cancelled) { await stop(); return; }
+        await scanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 230, height: 230 } },
+          (decodedText) => {
+            if (handledRef.current) return;
+            handledRef.current = true;
+            onScan(decodedText);
+            stop().finally(() => onClose());
+          },
+          () => { /* per-frame decode miss — ignore */ },
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('Scanner error:', err);
+        if (!cancelled) {
+          setError('კამერა ვერ გაიხსნა — ' + msg);
+          pushToast('danger', 'კამერა ვერ გაიხსნა: ' + msg);
+        }
+      }
+    };
+
+    start();
 
     return () => {
-      stopCamera();
+      cancelled = true;
+      stop();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const stopCamera = () => {
-    try { controlsRef.current?.stop(); } catch { /* ignore */ }
-    controlsRef.current = null;
-  };
-
-  const startCamera = async () => {
-    setError(null);
-    if (!videoRef.current) return;
-    // Hints: focus on QR (+ common 1D) and TRY_HARDER for reliable decode off video frames.
-    const hints = new Map();
-    hints.set(DecodeHintType.TRY_HARDER, true);
-    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-      BarcodeFormat.QR_CODE,
-      BarcodeFormat.EAN_13,
-      BarcodeFormat.EAN_8,
-      BarcodeFormat.CODE_128,
-      BarcodeFormat.CODE_39,
-      BarcodeFormat.UPC_A,
-      BarcodeFormat.UPC_E,
-    ]);
-    const reader = new BrowserMultiFormatReader(hints);
-    // Continuous decode (QR + 1D); zxing owns the camera + binds it to the <video>.
-    const onHit = (result?: Result) => {
-      if (!result || handledRef.current) return;
-      const code = result.getText();
-      if (!code) return;
-      handledRef.current = true;
-      stopCamera();
-      onScan(code);
-      onClose();
-    };
-    try {
-      // phones: prefer the rear camera (soft hint -> won't OverconstrainedError on desktop)
-      controlsRef.current = await reader.decodeFromConstraints(
-        { video: { facingMode: { ideal: 'environment' } } },
-        videoRef.current,
-        onHit,
-      );
-    } catch {
-      try {
-        // desktop / no rear cam: default device
-        controlsRef.current = await reader.decodeFromVideoDevice(undefined, videoRef.current, onHit);
-      } catch (err) {
-        const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-        console.error('Scanner error:', err);
-        setError('კამერა ვერ გაიხსნა — ' + msg);
-        pushToast('danger', 'კამერა ვერ გაიხსნა: ' + msg);
-      }
-    }
-  };
-
   return (
-    <Modal
-      open={open}
-      onClose={() => {
-        stopCamera();
-        onClose();
-      }}
-      title="კამერით სკანირება"
-    >
+    <Modal open={open} onClose={onClose} title="კამერით სკანირება">
       <div className="flex flex-col items-center justify-center p-4">
-        {error ? (
-          <div className="flex flex-col items-center justify-center text-[var(--status-expired)] h-64">
-            <CameraOff className="size-10 mb-4 opacity-50" />
-            <p className="text-center">{error}</p>
-          </div>
-        ) : (
-          <div className="relative w-full max-w-sm aspect-[4/3] rounded-2xl overflow-hidden bg-black nm-inset">
-            <video
-              ref={videoRef}
-              className="absolute inset-0 w-full h-full object-cover"
-              muted
-              playsInline
-            />
-            {/* Outline guide */}
-            <div className="absolute inset-0 border-2 border-primary/50 m-8 rounded-lg pointer-events-none" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
-            <div className="absolute bottom-4 inset-x-0 flex flex-col items-center text-white/80 pointer-events-none text-sm animate-pulse flex items-center justify-center gap-2">
-              <ScanLine className="size-4" /> QR / ბარკოდი მოაქციე ჩარჩოში
+        {/* The region is ALWAYS mounted so html5-qrcode can attach; errors overlay it. */}
+        <div className="relative w-full max-w-sm min-h-[240px]">
+          <div
+            id={REGION_ID}
+            className="w-full overflow-hidden rounded-2xl [&_video]:w-full [&_video]:rounded-2xl"
+          />
+          {error && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-black/80 p-4 text-center text-[var(--status-expired)]">
+              <CameraOff className="mb-3 size-10 opacity-60" />
+              <p className="text-sm">{error}</p>
             </div>
-          </div>
+          )}
+        </div>
+
+        {!error && (
+          <p className="mt-4 flex animate-pulse items-center justify-center gap-2 text-sm text-muted-foreground">
+            <ScanLine className="size-4" /> QR კოდი მოაქციე ჩარჩოში 🟢
+          </p>
         )}
 
-        <div className="mt-8 flex justify-end w-full">
-          <button
-            onClick={() => {
-              stopCamera();
-              onClose();
-            }}
-            className="nm-btn px-6 py-2 rounded-xl text-muted-foreground"
-          >
+        <div className="mt-6 flex w-full justify-end">
+          <button onClick={onClose} className="nm-btn rounded-xl px-6 py-2 text-muted-foreground">
             გაუქმება
           </button>
         </div>
