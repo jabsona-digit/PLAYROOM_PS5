@@ -17,6 +17,7 @@ import {
   Users2,
   Wallet,
   Send,
+  Share2,
   Trophy,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -210,6 +211,9 @@ export function PlatformConsole({ onViewAs }: { onViewAs: () => void }) {
 
           {/* Edge-function error capture (0128) */}
           <EdgeErrorsCard />
+
+          {/* Referral program (0131) — platform-funded, owner control */}
+          <ReferralCard />
 
           {/* Platform-wide API keys (God Mode) */}
           <div className="grid gap-6 lg:grid-cols-2">
@@ -1076,6 +1080,76 @@ function EdgeErrorsCard() {
           ))}
           {count > 8 && <p className="text-[11px] text-muted-foreground">…და კიდევ {count - 8}</p>}
         </div>
+      )}
+    </div>
+  )
+}
+
+interface ReferralOverview {
+  referred_total: number
+  earned_total: number
+  earned_period: number
+  top_referrers: { referrer_id: string; full_name: string; referral_code: string; referred: number; earned: number }[]
+  recent: { amount: number; created_at: string; referrer: string; referee: string }[]
+}
+
+// God-Mode referral control (0131): platform-funded 3% program — who joined via referral,
+// total accrued (the platform's liability), and the top referrers.
+function ReferralCard() {
+  const [d, setD] = useState<ReferralOverview | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    rpcAny('get_referral_overview', { p_days: 30 }).then(({ data }) => {
+      setD((data as ReferralOverview) ?? null)
+      setLoading(false)
+    })
+  }, [])
+
+  return (
+    <div className="nm-raised rounded-3xl p-5 transition-all duration-300 hover:scale-[1.01]">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 text-base font-extrabold">
+          <Share2 className="size-5 text-primary" /> Referral პროგრამა
+        </h3>
+        <span className="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          პლატფორმა-funded
+        </span>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground text-pretty">
+        მოწვევით რეგისტრირებულები + დარიცხული 3% (შენი ვალდებულება). გამოყენება/ანგარიშსწორება — Phase 2.
+      </p>
+
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        <div className="nm-inset rounded-2xl px-3 py-3">
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">მოწვეული</p>
+          <p className="font-mono text-lg font-extrabold">{d?.referred_total ?? 0}</p>
+        </div>
+        <div className="nm-inset rounded-2xl px-3 py-3">
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">სულ დარიცხ.</p>
+          <p className="font-mono text-lg font-extrabold text-primary">{gel(Number(d?.earned_total ?? 0))}</p>
+        </div>
+        <div className="nm-inset rounded-2xl px-3 py-3">
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">30 დღე</p>
+          <p className="font-mono text-lg font-extrabold">{gel(Number(d?.earned_period ?? 0))}</p>
+        </div>
+      </div>
+
+      {(d?.top_referrers?.length ?? 0) > 0 && (
+        <div className="mt-4 space-y-2 border-t border-[var(--border)] pt-3">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">ტოპ მომწვევები</p>
+          {d!.top_referrers.slice(0, 6).map((r) => (
+            <div key={r.referrer_id} className="flex items-center justify-between gap-2 text-sm">
+              <span className="min-w-0 truncate font-semibold">
+                {r.full_name} <span className="text-xs text-muted-foreground">· {r.referred} მოწვ.</span>
+              </span>
+              <span className="shrink-0 font-mono font-bold text-primary">{gel(Number(r.earned))}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {!loading && (d?.referred_total ?? 0) === 0 && (
+        <p className="mt-4 text-sm text-muted-foreground">ჯერ მოწვევები არ დაფიქსირებულა.</p>
       )}
     </div>
   )
