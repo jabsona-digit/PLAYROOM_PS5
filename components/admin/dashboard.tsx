@@ -692,7 +692,7 @@ function StartSessionModal({
   consoleType?: string
 }) {
   const { plans, startSession, startOpenSession, pushToast } = usePlayroom()
-  const { currentVenueId } = useOrg()
+  const { currentVenueId, currentOrgId } = useOrg()
   type Cust = { id: string; name: string; phone: string | null; points: number; discount_pct: number }
   // only tariffs that apply to this console's class + sub-type; fall back to all if none match
   const allActive = plans.filter((p) => p.is_active)
@@ -714,6 +714,15 @@ function StartSessionModal({
     const { data } = await supabase.from('customers').select('id, name, phone, points, discount_pct').eq('id', id).maybeSingle()
     if (data) { setCustomer(data as unknown as Cust); setName((data as unknown as Cust).name ?? '') }
     else pushToast('danger', 'კლიენტი ვერ მოიძებნა')
+  }
+  // Marketplace passport QR (MTLM:<marketplace_id>) -> find/create + link a local customer (0130)
+  const resolveMarketplace = async (mid: string) => {
+    if (!currentOrgId) return
+    const { data, error } = await (supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>)(
+      'link_marketplace_customer', { p_org: currentOrgId, p_marketplace_id: mid.trim() },
+    )
+    if (error || !data) { pushToast('danger', 'passport ვერ დაუკავშირდა'); return }
+    setCustomer(data as unknown as Cust); setName((data as unknown as Cust).name ?? '')
   }
   const searchCustomer = async () => {
     const q = name.trim()
@@ -977,8 +986,9 @@ function StartSessionModal({
           onClose={() => setScanOpen(false)}
           onScan={(text) => {
             setScanOpen(false)
-            const id = text.startsWith('MTLP:') ? text.slice(5) : text
-            resolveCustomerById(id.trim())
+            const t = text.trim()
+            if (t.startsWith('MTLM:')) resolveMarketplace(t.slice(5))
+            else resolveCustomerById(t.startsWith('MTLP:') ? t.slice(5) : t)
           }}
         />
       </div>
