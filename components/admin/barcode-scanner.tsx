@@ -53,22 +53,21 @@ export default function BarcodeScanner({ open, onClose, onScan }: BarcodeScanner
       onClose();
     };
     try {
+      // phones: prefer the rear camera (soft hint -> won't OverconstrainedError on desktop)
       controlsRef.current = await reader.decodeFromConstraints(
-        { video: { facingMode: 'environment' } },
+        { video: { facingMode: { ideal: 'environment' } } },
         videoRef.current,
         onHit,
       );
     } catch {
       try {
-        controlsRef.current = await reader.decodeFromConstraints(
-          { video: true },
-          videoRef.current,
-          onHit,
-        );
+        // desktop / no rear cam: default device
+        controlsRef.current = await reader.decodeFromVideoDevice(undefined, videoRef.current, onHit);
       } catch (err) {
-        console.error('Camera error:', err);
-        setError('კამერაზე წვდომა ვერ მოხერხდა — დართე ნებართვა ან შეამოწმე კავშირი.');
-        pushToast('danger', 'კამერაზე წვდომა ვერ მოხერხდა — დართე ნებართვა');
+        const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+        console.error('Scanner error:', err);
+        setError('კამერა ვერ გაიხსნა — ' + msg);
+        pushToast('danger', 'კამერა ვერ გაიხსნა: ' + msg);
       }
     }
   };
