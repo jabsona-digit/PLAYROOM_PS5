@@ -20,6 +20,7 @@ import {
   Plus,
   QrCode,
   ScanLine,
+  Search,
   Square,
   Wrench,
 } from 'lucide-react'
@@ -690,8 +691,9 @@ function StartSessionModal({
   consoleId: number
   consoleType?: string
 }) {
-  const { plans, startSession, startOpenSession } = usePlayroom()
+  const { plans, startSession, startOpenSession, pushToast } = usePlayroom()
   const { currentVenueId } = useOrg()
+  type Cust = { id: string; name: string; phone: string | null; points: number; discount_pct: number }
   // only tariffs that apply to this console's class + sub-type; fall back to all if none match
   const allActive = plans.filter((p) => p.is_active)
   const matched = allActive.filter((p) => planAppliesToConsole(p, consoleType))
@@ -702,6 +704,27 @@ function StartSessionModal({
   const [name, setName] = useState('')
   const [method, setMethod] = useState<PaymentMethod>('cash')
   const [bank, setBank] = useState<Bank>('TBC')
+  const [customer, setCustomer] = useState<Cust | null>(null)
+  const [scanOpen, setScanOpen] = useState(false)
+  const [searching, setSearching] = useState(false)
+
+  // Loyalty identity: resolve a customer by scanned QR (MTLP:<id>) or phone/name search,
+  // so the session links to them (points accrue) and the operator sees their balance.
+  const resolveCustomerById = async (id: string) => {
+    const { data } = await supabase.from('customers').select('id, name, phone, points, discount_pct').eq('id', id).maybeSingle()
+    if (data) { setCustomer(data as unknown as Cust); setName((data as unknown as Cust).name ?? '') }
+    else pushToast('danger', 'კლიენტი ვერ მოიძებნა')
+  }
+  const searchCustomer = async () => {
+    const q = name.trim()
+    if (q.length < 3) { pushToast('info', 'ჩაწერე სახელი ან ტელეფონი (3+ სიმბოლო)'); return }
+    setSearching(true)
+    const { data } = await supabase.from('customers').select('id, name, phone, points, discount_pct')
+      .or(`name.ilike.%${q}%,phone.ilike.%${q}%`).limit(1)
+    setSearching(false)
+    if (data && data.length) { setCustomer(data[0] as unknown as Cust); setName((data[0] as unknown as Cust).name) }
+    else pushToast('info', 'ვერ მოიძებნა — დარჩება სტუმრად ან დაამატე "კლიენტებში"')
+  }
 
   const plan = plans.find((p) => p.id === planId)
 
@@ -810,12 +833,42 @@ function StartSessionModal({
           <p className="mb-2 text-sm font-semibold text-muted-foreground">
             მომხმარებელი (არასავალდებულო)
           </p>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="სახელი"
-            className="nm-inset w-full rounded-2xl px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
-          />
+          {customer ? (
+            <div className="nm-inset flex items-center justify-between gap-2 rounded-2xl px-4 py-3">
+              <div className="min-w-0">
+                <p className="truncate font-bold">👤 {customer.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {customer.phone ?? ''} · <b className="text-primary">{customer.points} ქულა</b>
+                  {customer.discount_pct > 0 ? ` · ${customer.discount_pct}% ფასდაკლება` : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setCustomer(null); setName('') }}
+                className="nm-btn shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold text-muted-foreground"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') searchCustomer() }}
+                placeholder="სახელი / ტელეფონი"
+                className="nm-inset w-full rounded-2xl px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
+              />
+              <button type="button" onClick={searchCustomer} disabled={searching} title="ძებნა"
+                className="nm-btn shrink-0 rounded-2xl px-3.5 text-primary disabled:opacity-50">
+                <Search className="size-4" />
+              </button>
+              <button type="button" onClick={() => setScanOpen(true)} title="QR სკანი"
+                className="nm-btn shrink-0 rounded-2xl px-3.5 text-primary">
+                <ScanLine className="size-4" />
+              </button>
+            </div>
+          )}
         </div>
 
         <div>
@@ -893,7 +946,8 @@ function StartSessionModal({
                 console_id: consoleId,
                 pricing_plan_id: planId,
                 duration_min: duration,
-                customer_name: name.trim() || undefined,
+                customer_name: customer?.name ?? (name.trim() || undefined),
+                customer_id: customer?.id,
                 payment_method: method,
                 bank: method === 'cash' ? null : bank,
               })
@@ -901,12 +955,14 @@ function StartSessionModal({
               startOpenSession({
                 console_id: consoleId,
                 pricing_plan_id: planId,
-                customer_name: name.trim() || undefined,
+                customer_name: customer?.name ?? (name.trim() || undefined),
+                customer_id: customer?.id,
                 payment_method: method,
                 bank: method === 'cash' ? null : bank,
               })
             }
             setName('')
+            setCustomer(null)
             setMethod('cash')
             setMode('fixed')
             onClose()
@@ -916,6 +972,15 @@ function StartSessionModal({
           <Play className="size-4" />
           {mode === 'fixed' ? 'სესიის დაწყება' : 'მიმდინარე სესიის დაწყება'}
         </button>
+        <BarcodeScanner
+          open={scanOpen}
+          onClose={() => setScanOpen(false)}
+          onScan={(text) => {
+            setScanOpen(false)
+            const id = text.startsWith('MTLP:') ? text.slice(5) : text
+            resolveCustomerById(id.trim())
+          }}
+        />
       </div>
     </Modal>
   )

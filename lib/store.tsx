@@ -67,6 +67,7 @@ interface PlayroomState {
     pricing_plan_id: number
     duration_min: number
     customer_name?: string
+    customer_id?: string
     payment_method: PaymentMethod
     bank?: Bank | null
   }) => void
@@ -74,6 +75,7 @@ interface PlayroomState {
     console_id: number
     pricing_plan_id: number
     customer_name?: string
+    customer_id?: string
     payment_method: PaymentMethod
     bank?: Bank | null
   }) => void
@@ -476,13 +478,14 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
   )
 
   const startSession: PlayroomState['startSession'] = useCallback(
-    async ({ console_id, pricing_plan_id, duration_min, customer_name, payment_method, bank }) => {
+    async ({ console_id, pricing_plan_id, duration_min, customer_name, customer_id, payment_method, bank }) => {
       const target = consolesRef.current.find((c) => c.id === console_id)
       const { error } = await supabase.rpc('start_session', {
         p_console_id: console_id,
         p_plan_id: pricing_plan_id,
         p_duration_min: duration_min,
         p_customer_name: customer_name ?? undefined,
+        p_customer_id: customer_id ?? undefined,
         p_payment_method: payment_method,
         p_bank: payment_method === 'cash' ? undefined : bank ?? undefined,
       })
@@ -495,12 +498,13 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
   )
 
   const startOpenSession: PlayroomState['startOpenSession'] = useCallback(
-    async ({ console_id, pricing_plan_id, customer_name, payment_method, bank }) => {
+    async ({ console_id, pricing_plan_id, customer_name, customer_id, payment_method, bank }) => {
       const target = consolesRef.current.find((c) => c.id === console_id)
       const { error } = await supabase.rpc('start_open_session', {
         p_console_id: console_id,
         p_plan_id: pricing_plan_id,
         p_customer_name: customer_name ?? undefined,
+        p_customer_id: customer_id ?? undefined,
         p_payment_method: payment_method,
         p_bank: payment_method === 'cash' ? undefined : bank ?? undefined,
       })
