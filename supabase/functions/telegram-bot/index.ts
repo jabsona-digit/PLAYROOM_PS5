@@ -57,6 +57,11 @@ Deno.serve(async (req) => {
   if (!chatId || !text) return new Response('ok')
 
   const reply = (t: string) => send(token, chatId, t)
+
+  // Per-chat rate-limit (0134): shield the shared bot + DB from one chat flooding commands.
+  const { data: rlOk } = await svc.rpc('telegram_rate_ok', { p_chat_id: chatId })
+  if (rlOk === false) { await reply('⏳ ბევრი მოთხოვნაა — დაიცადე ერთი წუთი.'); return new Response('ok') }
+
   const parts = text.split(/\s+/)
   const cmd = parts[0].toLowerCase().replace(/@.*$/, '') // strip @botname suffix
 
