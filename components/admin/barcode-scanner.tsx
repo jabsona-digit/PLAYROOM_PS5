@@ -54,8 +54,9 @@ export default function BarcodeScanner({ open, onClose, onScan }: BarcodeScanner
         scannerRef.current = scanner;
         if (cancelled) { await stop(); return; }
         await scanner.start(
-          // Request a higher resolution so dense QR modules resolve on a phone screen.
-          { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+          // cameraIdOrConfig must have EXACTLY ONE key (camera selector) — passing
+          // width/height here throws "should have exactly 1 key, found 3".
+          { facingMode: 'environment' },
           {
             fps: 10,
             // Scan a large, responsive region (80% of the smaller video side) — far more forgiving
