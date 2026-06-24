@@ -49,14 +49,13 @@ export default function BarcodeScanner({ open, onClose, onScan }: BarcodeScanner
             Html5QrcodeSupportedFormats.UPC_A,
             Html5QrcodeSupportedFormats.UPC_E,
           ],
-          // Use Chrome's native BarcodeDetector when available — markedly faster/more reliable.
-          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
           verbose: false,
         });
         scannerRef.current = scanner;
         if (cancelled) { await stop(); return; }
         await scanner.start(
-          { facingMode: 'environment' },
+          // Request a higher resolution so dense QR modules resolve on a phone screen.
+          { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
           {
             fps: 10,
             // Scan a large, responsive region (80% of the smaller video side) — far more forgiving
