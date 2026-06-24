@@ -717,11 +717,11 @@ function StartSessionModal({
   }
   // Marketplace passport QR (MTLM:<marketplace_id>) -> find/create + link a local customer (0130)
   const resolveMarketplace = async (mid: string) => {
-    if (!currentOrgId) return
+    if (!currentOrgId) { pushToast('danger', 'ორგანიზაცია არ არის არჩეული'); return }
     const { data, error } = await (supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>)(
       'link_marketplace_customer', { p_org: currentOrgId, p_marketplace_id: mid.trim() },
     )
-    if (error || !data) { pushToast('danger', 'passport ვერ დაუკავშირდა'); return }
+    if (error || !data) { pushToast('danger', 'passport: ' + (error?.message ?? 'ცარიელი პასუხი')); return }
     setCustomer(data as unknown as Cust); setName((data as unknown as Cust).name ?? '')
   }
   const searchCustomer = async () => {
@@ -987,6 +987,9 @@ function StartSessionModal({
           onScan={(text) => {
             setScanOpen(false)
             const t = text.trim()
+            // DIAGNOSTIC: show exactly what the camera decoded, so a "no reaction" report
+            // becomes "it read X" — pinpoints decode vs handler vs RPC.
+            pushToast('info', 'წავიკითხე: ' + (t.length > 44 ? t.slice(0, 44) + '…' : t || '(ცარიელი)'))
             if (t.startsWith('MTLM:')) resolveMarketplace(t.slice(5))
             else resolveCustomerById(t.startsWith('MTLP:') ? t.slice(5) : t)
           }}
