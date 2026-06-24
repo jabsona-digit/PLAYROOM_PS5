@@ -49,13 +49,23 @@ export default function BarcodeScanner({ open, onClose, onScan }: BarcodeScanner
             Html5QrcodeSupportedFormats.UPC_A,
             Html5QrcodeSupportedFormats.UPC_E,
           ],
+          // Use Chrome's native BarcodeDetector when available — markedly faster/more reliable.
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
           verbose: false,
         });
         scannerRef.current = scanner;
         if (cancelled) { await stop(); return; }
         await scanner.start(
           { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 230, height: 230 } },
+          {
+            fps: 10,
+            // Scan a large, responsive region (80% of the smaller video side) — far more forgiving
+            // than a fixed 230px box when the QR is on a phone screen, small, or held at an angle.
+            qrbox: (vw: number, vh: number) => {
+              const m = Math.floor(Math.min(vw, vh) * 0.8)
+              return { width: m, height: m }
+            },
+          },
           (decodedText) => {
             if (handledRef.current) return;
             handledRef.current = true;
