@@ -19,6 +19,11 @@ import {
   Send,
   Share2,
   Trophy,
+  Mail,
+  Phone,
+  Copy,
+  Receipt,
+  Pencil,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
@@ -41,6 +46,9 @@ interface OrgRow {
   subscription_status: string | null
   trial_ends_at: string | null
   current_period_end: string | null
+  contact_phone: string | null
+  contact_email: string | null
+  billing_ref: string | null
   monthly_amount: number | null
   created_at: string | null
   member_count: number | null
@@ -83,6 +91,8 @@ export function PlatformConsole({ onViewAs }: { onViewAs: () => void }) {
   const [rows, setRows] = useState<OrgRow[]>([])
   const [busyId, setBusyId] = useState<string | null>(null)
   const [payMonths, setPayMonths] = useState<Record<string, number>>({})
+  const [editContact, setEditContact] = useState<string | null>(null)
+  const [contactDraft, setContactDraft] = useState<{ phone: string; email: string }>({ phone: '', email: '' })
   const [tgLinked, setTgLinked] = useState<boolean | null>(null)
   const [tgCode, setTgCode] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'tournaments'>('overview')
@@ -137,6 +147,25 @@ export function PlatformConsole({ onViewAs }: { onViewAs: () => void }) {
     await load()
     await refresh()
     pushToast('success', `გადახდა დაფიქსირდა — ვადა +${months} თვ.`)
+  }
+
+  const saveContact = async (id: string) => {
+    setBusyId(id)
+    const { error } = await supabase.rpc('set_org_contact', {
+      p_org: id,
+      p_phone: contactDraft.phone.trim(),
+      p_email: contactDraft.email.trim(),
+    })
+    setBusyId(null)
+    if (error) return pushToast('danger', error.message)
+    setEditContact(null)
+    await load()
+    pushToast('success', 'საკონტაქტო განახლდა')
+  }
+
+  const copy = (text: string) => {
+    navigator.clipboard?.writeText(text)
+    pushToast('info', `დაკოპირდა: ${text}`)
   }
 
   const viewAs = async (id: string) => {
@@ -280,7 +309,69 @@ export function PlatformConsole({ onViewAs }: { onViewAs: () => void }) {
                             {r.venue_count ?? 0} ფილ.
                           </span>
                           <span>{gel(Number(r.total_revenue ?? 0))} ბრუნვა</span>
+                          {r.billing_ref && (
+                            <button
+                              onClick={() => copy(r.billing_ref!)}
+                              title="გადარიცხვის დანიშნულება — დააკოპირე"
+                              className="nm-raised-sm flex items-center gap-1 rounded-full px-2 py-0.5 font-mono font-bold text-primary"
+                            >
+                              {r.billing_ref}
+                              <Copy className="size-2.5" />
+                            </button>
+                          )}
                         </p>
+
+                        {/* Contact info */}
+                        {editContact === r.id ? (
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            <input
+                              value={contactDraft.phone}
+                              onChange={(e) => setContactDraft({ ...contactDraft, phone: e.target.value })}
+                              placeholder="5XX XXX XXX"
+                              className="nm-inset w-32 rounded-lg px-2 py-1 text-xs font-mono outline-none"
+                            />
+                            <input
+                              value={contactDraft.email}
+                              onChange={(e) => setContactDraft({ ...contactDraft, email: e.target.value })}
+                              placeholder="email"
+                              className="nm-inset w-44 rounded-lg px-2 py-1 text-xs outline-none"
+                            />
+                            <button
+                              onClick={() => saveContact(r.id)}
+                              disabled={busyId === r.id}
+                              className="nm-btn rounded-lg p-1.5 text-[var(--status-free)]"
+                            >
+                              <CheckCircle2 className="size-3.5" />
+                            </button>
+                            <button onClick={() => setEditContact(null)} className="nm-btn rounded-lg p-1.5 text-muted-foreground">
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Mail className="size-3" />
+                              {r.contact_email ?? '—'}
+                            </span>
+                            <span
+                              className="flex items-center gap-1"
+                              style={!r.contact_phone ? { color: 'var(--status-expired)' } : undefined}
+                            >
+                              <Phone className="size-3" />
+                              {r.contact_phone ?? 'ნომერი არ არის'}
+                            </span>
+                            <button
+                              onClick={() => {
+                                setEditContact(r.id)
+                                setContactDraft({ phone: r.contact_phone ?? '', email: r.contact_email ?? '' })
+                              }}
+                              title="საკონტაქტოს რედაქტირება"
+                              className="text-muted-foreground hover:text-primary"
+                            >
+                              <Pencil className="size-3" />
+                            </button>
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -329,6 +420,28 @@ export function PlatformConsole({ onViewAs }: { onViewAs: () => void }) {
                     />
                     <BillCell label="ბოლო გადახდა" value={fmtDate(r.last_payment_at)} />
                   </div>
+
+                  {/* Invoice prefill — what to ask for + the transfer reference */}
+                  {amount > 0 && (
+                    <div className="nm-raised-sm flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2">
+                      <div className="flex items-center gap-2 text-xs">
+                        <Receipt className="size-3.5 text-primary" />
+                        <span className="text-muted-foreground">გადასახდელი ({months} თვ.):</span>
+                        <span className="font-mono text-base font-extrabold text-primary">{gel(amount * months)}</span>
+                      </div>
+                      {r.billing_ref && (
+                        <button
+                          onClick={() => copy(r.billing_ref!)}
+                          title="გადარიცხვის დანიშნულება — დააკოპირე და გადააგზავნე ვენიუს"
+                          className="flex items-center gap-1.5 text-xs font-bold"
+                        >
+                          <span className="text-muted-foreground">დანიშნულება:</span>
+                          <span className="font-mono text-primary">{r.billing_ref}</span>
+                          <Copy className="size-3 text-muted-foreground" />
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {/* Actions */}
                   <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-3">

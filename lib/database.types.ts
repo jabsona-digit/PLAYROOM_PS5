@@ -1943,6 +1943,9 @@ export type Database = {
       }
       organizations: {
         Row: {
+          billing_ref: string | null
+          contact_email: string | null
+          contact_phone: string | null
           created_at: string
           current_period_end: string | null
           id: string
@@ -1956,6 +1959,9 @@ export type Database = {
           trial_ends_at: string | null
         }
         Insert: {
+          billing_ref?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string
           current_period_end?: string | null
           id?: string
@@ -1969,6 +1975,9 @@ export type Database = {
           trial_ends_at?: string | null
         }
         Update: {
+          billing_ref?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string
           current_period_end?: string | null
           id?: string
@@ -3905,6 +3914,9 @@ export type Database = {
       }
       platform_org_overview: {
         Row: {
+          billing_ref: string | null
+          contact_email: string | null
+          contact_phone: string | null
           created_at: string | null
           current_period_end: string | null
           id: string | null
@@ -3920,6 +3932,9 @@ export type Database = {
           venue_count: number | null
         }
         Insert: {
+          billing_ref?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           current_period_end?: string | null
           id?: string | null
@@ -3935,6 +3950,9 @@ export type Database = {
           venue_count?: never
         }
         Update: {
+          billing_ref?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
           created_at?: string | null
           current_period_end?: string | null
           id?: string | null
@@ -4348,14 +4366,24 @@ export type Database = {
         }
         Returns: string
       }
-      create_organization: {
-        Args: {
-          p_identification_code?: string
-          p_org_name: string
-          p_venue_name: string
-        }
-        Returns: string
-      }
+      create_organization:
+        | {
+            Args: {
+              p_identification_code?: string
+              p_org_name: string
+              p_venue_name: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_contact_phone?: string
+              p_identification_code?: string
+              p_org_name: string
+              p_venue_name: string
+            }
+            Returns: string
+          }
       create_platform_telegram_code: { Args: never; Returns: Json }
       create_platform_tournament: {
         Args: {
@@ -4659,6 +4687,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      next_billing_ref: { Args: never; Returns: string }
       next_fiscal_receipt_no: { Args: never; Returns: string }
       next_invoice_number: { Args: { p_org_id: string }; Returns: string }
       notify_email: {
@@ -4838,6 +4867,10 @@ export type Database = {
       }
       set_employee_pin: {
         Args: { p_employee_id: number; p_pin: string }
+        Returns: undefined
+      }
+      set_org_contact: {
+        Args: { p_email: string; p_org: string; p_phone: string }
         Returns: undefined
       }
       set_payment_provider_active: {

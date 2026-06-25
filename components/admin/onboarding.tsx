@@ -14,6 +14,7 @@ export function Onboarding() {
   const [orgName, setOrgName] = useState('')
   const [venueName, setVenueName] = useState('')
   const [tin, setTin] = useState('')
+  const [phone, setPhone] = useState('')
   
   // Step 2: Employees
   const [employees, setEmployees] = useState<{name: string, role: OrgRole, pin: string}[]>([])
@@ -29,7 +30,8 @@ export function Onboarding() {
     const { error } = await supabase.rpc('create_organization', {
       p_org_name: orgName,
       p_venue_name: venueName || 'მთავარი ფილიალი',
-      p_identification_code: tin.trim() || undefined
+      p_identification_code: tin.trim() || undefined,
+      p_contact_phone: phone.trim(),
     })
     if (error) {
       setError(error.message)
@@ -109,6 +111,17 @@ export function Onboarding() {
                   />
                 </label>
               </div>
+
+              <label className="block">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">საკონტაქტო ტელეფონი *</span>
+                <input
+                  required type="tel" inputMode="tel"
+                  value={phone} onChange={(e) => setPhone(e.target.value)}
+                  placeholder="5XX XXX XXX"
+                  className="nm-inset mt-2 w-full rounded-2xl px-4 py-3.5 text-sm outline-none placeholder:text-muted-foreground/40 font-bold font-mono"
+                />
+                <span className="mt-1 block text-[11px] text-muted-foreground">ქართული მობილური — დაგვჭირდება შენთან დასაკავშირებლად.</span>
+              </label>
 
               {error && <p className="text-center text-sm font-semibold text-[var(--status-expired)]">{error}</p>}
 
