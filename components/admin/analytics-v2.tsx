@@ -11,10 +11,9 @@ import { usePlayroom } from '@/lib/store'
 import { gel, venueLabels } from '@/lib/ui'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase/client'
+import { callRpc as rpc } from '@/lib/rpc'
 
 // get_console_analytics ships in migration 0059; DB types regenerate on deploy.
-const rpc = (fn: string, args: Record<string, unknown>) =>
-  (supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: any; error: { message: string } | null }>)(fn, args)
 
 interface ConsoleRow {
   console_id: number; name: string; sessions: number
@@ -103,12 +102,13 @@ export function RevpachAnalytics() {
     if (!currentVenueId) return
     setLoading(true)
     const { from, to } = rangeOf(preset)
-    const { data: res, error } = await rpc('get_console_analytics', {
+    const { data: res, error } = await rpc<Analytics>('get_console_analytics', {
       p_venue_id: currentVenueId, p_from: from, p_to: to, p_daily_hours: dailyHours,
     })
     setLoading(false)
-    if (error || !res || res.error) { setData(null); return }
-    setData(res as Analytics)
+    // callRpc folds any soft `{error}` into `error`
+    if (error || !res) { setData(null); return }
+    setData(res)
   }, [currentVenueId, preset, dailyHours])
 
   useEffect(() => { load() }, [load])

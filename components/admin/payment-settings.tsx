@@ -4,12 +4,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { CreditCard, Check, Save, Trash2, ShieldCheck, X, Lock } from 'lucide-react'
 import { useOrg } from '@/lib/org'
 import { usePlayroom } from '@/lib/store'
-import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { callRpc as rpc } from '@/lib/rpc'
 
 // payment RPCs ship in migration 0058; DB types regenerate on deploy.
-const rpc = (fn: string, args: Record<string, unknown>) =>
-  (supabase.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<{ data: any; error: { message: string } | null }>)(fn, args)
+// callRpc folds a soft `{error}` (e.g. bad_provider) into the `error` channel.
 
 interface PaymentSetting {
   provider: 'tbc' | 'bog'
@@ -56,14 +55,15 @@ function ProviderCard({
     setBusy(true)
     const payload: Record<string, string> = { client_secret: secret.trim() }
     if (hasApiKey) payload.api_key = apiKey.trim()
-    const { data, error } = await rpc('save_payment_credentials', {
+    const { error } = await rpc('save_payment_credentials', {
       p_org_id: orgId,
       p_provider: provider,
       p_merchant_id: merchantId.trim(),
       p_secret: payload,
     })
     setBusy(false)
-    if (error || data?.error) {
+    // callRpc folds a soft `{error}` (e.g. bad_provider) into `error`
+    if (error) {
       pushToast('danger', 'შენახვა ვერ მოხერხდა')
       return
     }
