@@ -968,6 +968,7 @@ export type Database = {
           deleted_at: string | null
           discount_pct: number
           id: string
+          marketplace_customer_id: string | null
           name: string
           org_id: string
           phone: string | null
@@ -980,6 +981,7 @@ export type Database = {
           deleted_at?: string | null
           discount_pct?: number
           id?: string
+          marketplace_customer_id?: string | null
           name: string
           org_id: string
           phone?: string | null
@@ -992,6 +994,7 @@ export type Database = {
           deleted_at?: string | null
           discount_pct?: number
           id?: string
+          marketplace_customer_id?: string | null
           name?: string
           org_id?: string
           phone?: string | null
@@ -1000,6 +1003,13 @@ export type Database = {
           visit_count?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "customers_marketplace_fk"
+            columns: ["marketplace_customer_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "customers_org_id_fkey"
             columns: ["org_id"]
@@ -1102,6 +1112,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      edge_error_log: {
+        Row: {
+          context: Json
+          created_at: string
+          fn: string
+          id: number
+          message: string
+        }
+        Insert: {
+          context?: Json
+          created_at?: string
+          fn: string
+          id?: never
+          message: string
+        }
+        Update: {
+          context?: Json
+          created_at?: string
+          fn?: string
+          id?: never
+          message?: string
+        }
+        Relationships: []
       }
       employees: {
         Row: {
@@ -1613,6 +1647,8 @@ export type Database = {
           full_name: string
           id: string
           phone: string | null
+          referral_code: string | null
+          referred_by: string | null
         }
         Insert: {
           created_at?: string
@@ -1620,6 +1656,8 @@ export type Database = {
           full_name: string
           id: string
           phone?: string | null
+          referral_code?: string | null
+          referred_by?: string | null
         }
         Update: {
           created_at?: string
@@ -1627,8 +1665,18 @@ export type Database = {
           full_name?: string
           id?: string
           phone?: string | null
+          referral_code?: string | null
+          referred_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_customers_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "marketplace_customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       marketplace_reviews: {
         Row: {
@@ -2103,6 +2151,7 @@ export type Database = {
       platform_uptime_state: {
         Row: {
           down_since: string | null
+          fail_streak: number
           is_down: boolean
           last_checked_at: string | null
           last_request_id: number | null
@@ -2112,6 +2161,7 @@ export type Database = {
         }
         Insert: {
           down_since?: string | null
+          fail_streak?: number
           is_down?: boolean
           last_checked_at?: string | null
           last_request_id?: number | null
@@ -2121,6 +2171,7 @@ export type Database = {
         }
         Update: {
           down_since?: string | null
+          fail_streak?: number
           is_down?: boolean
           last_checked_at?: string | null
           last_request_id?: number | null
@@ -2272,6 +2323,65 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_earnings: {
+        Row: {
+          amount: number
+          created_at: string
+          id: number
+          org_id: string | null
+          referee_id: string
+          referrer_id: string
+          session_id: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: never
+          org_id?: string | null
+          referee_id: string
+          referrer_id: string
+          session_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: never
+          org_id?: string | null
+          referee_id?: string
+          referrer_id?: string
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_earnings_referee_id_fkey"
+            columns: ["referee_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_earnings_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_earnings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "session_revenue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_earnings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -2582,6 +2692,7 @@ export type Database = {
           credit_discount: number
           credit_id: string | null
           credit_minutes: number
+          customer_id: string | null
           customer_name: string | null
           duration_min: number | null
           ended_at: string | null
@@ -2613,6 +2724,7 @@ export type Database = {
           credit_discount?: number
           credit_id?: string | null
           credit_minutes?: number
+          customer_id?: string | null
           customer_name?: string | null
           duration_min?: number | null
           ended_at?: string | null
@@ -2644,6 +2756,7 @@ export type Database = {
           credit_discount?: number
           credit_id?: string | null
           credit_minutes?: number
+          customer_id?: string | null
           customer_name?: string | null
           duration_min?: number | null
           ended_at?: string | null
@@ -2686,6 +2799,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
           {
@@ -2862,6 +2982,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      telegram_rate_limit: {
+        Row: {
+          chat_id: number
+          count: number
+          window_start: string
+        }
+        Insert: {
+          chat_id: number
+          count?: number
+          window_start?: string
+        }
+        Update: {
+          chat_id?: number
+          count?: number
+          window_start?: string
+        }
+        Relationships: []
       }
       tournament_groups: {
         Row: {
@@ -4131,6 +4269,7 @@ export type Database = {
         Args: { p_amount: number; p_method: string; p_registration: string }
         Returns: Json
       }
+      claim_referral: { Args: { p_code: string }; Returns: Json }
       clock_toggle: {
         Args: { p_pin: string; p_venue_id: string }
         Returns: Json
@@ -4328,6 +4467,7 @@ export type Database = {
         Args: { p_date?: string; p_venue_id: string }
         Returns: Json
       }
+      get_edge_errors: { Args: { p_limit?: number }; Returns: Json }
       get_gamer_passport: { Args: never; Returns: Json }
       get_ghost_power_events: {
         Args: { p_from: string; p_to: string; p_venue_id: string }
@@ -4345,6 +4485,7 @@ export type Database = {
       }
       get_hardware_settings: { Args: { p_venue_id: string }; Returns: Json }
       get_my_credits: { Args: never; Returns: Json }
+      get_my_referral: { Args: never; Returns: Json }
       get_my_tournament_registrations: { Args: never; Returns: Json }
       get_open_drawer: { Args: { p_venue_id: string }; Returns: Json }
       get_operator_integrity: {
@@ -4367,6 +4508,7 @@ export type Database = {
       }
       get_payment_settings: { Args: { p_org_id: string }; Returns: Json }
       get_pulse_stats: { Args: never; Returns: Json }
+      get_referral_overview: { Args: { p_days?: number }; Returns: Json }
       get_session_bill: { Args: { p_session_id: string }; Returns: Json }
       get_staff_leaderboard: {
         Args: {
@@ -4415,6 +4557,28 @@ export type Database = {
       is_org_member: { Args: { p_org: string }; Returns: boolean }
       is_org_member_raw: { Args: { p_org: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
+      link_marketplace_customer: {
+        Args: { p_marketplace_id: string; p_org: string }
+        Returns: {
+          created_at: string
+          deleted_at: string | null
+          discount_pct: number
+          id: string
+          marketplace_customer_id: string | null
+          name: string
+          org_id: string
+          phone: string | null
+          points: number
+          total_spent: number
+          visit_count: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "customers"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       list_api_keys: { Args: { p_org_id?: string }; Returns: Json }
       list_hosting_opportunities: { Args: never; Returns: Json }
       list_org_members: {
@@ -4446,6 +4610,10 @@ export type Database = {
           p_payload?: Json
           p_venue_id: string
         }
+        Returns: undefined
+      }
+      log_edge_error: {
+        Args: { p_context?: Json; p_fn: string; p_message: string }
         Returns: undefined
       }
       log_power_event: {
@@ -4702,6 +4870,7 @@ export type Database = {
           p_bank?: string
           p_console_id: number
           p_created_by?: number
+          p_customer_id?: string
           p_customer_name?: string
           p_payment_method?: string
           p_plan_id: number
@@ -4715,6 +4884,7 @@ export type Database = {
           credit_discount: number
           credit_id: string | null
           credit_minutes: number
+          customer_id: string | null
           customer_name: string | null
           duration_min: number | null
           ended_at: string | null
@@ -4749,6 +4919,7 @@ export type Database = {
           p_bank?: string
           p_console_id: number
           p_created_by?: number
+          p_customer_id?: string
           p_customer_name?: string
           p_duration_min: number
           p_payment_method?: string
@@ -4763,6 +4934,7 @@ export type Database = {
           credit_discount: number
           credit_id: string | null
           credit_minutes: number
+          customer_id: string | null
           customer_name: string | null
           duration_min: number | null
           ended_at: string | null
@@ -4817,6 +4989,10 @@ export type Database = {
       telegram_link_status: { Args: { p_org_id: string }; Returns: Json }
       telegram_nightly_briefs: { Args: never; Returns: undefined }
       telegram_org_summary: { Args: { p_chat_id: number }; Returns: Json }
+      telegram_rate_ok: {
+        Args: { p_chat_id: number; p_limit?: number }
+        Returns: boolean
+      }
       verify_api_key: { Args: { p_key: string }; Returns: Json }
       void_bar_sale: {
         Args: { p_reason?: string; p_sale_id: string }
