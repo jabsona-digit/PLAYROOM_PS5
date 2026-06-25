@@ -12,11 +12,11 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
-> 📌 **For a future reviewer (e.g. Opus 4.8):** THIS file is the **current, live** state (through migration **0126**, 2026-06-22). The repo root holds two prior review handoffs — `SENIOR_REVIEW_HANDOFF.md` (v1, of the 0122 snapshot) and **`SENIOR_REVIEW_HANDOFF_v2.md`** (v2, re-review of 0126). **Their entire engineering tier is now CLOSED:** P0/P1 launch-critical (token rotation, a **required** `tsc` branch-protection check, observability) PLUS v2's "proof→regression-suite" upgrade — the **money + RLS invariants now run as a CI gate on every push** (`.github/workflows/db-invariants.yml`, see §13) and the AI threat model is written down (`SECURITY_AI_THREAT_MODEL.md`). The only deferred hardening item is a **paid staging branch** (v2 P1-1 — deferred to first-venue onboarding). Read THIS overview for current reality; the handoffs are historical, not an open to-do list.
+> 📌 **For a future reviewer (e.g. Opus 4.8):** THIS file is the **current, live** state (through migration **0138**, 2026-06-25). The repo root holds two prior review handoffs — `SENIOR_REVIEW_HANDOFF.md` (v1, of the 0122 snapshot) and **`SENIOR_REVIEW_HANDOFF_v2.md`** (v2, re-review of 0126). **Their entire engineering tier is now CLOSED:** P0/P1 launch-critical (token rotation, a **required** `tsc` branch-protection check, observability) PLUS v2's "proof→regression-suite" upgrade — the **money + RLS invariants now run as a CI gate on every push** (`.github/workflows/db-invariants.yml`, see §13) and the AI threat model is written down (`SECURITY_AI_THREAT_MODEL.md`). The only deferred hardening item is a **paid staging branch** (v2 P1-1 — deferred to first-venue onboarding). Read THIS overview for current reality; the handoffs are historical, not an open to-do list.
 
 > 🩺 **Current diagnosis & phase (2026-06-22):** the product is **feature-complete, launch-hardened, and self-testing** (money + tenant-isolation invariants gate every commit; Sentry + uptime live; AI is RLS-bound). **0 real venues use it yet** — only the founder tests; demand is waiting on a polished product. **DECISION (owner + senior): FREEZE net-new feature surface.** The bottleneck is no longer code — it is **real venues using it**. Next phase = **harden + onboard the first ~10 Tbilisi venues**, sold on the anti-fraud / **"see every lari, catch theft"** + RS.ge-compliance wedge (Trust Score, hardware-tied sessions, audit log, nightly Telegram brief) — NOT a feature list. New feature work is paused until venue density exists.
 
-> _Last updated **2026-06-22** — through migration **0126**. **Since the 0076 revision (the big additions):**
+> _Last updated **2026-06-25** — through migration **0138** (pre-onboarding audit wave; see the audit note below). **Since the 0076 revision (the big additions):**
 > **Tournaments 2.0** — a full platform-promoted tournament product (groups+knockout / 3-1-0, host-bidding + tenant→Global
 > promotion with commission, public marketplace listing, paid online registration → **QR pass → scan check-in (pay-at-venue)**
 > → **„ვირტუალური დოლორა" server-fair group draw** → champion; min-participants gate + 1st/2nd/3rd prizes; the **FULL money
@@ -47,6 +47,22 @@ This document is the single source of truth for anyone (human or AI) joining the
 > `run_invariants.py` in `.github/workflows/db-invariants.yml` on every push/PR (8/8 green); the `tsc` check is now a
 > **required** branch-protection gate; AI threat model documented (`SECURITY_AI_THREAT_MODEL.md`). The product now
 > **defends its own money-correctness + tenant-isolation on every commit.**_
+>
+> _**Pre-onboarding audit wave (2026-06-25, through 0138):** a full backend audit (Supabase advisors + code) hardened
+> the DB before first-venue onboarding. **Money suite grown to 9/9** (added end_session 5-min round-up + 1440 cap,
+> cash_expected reconciliation, settle_tab single-sale + idempotency, 5% commission — 0135 passport-visit fix shipped
+> too). **Performance:** all **53 unindexed FKs indexed** (0136) + **10 RLS policies hoist `(select auth.uid())`** (0137).
+> **Security advisor remediated** (0138): revoked 14 secdef trigger fns from the RPC surface, closed an anon
+> `cash_expected` cross-tenant leak, pinned `search_path` on 6 fns → advisor `function_search_path_mutable` 6→0,
+> anon secdef-exec 33→17. **`callRpc` helper** (`lib/rpc.ts`) now folds soft `{error}` jsonb into the error channel,
+> and **gen-types CI is a drift-CHECK** (no more bot-push fighting branch protection; types refreshed in sync with prod).
+> **Known/by-design advisor residue (accepted):** 4 `security_definer_view` ERRORs = the curated anon marketplace
+> projections (`public_venues/reviews/tournaments/venue_plans`; flipping to security_invoker would need anon base-table
+> policies — break the public site); ~17 anon + ~121 authenticated secdef-exec WARNs = the intentional self-gated RPC
+> architecture; 6 `rls_enabled_no_policy` = RPC-only locked tables (api_keys, payment creds, platform/telegram); pg_net
+> in public; leaked-password protection OFF (owner dashboard toggle, recommended for B2C). **⛔ Only launch-blocker
+> left: prod is on the Supabase FREE plan (`pitr_enabled:false`, no restorable backups) — owner DECIDED to upgrade to
+> Pro at first-venue onboarding, not before (0 real venues = no data at risk yet).**_
 
 > Product was renamed **Playroom OS → Martelounge** (martel-**OU**-nge; domain bought 2026-06-08).
 > "Playroom" survives only as a demo/tenant name.
@@ -490,6 +506,13 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 ─ (0127–0134: uptime/edge-log/loyalty/referral/telegram tuning — see supabase/migrations) ────────────────
 0135  PASSPORT VISIT FIX: get_gamer_passport "visit" now = checked_in_at IS NOT NULL OR status='completed' (was NOT IN
       cancelled/no_show, which counted a not-yet-arrived pending booking as a visit). Same filter fixes venues + spend.
+─ pre-onboarding hardening pass (2026-06-25 backend audit) ───────────────────────────────────────────────
+0136  INDEX every unindexed FK (53): tenant org_id (RLS filters) + tournament bracket graph + session/bill links +
+      marketplace FKs. Postgres doesn't auto-index FKs → was seq-scanning JOIN/CASCADE. Advisor "unindexed FK" → clean.
+0137  RLS PERF: wrap bare auth.uid() → (select auth.uid()) across 10 policies (cc_read, mb/mc/mr own-row set,
+      ref_earn_select, tr_read) → planner hoists to one initplan vs per-row (~100x at scale). Access logic identical.
+0138  SECURITY ADVISOR hardening: revoke EXECUTE on 14 secdef TRIGGER fns from anon/authenticated (RPC surface; triggers
+      still fire) + lock cash_expected/cash_opener_name (anon could read any venue's cash) + pin search_path on 6 fns.
 ```
 
 > **⚠️ Frontend gotchas hit while building God-Mode/tournaments (2026-06-21):** (1) `const x = supabase.rpc` DETACHES
