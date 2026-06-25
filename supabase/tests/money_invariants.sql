@@ -12,10 +12,11 @@
 --
 -- COVERED: tournament prize payout idempotency + money-out reconciliation; credit
 -- no-double-redeem + minutes cap + one-way status; min_participants draw gate
--- (anti-loss); create_bar_sale method/bank validation (0099); non-negative stock guard.
--- DEFERRED to the full audit (add blocks here): end_session 5-min rounding + open
--- 1440 cap; cash_expected reconciliation over a shift; settle_session_tab → exactly one
--- paid bar_sale matching the itemized bill; 5% marketplace commission base.
+-- (anti-loss); create_bar_sale method/bank validation (0099); non-negative stock guard;
+-- end_session 5-min round-up + 1440 cap (P1-3); cash_expected shift reconciliation
+-- (cash-only, card excluded, refund subtracted) (P1-3); settle_session_tab -> exactly
+-- one paid bar_sale equal to the itemized tab + idempotent (P1-3); 5% marketplace
+-- commission base (P1-3).
 --
 -- Fixtures use the demo org/venue/owner. Each test block is delimited by the marker
 -- line that the runner splits on (see run_invariants.py); the runner re-attaches it.
@@ -166,3 +167,141 @@ begin
   if v_fail <> '' then raise exception 'SUITE_FAIL tournament_min_participants_gate%', v_fail;
   else raise exception 'SUITE_PASS tournament_min_participants_gate draw_blocked(%)', v_err; end if;
 end $e$;
+
+-- @@TEST end_session_rounding_cap
+-- Open-session billing = ceil to 5-min, floor 5, cap 1440 (24h). 11 min @ ₾12/h must
+-- bill 15 min = ₾3.00 (rounds UP); 30 h @ ₾10/h must cap at 1440 min = ₾240.00.
+-- Uses an isolated console_type so capacity is clean for sessions that are active "now".
+do $f$
+declare
+  v_owner uuid := 'bc2afd0f-dc14-4e0f-b073-cfe1d98344cc';
+  v_org   uuid := 'f5bdf043-9e6a-4efd-928c-109aead87dfb';
+  v_venue uuid := 'c95108ec-8b43-4c18-b228-483584788ec8';
+  v_plan int; v_con int; v_s1 uuid; v_s2 uuid;
+  v_d1 int; v_p1 numeric; v_d2 int; v_p2 numeric; v_fail text := '';
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', v_owner, 'role', 'authenticated')::text, true);
+  select id into v_plan from public.pricing_plans where org_id = v_org and is_active limit 1;
+  insert into public.consoles (org_id, venue_id, slot_number, name, console_type, status)
+    values (v_org, v_venue, 9990, 'inv-end', 'ZZINV_END', 'active') returning id into v_con;
+  -- rounds UP: 11 min -> 15 min, ₾3.00
+  insert into public.sessions (console_id, pricing_plan_id, org_id, venue_id, price_per_hour, price_total, is_open, status, started_at)
+    values (v_con, v_plan, v_org, v_venue, 12, 0, true, 'active', now() - interval '11 minutes') returning id into v_s1;
+  perform public.end_session(v_s1, 0);
+  select duration_min, price_total into v_d1, v_p1 from public.sessions where id = v_s1;
+  -- caps: 30 h -> 1440 min, ₾240.00
+  insert into public.sessions (console_id, pricing_plan_id, org_id, venue_id, price_per_hour, price_total, is_open, status, started_at)
+    values (v_con, v_plan, v_org, v_venue, 10, 0, true, 'active', now() - interval '30 hours') returning id into v_s2;
+  perform public.end_session(v_s2, 0);
+  select duration_min, price_total into v_d2, v_p2 from public.sessions where id = v_s2;
+  if v_d1 <> 15     then v_fail := v_fail || format(' dur1=%s(exp15)', v_d1); end if;
+  if v_p1 <> 3.00   then v_fail := v_fail || format(' price1=%s(exp3)', v_p1); end if;
+  if v_d2 <> 1440   then v_fail := v_fail || format(' dur2=%s(exp1440)', v_d2); end if;
+  if v_p2 <> 240.00 then v_fail := v_fail || format(' price2=%s(exp240)', v_p2); end if;
+  if v_fail <> '' then raise exception 'SUITE_FAIL end_session_rounding_cap%', v_fail;
+  else raise exception 'SUITE_PASS end_session_rounding_cap 11min->15/3.00 30h->1440/240'; end if;
+end $f$;
+
+-- @@TEST cash_expected_reconciliation
+-- Drawer expected = opening + cash session-in (fixed by start-time) + bar cash - cash
+-- refunds. A CARD session must NOT count; a refunded cash session nets to 0 (counted in,
+-- then refunded out). Far-past window (500d ago) so no real data pollutes the sum.
+do $g$
+declare
+  v_owner uuid := 'bc2afd0f-dc14-4e0f-b073-cfe1d98344cc';
+  v_org   uuid := 'f5bdf043-9e6a-4efd-928c-109aead87dfb';
+  v_venue uuid := 'c95108ec-8b43-4c18-b228-483584788ec8';
+  v_plan int; v_con int;
+  f timestamptz := now() - interval '500 days';
+  t timestamptz := now() - interval '500 days' + interval '2 hours';
+  v_exp numeric; v_fail text := '';
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', v_owner, 'role', 'authenticated')::text, true);
+  select id into v_plan from public.pricing_plans where org_id = v_org and is_active limit 1;
+  select id into v_con from public.consoles where venue_id = v_venue and deleted_at is null order by id limit 1;
+  -- cash fixed session ₾20 (collected at start, in window)
+  insert into public.sessions (console_id, pricing_plan_id, org_id, venue_id, price_per_hour, price_total, duration_min, is_open, status, started_at, ended_at, payment_method)
+    values (v_con, v_plan, v_org, v_venue, 10, 20, 120, false, 'completed', f + interval '30 min', f + interval '90 min', 'cash');
+  -- card session ₾50 (must NOT count toward cash)
+  insert into public.sessions (console_id, pricing_plan_id, org_id, venue_id, price_per_hour, price_total, duration_min, is_open, status, started_at, ended_at, payment_method, bank)
+    values (v_con, v_plan, v_org, v_venue, 10, 50, 300, false, 'completed', f + interval '30 min', f + interval '90 min', 'card', 'TBC');
+  -- refunded cash session ₾15 (+15 in by start, then -15 out by refunded_at) => net 0
+  insert into public.sessions (console_id, pricing_plan_id, org_id, venue_id, price_per_hour, price_total, duration_min, is_open, status, started_at, ended_at, payment_method, refunded_at, refund_amount)
+    values (v_con, v_plan, v_org, v_venue, 10, 15, 90, false, 'completed', f + interval '50 min', f + interval '70 min', 'cash', f + interval '60 min', 15);
+  -- bar cash ₾10 (in window)
+  insert into public.bar_sales (org_id, venue_id, total, tip_amount, payment_method, created_at)
+    values (v_org, v_venue, 10, 0, 'cash', f + interval '45 min');
+  select public.cash_expected(v_venue, f, t, 100) into v_exp;
+  -- 100 + (20 + 15) + 10 - 15 = 130
+  if v_exp <> 130.00 then v_fail := v_fail || format(' expected=%s(exp130)', v_exp); end if;
+  if v_fail <> '' then raise exception 'SUITE_FAIL cash_expected_reconciliation%', v_fail;
+  else raise exception 'SUITE_PASS cash_expected_reconciliation expected=130 (card-excluded, refund-netted)'; end if;
+end $g$;
+
+-- @@TEST settle_tab_single_sale
+-- settle_session_tab must charge the whole delivered tab as EXACTLY ONE paid bar_sale
+-- equal to the sum of the delivered order requests, mark them 'settled', and be
+-- idempotent (a second call rings up nothing and leaves exactly one sale).
+do $h$
+declare
+  v_owner uuid := 'bc2afd0f-dc14-4e0f-b073-cfe1d98344cc';
+  v_org   uuid := 'f5bdf043-9e6a-4efd-928c-109aead87dfb';
+  v_venue uuid := 'c95108ec-8b43-4c18-b228-483584788ec8';
+  v_plan int; v_con int; v_prod int; v_sess uuid; v_r jsonb;
+  v_total numeric; v_sales int; v_sale_total numeric; v_items_sum numeric; v_delivered int; v_fail text := '';
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', v_owner, 'role', 'authenticated')::text, true);
+  select id into v_plan from public.pricing_plans where org_id = v_org and is_active limit 1;
+  select id into v_con  from public.consoles where venue_id = v_venue and deleted_at is null order by id limit 1;
+  select id into v_prod from public.bar_products where org_id = v_org order by id limit 1;
+  if v_prod is null then raise exception 'SUITE_FAIL settle_tab_single_sale no_demo_product'; end if;
+  insert into public.sessions (console_id, pricing_plan_id, org_id, venue_id, price_per_hour, price_total, duration_min, is_open, status, started_at, ended_at)
+    values (v_con, v_plan, v_org, v_venue, 10, 20, 120, false, 'completed', now() - interval '380 days', now() - interval '380 days' + interval '2 hours') returning id into v_sess;
+  insert into public.service_requests (org_id, venue_id, console_id, session_id, kind, status, total, items)
+    values (v_org, v_venue, v_con, v_sess, 'order', 'delivered', 12,
+            json_build_array(json_build_object('product_id', v_prod, 'name', 'Item A', 'unit_price', 6, 'qty', 2, 'line_total', 12))::jsonb);
+  insert into public.service_requests (org_id, venue_id, console_id, session_id, kind, status, total, items)
+    values (v_org, v_venue, v_con, v_sess, 'order', 'delivered', 8,
+            json_build_array(json_build_object('product_id', v_prod, 'name', 'Item B', 'unit_price', 4, 'qty', 2, 'line_total', 8))::jsonb);
+  select public.settle_session_tab(v_sess, 'cash', null) into v_r;
+  v_total := (v_r->>'settled_total')::numeric;
+  -- second call must be a no-op (nothing left delivered) and must NOT create a 2nd sale
+  perform public.settle_session_tab(v_sess, 'cash', null);
+  select count(*), coalesce(sum(total), 0) into v_sales, v_sale_total
+    from public.bar_sales where session_id = v_sess and customer_name = 'In-Seat Tab';
+  select coalesce(sum(bi.line_total), 0) into v_items_sum
+    from public.bar_sales bs join public.bar_sale_items bi on bi.sale_id = bs.id
+    where bs.session_id = v_sess;
+  select count(*) filter (where status = 'delivered') into v_delivered
+    from public.service_requests where session_id = v_sess;
+  if v_total      <> 20    then v_fail := v_fail || format(' settled_total=%s(exp20)', v_total); end if;
+  if v_sales      <> 1     then v_fail := v_fail || format(' sales=%s(exp1)', v_sales); end if;
+  if v_sale_total <> 20    then v_fail := v_fail || format(' sale_total=%s(exp20)', v_sale_total); end if;
+  if v_items_sum  <> 20    then v_fail := v_fail || format(' items_sum=%s(exp20)', v_items_sum); end if;
+  if v_delivered  <> 0     then v_fail := v_fail || format(' still_delivered=%s(exp0)', v_delivered); end if;
+  if v_fail <> '' then raise exception 'SUITE_FAIL settle_tab_single_sale%', v_fail;
+  else raise exception 'SUITE_PASS settle_tab_single_sale one_sale=20 items=20 idempotent'; end if;
+end $h$;
+
+-- @@TEST marketplace_commission_5pct
+-- create_marketplace_booking must set total_amount = round(pph*min/60,2) and
+-- commission_amount = round(total*0.05,2). Plan ₾10/h × 120 min => ₾20.00 total, ₾1.00
+-- commission. Far-future start so the availability check has clear capacity.
+do $i$
+declare
+  v_owner uuid := 'bc2afd0f-dc14-4e0f-b073-cfe1d98344cc';
+  v_bk uuid; v_total numeric; v_comm numeric; v_fail text := '';
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', v_owner, 'role', 'authenticated')::text, true);
+  select public.create_marketplace_booking(
+    p_slug => 'gamelounge', p_start => now() + interval '400 days', p_duration_min => 120,
+    p_customer_name => 'InvTest', p_customer_phone => '555000111',
+    p_console_type => 'standard', p_pricing_plan_id => 2) into v_bk;
+  select total_amount, commission_amount into v_total, v_comm
+    from public.marketplace_bookings where id = v_bk;
+  if v_total <> 20.00 then v_fail := v_fail || format(' total=%s(exp20)', v_total); end if;
+  if v_comm  <> 1.00  then v_fail := v_fail || format(' commission=%s(exp1)', v_comm); end if;
+  if v_comm  <> round(v_total * 0.05, 2) then v_fail := v_fail || ' commission<>5pct_of_total'; end if;
+  if v_fail <> '' then raise exception 'SUITE_FAIL marketplace_commission_5pct%', v_fail;
+  else raise exception 'SUITE_PASS marketplace_commission_5pct total=20 commission=1 (5%%)'; end if;
+end $i$;
