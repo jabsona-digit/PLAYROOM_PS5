@@ -487,6 +487,9 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
       (platform-admin; per-org tokens/calls + ESTIMATED USD at read-time) → God-Mode AiUsageCard (7/30-day).
 0126  AGENT HEARTBEAT: api_device_heartbeat(org) bumps console_hardware.last_seen_at for 'agent' consoles (no power_event) +
       api-gateway route POST /v1/devices/heartbeat → the "agent online" signal for the Hardware LAN Agent (see §9).
+─ (0127–0134: uptime/edge-log/loyalty/referral/telegram tuning — see supabase/migrations) ────────────────
+0135  PASSPORT VISIT FIX: get_gamer_passport "visit" now = checked_in_at IS NOT NULL OR status='completed' (was NOT IN
+      cancelled/no_show, which counted a not-yet-arrived pending booking as a visit). Same filter fixes venues + spend.
 ```
 
 > **⚠️ Frontend gotchas hit while building God-Mode/tournaments (2026-06-21):** (1) `const x = supabase.rpc` DETACHES
