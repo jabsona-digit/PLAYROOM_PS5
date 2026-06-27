@@ -57,7 +57,7 @@ export function Topbar({
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-4">
-      <div className="flex min-w-0 flex-1 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         {/* hamburger — mobile only, opens the sidebar drawer */}
         <button
           type="button"
@@ -73,6 +73,13 @@ export function Topbar({
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">{meta.subtitle}</p>
         </div>
+      </div>
+
+      {/* parent-brand credit — engraved into the header, centered */}
+      <div className="hidden flex-1 justify-center lg:flex">
+        <span className="nm-engraved cursor-default text-[11px]" title="a MARTE GROUP product">
+          a MARTE GROUP product
+        </span>
       </div>
 
       <div className="flex items-center gap-3">

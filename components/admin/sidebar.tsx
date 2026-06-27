@@ -129,7 +129,7 @@ export function Sidebar({
       >
         {/* brand */}
         <div className="mb-4 flex items-center gap-3 px-1">
-          <div className="nm-raised-sm flex size-12 items-center justify-center rounded-2xl">
+          <div className="nm-raised-sm flex size-12 shrink-0 items-center justify-center rounded-2xl">
             <Gamepad2 className="size-6 text-primary" />
           </div>
           <div>

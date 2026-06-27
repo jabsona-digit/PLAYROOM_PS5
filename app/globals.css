@@ -170,6 +170,28 @@
   text-shadow: 0 0 14px color-mix(in oklch, var(--primary) 60%, transparent);
 }
 
+/* Engraved / laser-cut text — the glyph sits BELOW the surface. Light comes from the
+   top-left (same as nm-raised), so a cut letter is: a fill DARKER than the surface
+   (recessed) + a bright lower lip (the bottom edge catches the top light) + a faint dark
+   upper edge (depth). The earlier version made the text LIGHTER than the surface, which
+   read as raised — this inverts it so it truly looks etched into the metal. */
+@utility nm-engraved {
+  color: color-mix(in oklch, var(--surface) 52%, var(--nm-dark) 48%);
+  text-shadow:
+    0 1px 0 color-mix(in oklch, var(--nm-light) 35%, var(--muted-foreground) 65%),
+    0 -1px 1px color-mix(in oklch, var(--nm-dark) 85%, transparent);
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  transition: color 0.35s ease, text-shadow 0.35s ease;
+  &:hover {
+    color: color-mix(in oklch, var(--primary) 78%, var(--surface) 22%);
+    text-shadow:
+      0 1px 0 color-mix(in oklch, var(--nm-light) 35%, var(--muted-foreground) 65%),
+      0 0 10px color-mix(in oklch, var(--primary) 45%, transparent);
+  }
+}
+
 /* Module entrance animation */
 @keyframes slide-in-up {
   from {
