@@ -12,11 +12,11 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
-> 📌 **For a future reviewer (e.g. Opus 4.8):** THIS file is the **current, live** state (through migration **0141**, 2026-06-26). The repo root holds two prior review handoffs — `SENIOR_REVIEW_HANDOFF.md` (v1, of the 0122 snapshot) and **`SENIOR_REVIEW_HANDOFF_v2.md`** (v2, re-review of 0126). **Their entire engineering tier is now CLOSED:** P0/P1 launch-critical (token rotation, a **required** `tsc` branch-protection check, observability) PLUS v2's "proof→regression-suite" upgrade — the **money + RLS invariants now run as a CI gate on every push** (`.github/workflows/db-invariants.yml`, see §13) and the AI threat model is written down (`SECURITY_AI_THREAT_MODEL.md`). The only deferred hardening item is a **paid staging branch** (v2 P1-1 — deferred to first-venue onboarding). Read THIS overview for current reality; the handoffs are historical, not an open to-do list.
+> 📌 **For a future reviewer (e.g. Opus 4.8):** THIS file is the **current, live** state (through migration **0141**, 2026-06-27; onboarding-prep since is no-migration). The repo root holds two prior review handoffs — `SENIOR_REVIEW_HANDOFF.md` (v1, of the 0122 snapshot) and **`SENIOR_REVIEW_HANDOFF_v2.md`** (v2, re-review of 0126). **Their entire engineering tier is now CLOSED:** P0/P1 launch-critical (token rotation, a **required** `tsc` branch-protection check, observability) PLUS v2's "proof→regression-suite" upgrade — the **money + RLS invariants now run as a CI gate on every push** (`.github/workflows/db-invariants.yml`, see §13) and the AI threat model is written down (`SECURITY_AI_THREAT_MODEL.md`). The only deferred hardening item is a **paid staging branch** (v2 P1-1 — deferred to first-venue onboarding). Read THIS overview for current reality; the handoffs are historical, not an open to-do list.
 
 > 🩺 **Current diagnosis & phase (2026-06-22):** the product is **feature-complete, launch-hardened, and self-testing** (money + tenant-isolation invariants gate every commit; Sentry + uptime live; AI is RLS-bound). **0 real venues use it yet** — only the founder tests; demand is waiting on a polished product. **DECISION (owner + senior): FREEZE net-new feature surface.** The bottleneck is no longer code — it is **real venues using it**. Next phase = **harden + onboard the first ~10 Tbilisi venues**, sold on the anti-fraud / **"see every lari, catch theft"** + RS.ge-compliance wedge (Trust Score, hardware-tied sessions, audit log, nightly Telegram brief) — NOT a feature list. New feature work is paused until venue density exists.
 
-> _Last updated **2026-06-26** — through migration **0141** (session-billing fairness + platform-billing UX; see notes below). **Since the 0076 revision (the big additions):**
+> _Last updated **2026-06-27** — through migration **0141** + onboarding-readiness prep (Excel import + runbook, no migration). **Since the 0076 revision (the big additions):**
 > **Tournaments 2.0** — a full platform-promoted tournament product (groups+knockout / 3-1-0, host-bidding + tenant→Global
 > promotion with commission, public marketplace listing, paid online registration → **QR pass → scan check-in (pay-at-venue)**
 > → **„ვირტუალური დოლორა" server-fair group draw** → champion; min-participants gate + 1st/2nd/3rd prizes; the **FULL money
@@ -537,6 +537,16 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 
 > **UI brand credit (no migration):** an engraved/auto-pulsing "MARTE GROUP" parent-brand credit sits centered in the
 > header (`nm-engraved` utility in globals.css — recessed fill + lit lower lip + accent breathe; `prefers-reduced-motion` aware).
+
+> **Onboarding readiness (2026-06-27, no migration — freeze-allowed prep for the FIRST real venue):** the recs handoff
+> `SENIOR_RECS_FOR_OPUS_2026-06-27.md` re-asserted the feature freeze (the bottleneck is a *committed* venue, not code).
+> Allowed prep shipped: (1) **Excel DATA IMPORT** — Settings → "მონაცემების იმპორტი" (`components/admin/data-import.tsx`):
+> per-type template download + upload → client-side parse (`lib/excel.readExcel`) + RLS-bound batch inserts of consoles /
+> tariffs / customers, idempotent (skips dup name/phone), customers phone-validated client-side; the venue's Excel → live
+> org without retyping (store now exposes `refreshPlans`). (2) **First-venue onboarding runbook** — `INCIDENT_RUNBOOK.md`
+> §5b, owner-run step-by-step (gates → org/venue → import → config → go-live → public → God-Mode billing). (3) **Friction
+> audit** — `ONBOARDING_FRICTION_AUDIT_2026-06-27.md` (untracked working doc): top friction was data import (now built);
+> remaining P0 gates (PITR / RS.ge legal / leaked-pw / hardware) are owner-dependent.
 
 > **⚠️ Frontend gotchas hit while building God-Mode/tournaments (2026-06-21):** (1) `const x = supabase.rpc` DETACHES
 > `this` → "Cannot read … 'rest'" — always invoke as a member call (`(supabase as any).rpc(...)` or `.call(supabase,…)`).
