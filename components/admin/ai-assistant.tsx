@@ -5,6 +5,7 @@ import { Bot, Send, Sparkles, X, Check, Ban, LoaderCircle, Mic, Volume2, VolumeX
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase/client'
 import { usePlayroom } from '@/lib/store'
+import { useOrg } from '@/lib/org'
 
 type Role = 'user' | 'model'
 interface ChatMsg {
@@ -45,6 +46,7 @@ const SUGGESTIONS = [
 
 export function AiAssistant() {
   const { pushToast, refreshLive } = usePlayroom()
+  const { currentVenueId } = useOrg()
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [input, setInput] = useState('')
@@ -114,7 +116,7 @@ export function AiAssistant() {
     setInput('')
     setPending(null)
     setBusy(true)
-    const res = await callFn({ messages: next })
+    const res = await callFn({ messages: next, venue_id: currentVenueId ?? undefined })
     setBusy(false)
     if (!res) return
     if (res.type === 'confirm' && res.action) {
@@ -130,7 +132,7 @@ export function AiAssistant() {
     const action = pending
     setPending(null)
     setBusy(true)
-    const res = await callFn({ messages, confirmedAction: action })
+    const res = await callFn({ messages, confirmedAction: action, venue_id: currentVenueId ?? undefined })
     setBusy(false)
     if (!res) return
     if (res.text) {

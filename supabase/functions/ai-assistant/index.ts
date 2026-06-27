@@ -224,14 +224,14 @@ async function runTool(
 ): Promise<unknown> {
   switch (name) {
     case 'get_overview': {
-      const { data, error } = await db.from('consoles').select('id, name, status, deleted_at').is('deleted_at', null)
+      const { data, error } = await db.from('consoles').select('id, name, status, deleted_at').is('deleted_at', null).eq('venue_id', venueId)
       if (error) throw error
       const active = (data ?? []).filter((c) => c.status === 'active').length
       const expiring = (data ?? []).filter((c) => c.status === 'warning_5' || c.status === 'expired').length
       return { total_consoles: data?.length ?? 0, active, free: (data?.length ?? 0) - active, expiring }
     }
     case 'list_consoles': {
-      const { data, error } = await db.from('consoles').select('id, name, slot_number, status, sessions(id, customer_name, ends_at, status)').is('deleted_at', null).order('slot_number')
+      const { data, error } = await db.from('consoles').select('id, name, slot_number, status, sessions(id, customer_name, ends_at, status)').is('deleted_at', null).eq('venue_id', venueId).order('slot_number')
       if (error) throw error
       return data
     }
@@ -251,12 +251,12 @@ async function runTool(
       return data
     }
     case 'recent_bar_sales': {
-      const { data, error } = await db.from('bar_sales').select('created_at, total, tip_amount, payment_method, bank, customer_name, voided_at, bar_sale_items(name, qty, line_total)').order('created_at', { ascending: false }).limit(15)
+      const { data, error } = await db.from('bar_sales').select('created_at, total, tip_amount, payment_method, bank, customer_name, voided_at, bar_sale_items(name, qty, line_total)').eq('venue_id', venueId).order('created_at', { ascending: false }).limit(15)
       if (error) throw error
       return data
     }
     case 'recent_sessions': {
-      const { data, error } = await db.from('sessions').select('customer_name, price_total, tip_amount, duration_min, started_at, ended_at, status, payment_method, console_id').eq('status', 'completed').order('ended_at', { ascending: false }).limit(15)
+      const { data, error } = await db.from('sessions').select('customer_name, price_total, tip_amount, duration_min, started_at, ended_at, status, payment_method, console_id').eq('venue_id', venueId).eq('status', 'completed').order('ended_at', { ascending: false }).limit(15)
       if (error) throw error
       return data
     }
@@ -266,12 +266,12 @@ async function runTool(
       return data
     }
     case 'list_reservations': {
-      const { data, error } = await db.from('reservations').select('customer_name, customer_phone, start_time, duration_min, status, console_id').order('start_time', { ascending: false }).limit(20)
+      const { data, error } = await db.from('reservations').select('customer_name, customer_phone, start_time, duration_min, status, console_id').eq('venue_id', venueId).order('start_time', { ascending: false }).limit(20)
       if (error) throw error
       return data
     }
     case 'list_expenses': {
-      const { data, error } = await db.from('expenses').select('category, amount, description, expense_date').order('expense_date', { ascending: false }).limit(20)
+      const { data, error } = await db.from('expenses').select('category, amount, description, expense_date').eq('venue_id', venueId).order('expense_date', { ascending: false }).limit(20)
       if (error) throw error
       return data
     }
@@ -511,7 +511,10 @@ Deno.serve(async (req) => {
       ])
       role = member?.role ?? 'guest'
       isPlatformAdmin = isPlat === true
-      venueId = venues?.[0]?.id ?? null
+      // Prefer the venue the user is currently viewing (sent by the client, RLS-bounded);
+      // fall back to their first venue. Without this, a platform admin (who can read EVERY
+      // org via RLS) would aggregate consoles/sessions across ALL orgs.
+      venueId = body.venue_id ?? venues?.[0]?.id ?? null
     } catch (e) {
       console.error('CONTEXT_ERROR', (e as Error).message)
     }
