@@ -541,7 +541,8 @@ function EndSessionModal({
   const segmentMs = (now ?? Date.now()) - new Date(s.open_anchor_at ?? s.started_at).getTime()
   const openMinutes = openBillableMinutes(segmentMs)
   const banked = s.is_open ? (s.open_accrued ?? 0) : 0
-  const base = s.is_open ? banked + (openMinutes / 60) * s.price_per_hour : s.price_total
+  const segmentCost = s.is_open ? (openMinutes / 60) * s.price_per_hour : 0
+  const base = s.is_open ? banked + segmentCost : s.price_total
 
   // free-time credit discounts the PLAY charge: remaining minutes × rate, capped at the play total
   const estDiscount = credit ? Math.min(Math.round((credit.remaining / 60) * s.price_per_hour * 100) / 100, base) : 0
@@ -556,13 +557,13 @@ function EndSessionModal({
               {banked > 0 ? 'მიმდინარე ტარიფი' : 'ნათამაშები დრო'}
             </span>
             <span className="font-mono text-sm font-bold">
-              {formatClock(Math.max(0, segmentMs))} → {openMinutes} წთ
+              {formatClock(Math.max(0, segmentMs))} → {openMinutes} წთ · {gel(segmentCost)}
             </span>
           </div>
         )}
         {banked > 0 && (
           <div className="nm-inset flex items-center justify-between rounded-2xl px-4 py-3">
-            <span className="text-sm font-semibold text-muted-foreground">წინა ტარიფი (გადატანილი)</span>
+            <span className="text-sm font-semibold text-muted-foreground">+ წინა ტარიფი (გადატანილი)</span>
             <span className="font-mono text-sm font-bold">{gel(banked)}</span>
           </div>
         )}
