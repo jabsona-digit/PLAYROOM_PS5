@@ -80,6 +80,8 @@ begin
   -- far-past window so enforce_console_capacity sees no overlapping booking/reservation
   insert into public.sessions (console_id, pricing_plan_id, org_id, venue_id, price_per_hour, price_total, duration_min, is_open, status, started_at, ended_at)
     values (v_console, v_plan, v_org, v_venue, 10, 20, 120, false, 'completed', now() - interval '370 days', now() - interval '370 days' + interval '2 hours') returning id into v_sess;
+  -- pin past the dynamic-pricing BEFORE-INSERT trigger so the rate/total are deterministic
+  update public.sessions set price_per_hour = 10, price_total = 20, duration_min = 120 where id = v_sess;
   insert into public.customer_credits (org_id, venue_id, customer_id, source, minutes, note)
     values (v_org, v_venue, v_cust, 'tournament_prize', 60, 'recon B') returning id into v_cred;
   select code into v_code from public.customer_credits where id = v_cred;
@@ -187,11 +189,15 @@ begin
   -- rounds UP: 11 min -> 15 min, ₾3.00
   insert into public.sessions (console_id, pricing_plan_id, org_id, venue_id, price_per_hour, price_total, is_open, status, started_at)
     values (v_con, v_plan, v_org, v_venue, 12, 0, true, 'active', now() - interval '11 minutes') returning id into v_s1;
+  -- pin the rate past the dynamic-pricing BEFORE-INSERT trigger (an active happy-hour rule
+  -- in the demo org would otherwise rewrite price_per_hour and make this test time-dependent)
+  update public.sessions set price_per_hour = 12 where id = v_s1;
   perform public.end_session(v_s1, 0);
   select duration_min, price_total into v_d1, v_p1 from public.sessions where id = v_s1;
   -- caps: 30 h -> 1440 min, ₾240.00
   insert into public.sessions (console_id, pricing_plan_id, org_id, venue_id, price_per_hour, price_total, is_open, status, started_at)
     values (v_con, v_plan, v_org, v_venue, 10, 0, true, 'active', now() - interval '30 hours') returning id into v_s2;
+  update public.sessions set price_per_hour = 10 where id = v_s2;
   perform public.end_session(v_s2, 0);
   select duration_min, price_total into v_d2, v_p2 from public.sessions where id = v_s2;
   if v_d1 <> 15     then v_fail := v_fail || format(' dur1=%s(exp15)', v_d1); end if;
@@ -305,3 +311,44 @@ begin
   if v_fail <> '' then raise exception 'SUITE_FAIL marketplace_commission_5pct%', v_fail;
   else raise exception 'SUITE_PASS marketplace_commission_5pct total=20 commission=1 (5%%)'; end if;
 end $i$;
+
+-- @@TEST open_tier_change_segment_billing
+-- Open session mid-session tier change (0140) must BANK the played time at the OLD rate
+-- into open_accrued, then bill the rest at the NEW rate — never re-price past time.
+-- 11 min @ ₾10/h -> banked roundup5=15min=₾2.50; then 12 min @ ₾20/h -> 15min=₾5.00;
+-- end_session total = ₾7.50. (Backward-compat for no-change open sessions is covered by
+-- end_session_rounding_cap above, which still passes with open_accrued=0.)
+do $j$
+declare
+  v_owner uuid := 'bc2afd0f-dc14-4e0f-b073-cfe1d98344cc';
+  v_org   uuid := 'f5bdf043-9e6a-4efd-928c-109aead87dfb';
+  v_venue uuid := 'c95108ec-8b43-4c18-b228-483584788ec8';
+  v_con int; v_p1 int; v_p2 int; v_sess uuid; v_r jsonb;
+  v_banked numeric; v_accrued numeric; v_price numeric; v_fail text := '';
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', v_owner, 'role', 'authenticated')::text, true);
+  insert into public.org_members (org_id, user_id, role) values (v_org, v_owner, 'owner') on conflict do nothing;
+  insert into public.consoles (org_id, venue_id, slot_number, name, console_type, status)
+    values (v_org, v_venue, 9991, 'inv-tier', 'ZZINV_TIER', 'active') returning id into v_con;
+  insert into public.pricing_plans (org_id, name, type, controllers, price_per_hour, is_active)
+    values (v_org, 'INV_A', 'standard', 2, 10, true) returning id into v_p1;
+  insert into public.pricing_plans (org_id, name, type, controllers, price_per_hour, is_active)
+    values (v_org, 'INV_B', 'premium', 4, 20, true) returning id into v_p2;
+  insert into public.sessions (console_id, pricing_plan_id, org_id, venue_id, price_per_hour, price_total, is_open, status, started_at)
+    values (v_con, v_p1, v_org, v_venue, 10, 0, true, 'active', now() - interval '11 minutes') returning id into v_sess;
+  -- pin the opening rate past the dynamic-pricing BEFORE-INSERT trigger
+  update public.sessions set price_per_hour = 10 where id = v_sess;
+  -- change tier -> bank the 15-min (roundup) segment @ ₾10 = ₾2.50, re-anchor, rate -> ₾20
+  select public.change_session_tier(v_sess, v_p2) into v_r;
+  v_banked := (v_r->>'banked')::numeric;
+  select open_accrued into v_accrued from public.sessions where id = v_sess;
+  -- simulate 12 min played at the new ₾20 rate, then close
+  update public.sessions set open_anchor_at = now() - interval '12 minutes' where id = v_sess;
+  perform public.end_session(v_sess, 0);
+  select price_total into v_price from public.sessions where id = v_sess;
+  if v_banked  <> 2.50 then v_fail := v_fail || format(' banked=%s(exp2.50)', v_banked); end if;
+  if v_accrued <> 2.50 then v_fail := v_fail || format(' accrued=%s(exp2.50)', v_accrued); end if;
+  if v_price   <> 7.50 then v_fail := v_fail || format(' final=%s(exp7.50)', v_price); end if;
+  if v_fail <> '' then raise exception 'SUITE_FAIL open_tier_change_segment_billing%', v_fail;
+  else raise exception 'SUITE_PASS open_tier_change_segment_billing banked=2.50 final=7.50 (no past re-price)'; end if;
+end $j$;

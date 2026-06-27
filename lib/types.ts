@@ -73,6 +73,8 @@ export interface Session {
   payment_method: PaymentMethod
   bank?: Bank | null
   is_open: boolean
+  open_accrued: number          // open sessions: money banked from prior rate segments (0140)
+  open_anchor_at: string | null // open sessions: start of the current rate segment (null = started_at)
   created_by_user?: string | null // auth user (operator) who created the session
   portal_code?: string | null // per-session In-Seat access code (PIN + QR), rotates each session
   refunded_at?: string | null  // set by refund_session — net this out of revenue

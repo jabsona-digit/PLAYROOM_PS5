@@ -125,6 +125,8 @@ function mapSession(r: any): Session {
     payment_method: (r.payment_method ?? 'cash') as Session['payment_method'],
     bank: (r.bank ?? null) as Session['bank'],
     is_open: r.is_open ?? false,
+    open_accrued: num(r.open_accrued),
+    open_anchor_at: r.open_anchor_at ?? null,
     created_by_user: r.created_by_user ?? null,
     portal_code: r.portal_code ?? null,
     refunded_at: r.refunded_at ?? null,

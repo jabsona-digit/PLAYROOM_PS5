@@ -128,10 +128,13 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
   const elapsed = s && !isOpen
     ? Math.min(100, Math.max(0, (1 - remainingMs / totalMs) * 100))
     : 0
-  // open (pay-as-you-go): count UP from start, live cost rounded up to 5 min
+  // open (pay-as-you-go): elapsed counts UP from start (display); the live cost bills the
+  // CURRENT rate segment (from open_anchor_at) on top of money already banked (open_accrued)
+  // by prior tier changes — so a mid-session joystick/rate change never re-prices past time.
   const elapsedMs = s ? clock - new Date(s.started_at).getTime() : 0
-  const openMinutes = openBillableMinutes(elapsedMs)
-  const openCost = s ? (openMinutes / 60) * s.price_per_hour : 0
+  const segmentMs = s ? clock - new Date(s.open_anchor_at ?? s.started_at).getTime() : 0
+  const openMinutes = openBillableMinutes(segmentMs)
+  const openCost = s ? (s.open_accrued ?? 0) + (openMinutes / 60) * s.price_per_hour : 0
   const isWarning =
     unit.status === 'expired' ||
     unit.status === 'warning_5' ||
@@ -282,6 +285,13 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
             </button>
             <button
               type="button"
+              onClick={() => setTierOpen(true)}
+              className="nm-btn mt-3 flex w-full items-center justify-center gap-2 rounded-2xl py-2.5 text-sm font-bold text-primary"
+            >
+              🎮 ჯოისტიკი / ტარიფის შეცვლა
+            </button>
+            <button
+              type="button"
               onClick={() => setBillOpen(true)}
               className="nm-btn mt-3 flex w-full items-center justify-center gap-2 rounded-2xl py-2.5 text-sm font-bold text-muted-foreground"
             >
@@ -382,6 +392,7 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
         onClose={() => setTierOpen(false)}
         consoleType={unit.console_type}
         currentPlanId={s?.pricing_plan_id ?? 0}
+        isOpen={isOpen}
         onConfirm={(planId) => {
           changeSessionTier(unit.id, planId)
           setTierOpen(false)
@@ -525,10 +536,12 @@ function EndSessionModal({
   const owedTab = (bill?.tab_total ?? 0) + (bill?.tab_extension ?? 0)
 
   // Open sessions are billed by elapsed time (rounded up to 5 min); the stored
-  // price_total is 0 until close, so compute the live amount here.
+  // price_total is 0 until close, so compute the live amount here. Bill the current
+  // rate segment (from open_anchor_at) on top of money banked by prior tier changes.
   const elapsedMs = (now ?? Date.now()) - new Date(s.started_at).getTime()
-  const openMinutes = openBillableMinutes(elapsedMs)
-  const base = s.is_open ? (openMinutes / 60) * s.price_per_hour : s.price_total
+  const segmentMs = (now ?? Date.now()) - new Date(s.open_anchor_at ?? s.started_at).getTime()
+  const openMinutes = openBillableMinutes(segmentMs)
+  const base = s.is_open ? (s.open_accrued ?? 0) + (openMinutes / 60) * s.price_per_hour : s.price_total
 
   // free-time credit discounts the PLAY charge: remaining minutes × rate, capped at the play total
   const estDiscount = credit ? Math.min(Math.round((credit.remaining / 60) * s.price_per_hour * 100) / 100, base) : 0
@@ -1042,12 +1055,14 @@ function TierModal({
   onClose,
   consoleType,
   currentPlanId,
+  isOpen,
   onConfirm,
 }: {
   open: boolean
   onClose: () => void
   consoleType?: string | null
   currentPlanId: number
+  isOpen?: boolean
   onConfirm: (planId: number) => void
 }) {
   const { plans } = usePlayroom()
@@ -1055,7 +1070,9 @@ function TierModal({
   return (
     <Modal open={open} onClose={onClose} title="ჯოისტიკი / ტარიფის შეცვლა">
       <p className="mb-4 text-sm text-muted-foreground text-pretty">
-        აირჩიე ახალი ტარიფი. გადახდილი თანხა გადაითვლება ახალ ფასზე — დარჩენილი დრო შესაბამისად შემოკლდება/გაიზრდება (ფული უცვლელია).
+        {isOpen
+          ? 'აირჩიე ახალი ტარიფი. აქამდე ნათამაშები დრო ძველი ფასით ჩაიწერება გადასახდელ თანხაში, შემდეგ კი ახალი ფასით გაგრძელდება.'
+          : 'აირჩიე ახალი ტარიფი. გადახდილი თანხა გადაითვლება ახალ ფასზე — დარჩენილი დრო შესაბამისად შემოკლდება/გაიზრდება (ფული უცვლელია).'}
       </p>
       <div className="space-y-2">
         {applicable.map((p) => {

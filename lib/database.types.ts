@@ -2710,6 +2710,8 @@ export type Database = {
           is_open: boolean
           notified_10: boolean
           notified_5: boolean
+          open_accrued: number
+          open_anchor_at: string | null
           org_id: string
           payment_method: string
           portal_code: string | null
@@ -2742,6 +2744,8 @@ export type Database = {
           is_open?: boolean
           notified_10?: boolean
           notified_5?: boolean
+          open_accrued?: number
+          open_anchor_at?: string | null
           org_id: string
           payment_method?: string
           portal_code?: string | null
@@ -2774,6 +2778,8 @@ export type Database = {
           is_open?: boolean
           notified_10?: boolean
           notified_5?: boolean
+          open_accrued?: number
+          open_anchor_at?: string | null
           org_id?: string
           payment_method?: string
           portal_code?: string | null
@@ -4926,6 +4932,8 @@ export type Database = {
           is_open: boolean
           notified_10: boolean
           notified_5: boolean
+          open_accrued: number
+          open_anchor_at: string | null
           org_id: string
           payment_method: string
           portal_code: string | null
@@ -4976,6 +4984,8 @@ export type Database = {
           is_open: boolean
           notified_10: boolean
           notified_5: boolean
+          open_accrued: number
+          open_anchor_at: string | null
           org_id: string
           payment_method: string
           portal_code: string | null
