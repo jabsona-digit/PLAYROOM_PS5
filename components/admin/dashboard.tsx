@@ -128,10 +128,10 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
   const elapsed = s && !isOpen
     ? Math.min(100, Math.max(0, (1 - remainingMs / totalMs) * 100))
     : 0
-  // open (pay-as-you-go): elapsed counts UP from start (display); the live cost bills the
-  // CURRENT rate segment (from open_anchor_at) on top of money already banked (open_accrued)
-  // by prior tier changes — so a mid-session joystick/rate change never re-prices past time.
-  const elapsedMs = s ? clock - new Date(s.started_at).getTime() : 0
+  // open (pay-as-you-go): the live timer AND cost both track the CURRENT rate segment
+  // (from open_anchor_at). A mid-session tier change banks the prior segment's money into
+  // open_accrued and re-anchors to now — so the timer RESETS to the new segment and past
+  // time is never re-priced. Total owed = banked (open_accrued) + this live segment.
   const segmentMs = s ? clock - new Date(s.open_anchor_at ?? s.started_at).getTime() : 0
   const openMinutes = openBillableMinutes(segmentMs)
   const openCost = s ? (s.open_accrued ?? 0) + (openMinutes / 60) * s.price_per_hour : 0
@@ -256,7 +256,7 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
                   className="font-mono text-2xl sm:text-3xl font-extrabold tabular-nums"
                   style={{ color: meta.color }}
                 >
-                  {formatClock(Math.max(0, elapsedMs))}
+                  {formatClock(Math.max(0, segmentMs))}
                 </p>
               </div>
               <div className="text-right">
@@ -538,10 +538,10 @@ function EndSessionModal({
   // Open sessions are billed by elapsed time (rounded up to 5 min); the stored
   // price_total is 0 until close, so compute the live amount here. Bill the current
   // rate segment (from open_anchor_at) on top of money banked by prior tier changes.
-  const elapsedMs = (now ?? Date.now()) - new Date(s.started_at).getTime()
   const segmentMs = (now ?? Date.now()) - new Date(s.open_anchor_at ?? s.started_at).getTime()
   const openMinutes = openBillableMinutes(segmentMs)
-  const base = s.is_open ? (s.open_accrued ?? 0) + (openMinutes / 60) * s.price_per_hour : s.price_total
+  const banked = s.is_open ? (s.open_accrued ?? 0) : 0
+  const base = s.is_open ? banked + (openMinutes / 60) * s.price_per_hour : s.price_total
 
   // free-time credit discounts the PLAY charge: remaining minutes × rate, capped at the play total
   const estDiscount = credit ? Math.min(Math.round((credit.remaining / 60) * s.price_per_hour * 100) / 100, base) : 0
@@ -552,10 +552,18 @@ function EndSessionModal({
       <div className="space-y-4">
         {s.is_open && (
           <div className="nm-inset flex items-center justify-between rounded-2xl px-4 py-3">
-            <span className="text-sm font-semibold text-muted-foreground">ნათამაშები დრო</span>
-            <span className="font-mono text-sm font-bold">
-              {formatClock(Math.max(0, elapsedMs))} → {openMinutes} წთ
+            <span className="text-sm font-semibold text-muted-foreground">
+              {banked > 0 ? 'მიმდინარე ტარიფი' : 'ნათამაშები დრო'}
             </span>
+            <span className="font-mono text-sm font-bold">
+              {formatClock(Math.max(0, segmentMs))} → {openMinutes} წთ
+            </span>
+          </div>
+        )}
+        {banked > 0 && (
+          <div className="nm-inset flex items-center justify-between rounded-2xl px-4 py-3">
+            <span className="text-sm font-semibold text-muted-foreground">წინა ტარიფი (გადატანილი)</span>
+            <span className="font-mono text-sm font-bold">{gel(banked)}</span>
           </div>
         )}
 
