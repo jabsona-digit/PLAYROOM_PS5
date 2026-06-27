@@ -26,6 +26,7 @@ import { MarketplaceSettings } from './marketplace-settings'
 import { PaymentSettings } from './payment-settings'
 import { TeamSettings } from './team-settings'
 import { HardwareSettings } from './hardware-settings'
+import { DataImport } from './data-import'
 import { ApiKeysPanel } from './api-keys-panel'
 import { TelegramSettings } from './telegram-settings'
 import { QrPrintModal } from './qr-print-modal'
@@ -719,6 +720,8 @@ export function Settings() {
       </section>
 
       <VenuesSettings />
+
+      <DataImport />
 
       {/* Console management */}
       <section className="nm-raised rounded-3xl p-6">

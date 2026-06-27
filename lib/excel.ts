@@ -26,11 +26,32 @@ export function exportWorkbook(fileName: string, sheets: { name: string; rows: a
 /**
  * Downloads a pre-defined Excel template for products or expenses.
  */
-export function downloadTemplate(type: 'products' | 'expenses', existingCategories?: string[]) {
+export function downloadTemplate(
+  type: 'products' | 'expenses' | 'consoles' | 'tariffs' | 'customers',
+  existingCategories?: string[],
+) {
   let data: any[] = []
   let fileName = ''
 
-  if (type === 'products') {
+  if (type === 'consoles') {
+    data = [
+      { 'დასახელება': 'PS5-1', 'ტიპი': 'standard' },
+      { 'დასახელება': 'PS5-VIP-1', 'ტიპი': 'vip' },
+    ]
+    fileName = 'კონსოლების_შაბლონი'
+  } else if (type === 'tariffs') {
+    data = [
+      { 'დასახელება': 'სტანდარტი', 'ფასი_სთ': 5, 'ჯოისტიკები': 2, 'კატეგორია': 'playroom' },
+      { 'დასახელება': 'VIP', 'ფასი_სთ': 10, 'ჯოისტიკები': 4, 'კატეგორია': 'playroom' },
+    ]
+    fileName = 'ტარიფების_შაბლონი'
+  } else if (type === 'customers') {
+    data = [
+      { 'სახელი': 'გიორგი', 'ტელეფონი': '555123456', 'ქულები': 0 },
+      { 'სახელი': 'ნინო', 'ტელეფონი': '599987654', 'ქულები': 50 },
+    ]
+    fileName = 'კლიენტების_შაბლონი'
+  } else if (type === 'products') {
     const catHint = existingCategories && existingCategories.length > 0 
       ? `არსებული: ${existingCategories.slice(0, 5).join(', ')}${existingCategories.length > 5 ? '...' : ''}` 
       : 'მაგ: სასმელები'

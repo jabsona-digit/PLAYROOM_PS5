@@ -84,6 +84,7 @@ interface PlayroomState {
   changeSessionTier: (console_id: number, plan_id: number) => void
   endSession: (console_id: number, tip?: number) => void
   refreshLive: () => Promise<void>
+  refreshPlans: () => Promise<void>
   tick: () => void
   updatePlanPrice: (id: number, price: number) => void
   togglePlanActive: (id: number) => void
@@ -794,6 +795,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
       changeSessionTier,
       endSession,
       refreshLive: refetchLive,
+      refreshPlans: loadPlans,
       tick,
       updatePlanPrice,
       togglePlanActive,
@@ -829,6 +831,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
       changeSessionTier,
       endSession,
       refetchLive,
+      loadPlans,
       tick,
       updatePlanPrice,
       togglePlanActive,
