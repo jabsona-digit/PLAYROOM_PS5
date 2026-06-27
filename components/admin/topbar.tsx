@@ -77,8 +77,8 @@ export function Topbar({
 
       {/* parent-brand credit — engraved into the header, centered */}
       <div className="hidden flex-1 justify-center lg:flex">
-        <span className="nm-engraved cursor-default text-[11px]" title="a MARTE GROUP product">
-          a MARTE GROUP product
+        <span className="nm-engraved cursor-default text-sm" title="MARTE GROUP">
+          MARTE GROUP
         </span>
       </div>
 

@@ -181,15 +181,30 @@
     0 1px 0 color-mix(in oklch, var(--nm-light) 35%, var(--muted-foreground) 65%),
     0 -1px 1px color-mix(in oklch, var(--nm-dark) 85%, transparent);
   font-weight: 800;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.26em;
   text-transform: uppercase;
-  transition: color 0.35s ease, text-shadow 0.35s ease;
+  /* gentle automatic "breathing" — the cut periodically catches a soft accent glow */
+  animation: nm-engrave-pulse 3.6s ease-in-out infinite;
+  transition: color 0.35s ease;
   &:hover {
     color: color-mix(in oklch, var(--primary) 78%, var(--surface) 22%);
+  }
+}
+@keyframes nm-engrave-pulse {
+  0%, 100% {
     text-shadow:
       0 1px 0 color-mix(in oklch, var(--nm-light) 35%, var(--muted-foreground) 65%),
-      0 0 10px color-mix(in oklch, var(--primary) 45%, transparent);
+      0 -1px 1px color-mix(in oklch, var(--nm-dark) 85%, transparent);
   }
+  50% {
+    text-shadow:
+      0 1px 0 color-mix(in oklch, var(--nm-light) 48%, var(--muted-foreground) 52%),
+      0 -1px 1px color-mix(in oklch, var(--nm-dark) 85%, transparent),
+      0 0 9px color-mix(in oklch, var(--primary) 26%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nm-engraved { animation: none; }
 }
 
 /* Module entrance animation */
