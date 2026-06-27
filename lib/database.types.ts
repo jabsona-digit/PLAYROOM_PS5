@@ -3722,6 +3722,7 @@ export type Database = {
           cover_image_url: string | null
           created_at: string
           description: string | null
+          early_end_actual: boolean
           fiscal_address: string | null
           fiscal_business_name: string | null
           fiscal_enabled: boolean
@@ -3751,6 +3752,7 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
+          early_end_actual?: boolean
           fiscal_address?: string | null
           fiscal_business_name?: string | null
           fiscal_enabled?: boolean
@@ -3780,6 +3782,7 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
+          early_end_actual?: boolean
           fiscal_address?: string | null
           fiscal_business_name?: string | null
           fiscal_enabled?: boolean
@@ -4428,6 +4431,7 @@ export type Database = {
           cover_image_url: string | null
           created_at: string
           description: string | null
+          early_end_actual: boolean
           fiscal_address: string | null
           fiscal_business_name: string | null
           fiscal_enabled: boolean

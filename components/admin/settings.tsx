@@ -72,6 +72,38 @@ function Toggle({
   )
 }
 
+// Per-venue billing policy (migration 0141): when a FIXED session ends EARLY, charge only
+// the actual time played (capped at the booked amount) instead of the full prepaid block.
+function EarlyEndToggle() {
+  const { earlyEndActual, refreshLive, pushToast } = usePlayroom()
+  const { currentVenueId } = useOrg()
+  const [busy, setBusy] = useState(false)
+
+  const toggle = async () => {
+    if (!currentVenueId || busy) return
+    setBusy(true)
+    const { error } = await (supabase.from('venues') as any)
+      .update({ early_end_actual: !earlyEndActual })
+      .eq('id', currentVenueId)
+    setBusy(false)
+    if (error) return pushToast('danger', error.message)
+    pushToast('success', !earlyEndActual ? 'ჩაირთო — ფაქტობრივი დრო' : 'გამოირთო — სრული ბლოკი')
+    await refreshLive()
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <p className="text-sm font-semibold">ფაქტობრივი დრო ადრე დასრულებისას</p>
+        <p className="text-xs text-muted-foreground text-pretty">
+          ფიქსირებული სესია ვადაზე ადრე რომ დასრულდეს, კლიენტი იხდის მხოლოდ ნამდვილად ნათამაშებ დროს (დაჯავშნულზე მეტს არასდროს). გამორთულზე — სრული დაჯავშნული თანხა.
+        </p>
+      </div>
+      <Toggle checked={earlyEndActual} onChange={toggle} label="ფაქტობრივი დრო ადრე დასრულებისას" />
+    </div>
+  )
+}
+
 function NumberField({
   label,
   value,
@@ -625,6 +657,8 @@ export function Settings() {
               label="ავტო-დასრულება"
             />
           </div>
+
+          <EarlyEndToggle />
 
           <div className="flex items-center justify-between gap-4">
             <div>

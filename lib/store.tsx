@@ -46,6 +46,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 interface PlayroomState {
   consoles: ConsoleUnit[]
   hardwareRequired: boolean
+  earlyEndActual: boolean
   venueType: string
   plans: PricingPlan[]
   employees: Employee[]
@@ -169,6 +170,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
 
   const [consoles, setConsoles] = useState<ConsoleUnit[]>([])
   const [hardwareRequired, setHardwareRequired] = useState(false)
+  const [earlyEndActual, setEarlyEndActual] = useState(false)
   const [venueType, setVenueType] = useState<string>('playroom')
   const [plans, setPlans] = useState<PricingPlan[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -267,9 +269,10 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
         .eq('status', 'active'),
       // console_hardware / venues.hardware_required aren't in generated types until the post-deploy regen
       (supabase.from('console_hardware' as never).select('*').eq('venue_id', venue) as unknown as Promise<{ data: any[] | null }>),
-      (supabase.from('venues').select('hardware_required, venue_type').eq('id', venue).maybeSingle() as unknown as Promise<{ data: { hardware_required?: boolean; venue_type?: string } | null }>),
+      (supabase.from('venues').select('hardware_required, venue_type, early_end_actual').eq('id', venue).maybeSingle() as unknown as Promise<{ data: { hardware_required?: boolean; venue_type?: string; early_end_actual?: boolean } | null }>),
     ])
     setHardwareRequired(!!ven?.hardware_required)
+    setEarlyEndActual(!!ven?.early_end_actual)
     setVenueType(ven?.venue_type ?? 'playroom')
     if (!cons) return
     const byConsole = new Map<number, Session>()
@@ -768,6 +771,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
     () => ({
       consoles,
       hardwareRequired,
+      earlyEndActual,
       venueType,
       plans,
       employees,
@@ -802,6 +806,7 @@ export function PlayroomProvider({ children }: { children: React.ReactNode }) {
     [
       consoles,
       hardwareRequired,
+      earlyEndActual,
       venueType,
       plans,
       employees,

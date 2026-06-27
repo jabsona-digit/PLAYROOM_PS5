@@ -495,7 +495,7 @@ function EndSessionModal({
   onClose: () => void
   unit: ConsoleUnit
 }) {
-  const { endSession, pushToast } = usePlayroom()
+  const { endSession, pushToast, earlyEndActual } = usePlayroom()
   const { fiscalEnabled, issueReceipt } = useFiscal()
   const [tip, setTip] = useState(0)
   const [bill, setBill] = useState<SessionBill | null>(null)
@@ -542,7 +542,12 @@ function EndSessionModal({
   const openMinutes = openBillableMinutes(segmentMs)
   const banked = s.is_open ? (s.open_accrued ?? 0) : 0
   const segmentCost = s.is_open ? (openMinutes / 60) * s.price_per_hour : 0
-  const base = s.is_open ? banked + segmentCost : s.price_total
+  // fixed + venue opted in + ending EARLY → bill the ACTUAL time played, capped at booked
+  const fixedEarly =
+    !s.is_open && earlyEndActual && s.ends_at != null && (now ?? Date.now()) < new Date(s.ends_at).getTime()
+  const fixedActualMin = Math.min(s.duration_min ?? 1440, openBillableMinutes((now ?? Date.now()) - new Date(s.started_at).getTime()))
+  const fixedActual = Math.min(s.price_total, Math.round((fixedActualMin / 60) * s.price_per_hour * 100) / 100)
+  const base = s.is_open ? banked + segmentCost : fixedEarly ? fixedActual : s.price_total
 
   // free-time credit discounts the PLAY charge: remaining minutes × rate, capped at the play total
   const estDiscount = credit ? Math.min(Math.round((credit.remaining / 60) * s.price_per_hour * 100) / 100, base) : 0
@@ -565,6 +570,14 @@ function EndSessionModal({
           <div className="nm-inset flex items-center justify-between rounded-2xl px-4 py-3">
             <span className="text-sm font-semibold text-muted-foreground">+ წინა ტარიფი (გადატანილი)</span>
             <span className="font-mono text-sm font-bold">{gel(banked)}</span>
+          </div>
+        )}
+        {fixedEarly && (
+          <div className="nm-inset flex items-center justify-between rounded-2xl px-4 py-3">
+            <span className="text-sm font-semibold text-muted-foreground">
+              ფაქტობრივი დრო <span className="text-[11px] text-muted-foreground/70">(დაჯავშნ. {gel(s.price_total)})</span>
+            </span>
+            <span className="font-mono text-sm font-bold">{fixedActualMin} წთ</span>
           </div>
         )}
 

@@ -352,3 +352,41 @@ begin
   if v_fail <> '' then raise exception 'SUITE_FAIL open_tier_change_segment_billing%', v_fail;
   else raise exception 'SUITE_PASS open_tier_change_segment_billing banked=2.50 final=7.50 (no past re-price)'; end if;
 end $j$;
+
+-- @@TEST early_end_actual_fixed
+-- venues.early_end_actual (0141): a FIXED 60-min @ ₾6/h block ended after 10 min must bill
+-- the ACTUAL 10 min = ₾1.00 when the venue opted IN; the same early-end with the flag OFF
+-- bills the full booked ₾6.00 (today's behavior). Capped at booked either way.
+do $k$
+declare
+  v_owner uuid := 'bc2afd0f-dc14-4e0f-b073-cfe1d98344cc';
+  v_org   uuid := 'f5bdf043-9e6a-4efd-928c-109aead87dfb';
+  v_venue uuid := 'c95108ec-8b43-4c18-b228-483584788ec8';
+  v_plan int; v_con int; v_s_on uuid; v_s_off uuid; v_p_on numeric; v_p_off numeric; v_fail text := '';
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', v_owner, 'role', 'authenticated')::text, true);
+  select id into v_plan from public.pricing_plans where org_id = v_org and is_active limit 1;
+  insert into public.consoles (org_id, venue_id, slot_number, name, console_type, status)
+    values (v_org, v_venue, 9994, 'inv-ee', 'ZZINV_EE', 'active') returning id into v_con;
+
+  -- flag ON: early end bills actual (10 min @ ₾6 = ₾1.00)
+  update public.venues set early_end_actual = true where id = v_venue;
+  insert into public.sessions (console_id, pricing_plan_id, org_id, venue_id, price_per_hour, price_total, duration_min, is_open, status, started_at, ends_at)
+    values (v_con, v_plan, v_org, v_venue, 6, 6, 60, false, 'active', now() - interval '10 minutes', now() + interval '50 minutes') returning id into v_s_on;
+  update public.sessions set price_per_hour = 6, price_total = 6 where id = v_s_on;  -- pin past dynamic pricing
+  perform public.end_session(v_s_on, 0);
+  select price_total into v_p_on from public.sessions where id = v_s_on;
+
+  -- flag OFF: same early end bills the full booked ₾6.00
+  update public.venues set early_end_actual = false where id = v_venue;
+  insert into public.sessions (console_id, pricing_plan_id, org_id, venue_id, price_per_hour, price_total, duration_min, is_open, status, started_at, ends_at)
+    values (v_con, v_plan, v_org, v_venue, 6, 6, 60, false, 'active', now() - interval '10 minutes', now() + interval '50 minutes') returning id into v_s_off;
+  update public.sessions set price_per_hour = 6, price_total = 6 where id = v_s_off;
+  perform public.end_session(v_s_off, 0);
+  select price_total into v_p_off from public.sessions where id = v_s_off;
+
+  if v_p_on  <> 1.00 then v_fail := v_fail || format(' on=%s(exp1.00)', v_p_on); end if;
+  if v_p_off <> 6.00 then v_fail := v_fail || format(' off=%s(exp6.00)', v_p_off); end if;
+  if v_fail <> '' then raise exception 'SUITE_FAIL early_end_actual_fixed%', v_fail;
+  else raise exception 'SUITE_PASS early_end_actual_fixed on=1.00 off=6.00 (capped at booked)'; end if;
+end $k$;
