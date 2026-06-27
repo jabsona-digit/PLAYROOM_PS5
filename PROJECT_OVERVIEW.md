@@ -12,11 +12,11 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
-> 📌 **For a future reviewer (e.g. Opus 4.8):** THIS file is the **current, live** state (through migration **0138**, 2026-06-25). The repo root holds two prior review handoffs — `SENIOR_REVIEW_HANDOFF.md` (v1, of the 0122 snapshot) and **`SENIOR_REVIEW_HANDOFF_v2.md`** (v2, re-review of 0126). **Their entire engineering tier is now CLOSED:** P0/P1 launch-critical (token rotation, a **required** `tsc` branch-protection check, observability) PLUS v2's "proof→regression-suite" upgrade — the **money + RLS invariants now run as a CI gate on every push** (`.github/workflows/db-invariants.yml`, see §13) and the AI threat model is written down (`SECURITY_AI_THREAT_MODEL.md`). The only deferred hardening item is a **paid staging branch** (v2 P1-1 — deferred to first-venue onboarding). Read THIS overview for current reality; the handoffs are historical, not an open to-do list.
+> 📌 **For a future reviewer (e.g. Opus 4.8):** THIS file is the **current, live** state (through migration **0141**, 2026-06-26). The repo root holds two prior review handoffs — `SENIOR_REVIEW_HANDOFF.md` (v1, of the 0122 snapshot) and **`SENIOR_REVIEW_HANDOFF_v2.md`** (v2, re-review of 0126). **Their entire engineering tier is now CLOSED:** P0/P1 launch-critical (token rotation, a **required** `tsc` branch-protection check, observability) PLUS v2's "proof→regression-suite" upgrade — the **money + RLS invariants now run as a CI gate on every push** (`.github/workflows/db-invariants.yml`, see §13) and the AI threat model is written down (`SECURITY_AI_THREAT_MODEL.md`). The only deferred hardening item is a **paid staging branch** (v2 P1-1 — deferred to first-venue onboarding). Read THIS overview for current reality; the handoffs are historical, not an open to-do list.
 
 > 🩺 **Current diagnosis & phase (2026-06-22):** the product is **feature-complete, launch-hardened, and self-testing** (money + tenant-isolation invariants gate every commit; Sentry + uptime live; AI is RLS-bound). **0 real venues use it yet** — only the founder tests; demand is waiting on a polished product. **DECISION (owner + senior): FREEZE net-new feature surface.** The bottleneck is no longer code — it is **real venues using it**. Next phase = **harden + onboard the first ~10 Tbilisi venues**, sold on the anti-fraud / **"see every lari, catch theft"** + RS.ge-compliance wedge (Trust Score, hardware-tied sessions, audit log, nightly Telegram brief) — NOT a feature list. New feature work is paused until venue density exists.
 
-> _Last updated **2026-06-25** — through migration **0138** (pre-onboarding audit wave; see the audit note below). **Since the 0076 revision (the big additions):**
+> _Last updated **2026-06-26** — through migration **0141** (session-billing fairness + platform-billing UX; see notes below). **Since the 0076 revision (the big additions):**
 > **Tournaments 2.0** — a full platform-promoted tournament product (groups+knockout / 3-1-0, host-bidding + tenant→Global
 > promotion with commission, public marketplace listing, paid online registration → **QR pass → scan check-in (pay-at-venue)**
 > → **„ვირტუალური დოლორა" server-fair group draw** → champion; min-participants gate + 1st/2nd/3rd prizes; the **FULL money
@@ -513,7 +513,30 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
       ref_earn_select, tr_read) → planner hoists to one initplan vs per-row (~100x at scale). Access logic identical.
 0138  SECURITY ADVISOR hardening: revoke EXECUTE on 14 secdef TRIGGER fns from anon/authenticated (RPC surface; triggers
       still fire) + lock cash_expected/cash_opener_name (anon could read any venue's cash) + pin search_path on 6 fns.
+─ billing UX + session-billing fairness (2026-06-26) ─────────────────────────────────────────────────────
+0139  TENANT CONTACT + BANK-TRANSFER REFERENCE: organizations += contact_phone (REQUIRED at signup) / contact_email
+      (auto from auth user) / billing_ref (MTL0001… serial). create_organization v2 + set_org_contact (platform-admin) +
+      platform_org_overview exposes them → God-Mode shows email/phone + copyable ref + invoice prefill (amount × months).
+0140  OPEN-SESSION mid-session TIER/JOYSTICK change: sessions += open_accrued + open_anchor_at. change_session_tier banks
+      the played segment at the OLD rate + re-anchors → bills by SEGMENT (accrued + current rate), never re-prices past time;
+      end_session / compute_session_bill / kill_abandoned all use accrued + segment. FIXED tier-change unchanged.
+0141  FAIR EARLY-END (per-venue): venues.early_end_actual (default OFF). When ON, ending a FIXED session before ends_at
+      bills only the actual time played (5-min round-up), CAPPED at the booked price_total. Settings toggle (RLS write).
 ```
+
+> **Session-billing UI (no migration, same wave):** the dashboard now shows the bar tab + the joystick/tariff change on
+> OPEN sessions too; the open timer RESETS to the current rate segment on a tier change (display matches segment billing);
+> the End modal breaks down current-segment cost + the banked "წინა ტარიფი". The money suite grew to **11/11**
+> (`open_tier_change_segment_billing`, `early_end_actual_fixed`) — and a dynamic-pricing BEFORE-INSERT flakiness in the
+> fixtures was fixed by pinning the rate via UPDATE after each fixture INSERT.
+
+> **AI assistant venue-scoping fix (no migration):** the chat's console/session/bar/reservation/expense reads relied on
+> RLS alone (no `venue_id` filter), so a platform admin — who reads every org via RLS — got console counts aggregated
+> across ALL orgs (e.g. "33" instead of the venue's 7). Now those reads `.eq('venue_id', venueId)`, and `venueId` prefers
+> the client-sent current venue (`body.venue_id`, RLS-bounded) before falling back to the first venue. Edge fn redeployed.
+
+> **UI brand credit (no migration):** an engraved/auto-pulsing "MARTE GROUP" parent-brand credit sits centered in the
+> header (`nm-engraved` utility in globals.css — recessed fill + lit lower lip + accent breathe; `prefers-reduced-motion` aware).
 
 > **⚠️ Frontend gotchas hit while building God-Mode/tournaments (2026-06-21):** (1) `const x = supabase.rpc` DETACHES
 > `this` → "Cannot read … 'rest'" — always invoke as a member call (`(supabase as any).rpc(...)` or `.call(supabase,…)`).
