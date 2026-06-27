@@ -183,24 +183,22 @@
   font-weight: 800;
   letter-spacing: 0.26em;
   text-transform: uppercase;
-  /* gentle automatic "breathing" — the cut periodically catches a soft accent glow */
-  animation: nm-engrave-pulse 3.6s ease-in-out infinite;
-  transition: color 0.35s ease;
-  &:hover {
-    color: color-mix(in oklch, var(--primary) 78%, var(--surface) 22%);
-  }
+  /* automatic pulse — the engraved cut periodically IGNITES with the accent, then settles
+     back to the dark recess (clearly visible, not just a faint glow) */
+  animation: nm-engrave-pulse 2.8s ease-in-out infinite;
 }
 @keyframes nm-engrave-pulse {
   0%, 100% {
+    color: color-mix(in oklch, var(--surface) 52%, var(--nm-dark) 48%);
     text-shadow:
       0 1px 0 color-mix(in oklch, var(--nm-light) 35%, var(--muted-foreground) 65%),
       0 -1px 1px color-mix(in oklch, var(--nm-dark) 85%, transparent);
   }
   50% {
+    color: color-mix(in oklch, var(--primary) 62%, var(--muted-foreground) 38%);
     text-shadow:
-      0 1px 0 color-mix(in oklch, var(--nm-light) 48%, var(--muted-foreground) 52%),
-      0 -1px 1px color-mix(in oklch, var(--nm-dark) 85%, transparent),
-      0 0 9px color-mix(in oklch, var(--primary) 26%, transparent);
+      0 1px 0 color-mix(in oklch, var(--nm-light) 50%, var(--muted-foreground) 50%),
+      0 0 16px color-mix(in oklch, var(--primary) 55%, transparent);
   }
 }
 @media (prefers-reduced-motion: reduce) {
