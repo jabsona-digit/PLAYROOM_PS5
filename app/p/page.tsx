@@ -39,6 +39,8 @@ function PortalApp() {
   const [consoleType, setConsoleType] = useState<string | null>(null)
   const [sessionActive, setSessionActive] = useState(false)
   const [endsAt, setEndsAt] = useState<string | null>(null)
+  const [isOpen, setIsOpen] = useState(false)        // open (pay-as-you-go) → count UP, no end time
+  const [startedAt, setStartedAt] = useState<string | null>(null)
   const [planName, setPlanName] = useState<string | null>(null)
   const [controllers, setControllers] = useState<number | null>(null)
   const [pricePerHour, setPricePerHour] = useState<number | null>(null)
@@ -83,6 +85,8 @@ function PortalApp() {
     const active = !!data.active
     setSessionActive(active)
     setEndsAt(active ? data.ends_at : null)
+    setIsOpen(active && !!data.is_open)
+    setStartedAt(active ? (data.started_at ?? null) : null)
     setPlanName(active ? data.plan_name : null)
     setControllers(active ? (data.controllers ?? null) : null)
     setPricePerHour(active ? (data.price_per_hour ?? null) : null)
@@ -292,10 +296,17 @@ function PortalApp() {
 
   const cartTotal = cart.reduce((acc, i) => acc + i.price * i.qty, 0)
 
+  // fixed sessions count DOWN from ends_at; open (pay-as-you-go) count UP from started_at
   const remainingMs = endsAt ? Math.max(0, new Date(endsAt).getTime() - nowTs) : 0
-  const remMin = Math.floor(remainingMs / 60000)
-  const remSec = Math.floor((remainingMs % 60000) / 1000)
-  const clock = `${String(remMin).padStart(2, '0')}:${String(remSec).padStart(2, '0')}`
+  const elapsedMs = startedAt ? Math.max(0, nowTs - new Date(startedAt).getTime()) : 0
+  const displayMs = isOpen ? elapsedMs : remainingMs
+  const totalSec = Math.floor(displayMs / 1000)
+  const ch = Math.floor(totalSec / 3600)
+  const cm = Math.floor((totalSec % 3600) / 60)
+  const cs = totalSec % 60
+  const clock = ch > 0
+    ? `${ch}:${String(cm).padStart(2, '0')}:${String(cs).padStart(2, '0')}`
+    : `${String(cm).padStart(2, '0')}:${String(cs).padStart(2, '0')}`
 
   const visibleProducts = products.filter((p) =>
     activeTab === UNCATEGORIZED ? !p.category_id : p.category_id === activeTab,
@@ -353,11 +364,11 @@ function PortalApp() {
             <>
               <div className="flex justify-between items-end">
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">დარჩენილი დრო</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">{isOpen ? 'ნათამაშები დრო' : 'დარჩენილი დრო'}</p>
                   <p className="text-4xl font-mono font-black mt-1">{clock}</p>
                   {planName ? <p className="mt-1 text-xs text-muted-foreground font-bold">{planName}</p> : null}
                 </div>
-                {unlocked && (
+                {!isOpen && unlocked && (
                   !extendOpen ? (
                     <button
                       onClick={() => { setExtendOpen(true); setExtendMin(null) }}
