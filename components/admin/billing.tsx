@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils'
 import { useOrg } from '@/lib/org'
 import { supabase } from '@/lib/supabase/client'
 import { gel } from '@/lib/ui'
+import { CryptoSubscriptionPay } from './crypto-pay-modal'
 
 const CONTACT_WHATSAPP = 'https://wa.me/995500057527?text=გამარჯობა%2C%20მინდა%20გამოვიწერო%20'
 const CONTACT_EMAIL = 'mailto:martecompanygeo@gmail.com?subject=Martelounge%20Billing'
@@ -203,16 +204,21 @@ export function Billing() {
             </div>
           </div>
 
-          {isOwnerOrAdmin && plan !== 'enterprise' && (
-            <a
-              href={upgradeUrl(plan === 'trial' ? 'pro' : 'enterprise')}
-              target="_blank"
-              rel="noreferrer"
-              className="nm-btn flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary self-start"
-            >
-              <MessageCircle className="size-4" />
-              {plan === 'trial' ? 'PRO-ზე გადასვლა' : 'ENTERPRISE-ზე გადასვლა'}
-            </a>
+          {isOwnerOrAdmin && (
+            <div className="flex flex-col gap-2 self-start sm:items-end">
+              {plan !== 'enterprise' && (
+                <a
+                  href={upgradeUrl(plan === 'trial' ? 'pro' : 'enterprise')}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="nm-btn flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary"
+                >
+                  <MessageCircle className="size-4" />
+                  {plan === 'trial' ? 'PRO-ზე გადასვლა' : 'ENTERPRISE-ზე გადასვლა'}
+                </a>
+              )}
+              <CryptoSubscriptionPay orgId={currentOrgId} plan={plan} />
+            </div>
           )}
         </div>
 

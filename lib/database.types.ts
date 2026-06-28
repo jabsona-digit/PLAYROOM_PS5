@@ -864,6 +864,99 @@ export type Database = {
           },
         ]
       }
+      crypto_payments: {
+        Row: {
+          created_at: string
+          fulfilled_at: string | null
+          id: string
+          months: number | null
+          np_payment_id: string | null
+          order_type: string
+          org_id: string | null
+          pay_address: string | null
+          pay_amount: number | null
+          pay_currency: string | null
+          price_amount: number
+          price_usd: number | null
+          reference: string | null
+          status: string
+          updated_at: string
+          venue_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          fulfilled_at?: string | null
+          id?: string
+          months?: number | null
+          np_payment_id?: string | null
+          order_type: string
+          org_id?: string | null
+          pay_address?: string | null
+          pay_amount?: number | null
+          pay_currency?: string | null
+          price_amount?: number
+          price_usd?: number | null
+          reference?: string | null
+          status?: string
+          updated_at?: string
+          venue_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          fulfilled_at?: string | null
+          id?: string
+          months?: number | null
+          np_payment_id?: string | null
+          order_type?: string
+          org_id?: string | null
+          pay_address?: string | null
+          pay_amount?: number | null
+          pay_currency?: string | null
+          price_amount?: number
+          price_usd?: number | null
+          reference?: string | null
+          status?: string
+          updated_at?: string
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crypto_payments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crypto_payments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "platform_org_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crypto_payments_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venue_plans"
+            referencedColumns: ["venue_id"]
+          },
+          {
+            foreignKeyName: "crypto_payments_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crypto_payments_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_credits: {
         Row: {
           code: string | null
@@ -4459,6 +4552,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      crypto_fulfill_subscription: {
+        Args: { p_np_payment_id: string }
+        Returns: Json
       }
       delete_console: { Args: { p_console_id: number }; Returns: undefined }
       delete_customer: { Args: { p_customer_id: string }; Returns: undefined }
