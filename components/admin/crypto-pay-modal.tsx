@@ -32,7 +32,7 @@ function qrPayload(c: Created): string {
   return c.pay_address
 }
 
-export function CryptoSubscriptionPay({ orgId, plan }: { orgId: string | null; plan: string }) {
+export function CryptoSubscriptionPay({ orgId, plan, buttonClassName }: { orgId: string | null; plan: string; buttonClassName?: string }) {
   const { pushToast } = usePlayroom()
   const [open, setOpen] = useState(false)
   const [months, setMonths] = useState<number>(1)
@@ -86,7 +86,7 @@ export function CryptoSubscriptionPay({ orgId, plan }: { orgId: string | null; p
       <button
         type="button"
         onClick={() => { reset(); setOpen(true) }}
-        className="nm-btn flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary self-start"
+        className={buttonClassName ?? 'nm-btn flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary self-start'}
       >
         <Bitcoin className="size-4" />
         გადაიხადე კრიპტოთი

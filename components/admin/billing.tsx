@@ -355,9 +355,18 @@ export function Billing() {
                   </a>
                 )}
                 {isCurrent && (
-                  <div className="mt-5 flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-bold text-[var(--status-free)]">
-                    <CheckCircle2 className="size-4" />
-                    მიმდინარე პლანი
+                  <div className="mt-5 space-y-2">
+                    <div className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-bold text-[var(--status-free)]">
+                      <CheckCircle2 className="size-4" />
+                      მიმდინარე პლანი
+                    </div>
+                    {isOwnerOrAdmin && p.key !== 'trial' && (
+                      <CryptoSubscriptionPay
+                        orgId={currentOrgId}
+                        plan={plan}
+                        buttonClassName="nm-btn flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold text-primary"
+                      />
+                    )}
                   </div>
                 )}
               </div>
