@@ -41,6 +41,7 @@ function PortalApp() {
   const [endsAt, setEndsAt] = useState<string | null>(null)
   const [isOpen, setIsOpen] = useState(false)        // open (pay-as-you-go) → count UP, no end time
   const [startedAt, setStartedAt] = useState<string | null>(null)
+  const [anchorAt, setAnchorAt] = useState<string | null>(null)  // current rate-segment start (resets on tier change)
   const [planName, setPlanName] = useState<string | null>(null)
   const [controllers, setControllers] = useState<number | null>(null)
   const [pricePerHour, setPricePerHour] = useState<number | null>(null)
@@ -87,6 +88,7 @@ function PortalApp() {
     setEndsAt(active ? data.ends_at : null)
     setIsOpen(active && !!data.is_open)
     setStartedAt(active ? (data.started_at ?? null) : null)
+    setAnchorAt(active ? (data.anchor_at ?? data.started_at ?? null) : null)
     setPlanName(active ? data.plan_name : null)
     setControllers(active ? (data.controllers ?? null) : null)
     setPricePerHour(active ? (data.price_per_hour ?? null) : null)
@@ -296,9 +298,12 @@ function PortalApp() {
 
   const cartTotal = cart.reduce((acc, i) => acc + i.price * i.qty, 0)
 
-  // fixed sessions count DOWN from ends_at; open (pay-as-you-go) count UP from started_at
+  // fixed sessions count DOWN from ends_at; open (pay-as-you-go) count UP from the current
+  // rate-segment anchor — so a mid-session tier change restarts the clock at 00:00 like the
+  // operator side (anchor_at falls back to started_at when the tier was never changed).
   const remainingMs = endsAt ? Math.max(0, new Date(endsAt).getTime() - nowTs) : 0
-  const elapsedMs = startedAt ? Math.max(0, nowTs - new Date(startedAt).getTime()) : 0
+  const openStart = anchorAt ?? startedAt
+  const elapsedMs = openStart ? Math.max(0, nowTs - new Date(openStart).getTime()) : 0
   const displayMs = isOpen ? elapsedMs : remainingMs
   const totalSec = Math.floor(displayMs / 1000)
   const ch = Math.floor(totalSec / 3600)
