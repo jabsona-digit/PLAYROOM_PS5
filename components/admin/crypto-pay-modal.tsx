@@ -21,6 +21,17 @@ const COINS = [
 
 type Created = { payment_id: string; pay_address: string; pay_amount: number; pay_currency: string; price_gel: number; price_usd: number; months: number }
 
+// What we encode INTO the QR. Strict wallet scanners (Binance/Trust) want a proper payment
+// payload — for BTC/LTC the BIP-21 URI (auto-fills the amount too); for USDT-TRC20 there is no
+// universally-supported token URI, so the bare address is the most compatible. (The white
+// quiet-zone via marginSize on the QR itself is what actually lets these scanners lock on.)
+function qrPayload(c: Created): string {
+  const cur = c.pay_currency.toLowerCase()
+  if (cur === 'btc') return `bitcoin:${c.pay_address}?amount=${c.pay_amount}`
+  if (cur === 'ltc') return `litecoin:${c.pay_address}?amount=${c.pay_amount}`
+  return c.pay_address
+}
+
 export function CryptoSubscriptionPay({ orgId, plan }: { orgId: string | null; plan: string }) {
   const { pushToast } = usePlayroom()
   const [open, setOpen] = useState(false)
@@ -127,7 +138,7 @@ export function CryptoSubscriptionPay({ orgId, plan }: { orgId: string | null; p
             ) : (
               <>
                 <div className="nm-inset mx-auto w-fit rounded-3xl bg-white p-4">
-                  <QRCodeSVG value={created.pay_address} size={196} level="M" />
+                  <QRCodeSVG value={qrPayload(created)} size={220} level="M" marginSize={4} />
                 </div>
                 <div className="nm-inset rounded-2xl p-4 text-sm">
                   <div className="flex items-center justify-between">
