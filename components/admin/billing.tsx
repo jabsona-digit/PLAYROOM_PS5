@@ -204,20 +204,17 @@ export function Billing() {
             </div>
           </div>
 
-          {isOwnerOrAdmin && (
+          {isOwnerOrAdmin && plan !== 'enterprise' && (
             <div className="flex flex-col gap-2 self-start sm:items-end">
-              {plan !== 'enterprise' && (
-                <a
-                  href={upgradeUrl(plan === 'trial' ? 'pro' : 'enterprise')}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="nm-btn flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary"
-                >
-                  <MessageCircle className="size-4" />
-                  {plan === 'trial' ? 'PRO-ზე გადასვლა' : 'ENTERPRISE-ზე გადასვლა'}
-                </a>
-              )}
-              <CryptoSubscriptionPay orgId={currentOrgId} plan={plan} />
+              <a
+                href={upgradeUrl(plan === 'trial' ? 'pro' : 'enterprise')}
+                target="_blank"
+                rel="noreferrer"
+                className="nm-btn flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary"
+              >
+                <MessageCircle className="size-4" />
+                {plan === 'trial' ? 'PRO-ზე გადასვლა' : 'ENTERPRISE-ზე გადასვლა'}
+              </a>
             </div>
           )}
         </div>
