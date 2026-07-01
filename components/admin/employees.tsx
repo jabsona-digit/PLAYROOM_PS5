@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase/client'
 import { dateLabel, timeOfDay, gel, planErrorText } from '@/lib/ui'
 import { ROLE_LABELS, type OrgRole, type Employee } from '@/lib/types'
 import { StaffLeaderboard } from './staff-leaderboard'
+import { ModuleTabs } from './module-tabs'
 
 function PinPad() {
   const { clockToggle } = usePlayroom()
@@ -439,118 +440,123 @@ export function Employees() {
     fixed: 'ფიქს.'
   }
 
-  return (
-    <div className="grid gap-6 lg:grid-cols-5">
-      <div className="lg:col-span-2 space-y-6">
-        <PinPad />
-        {canManage && <PayrollPanel />}
-        {canManage && <StaffLeaderboard />}
-      </div>
-
-      <div className="space-y-6 lg:col-span-3">
-        {/* roster */}
-        <div className="nm-raised rounded-3xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-extrabold">თანამშრომლები</h3>
-            {canManage && (
-              <button 
-                onClick={() => { setEditingEmp(undefined); setModalOpen(true); }}
-                className="nm-btn flex size-10 items-center justify-center rounded-xl text-primary"
+  const rosterTab = (
+    <div className="space-y-6">
+      <div className="nm-raised rounded-3xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-extrabold">თანამშრომლები</h3>
+          {canManage && (
+            <button 
+              onClick={() => { setEditingEmp(undefined); setModalOpen(true); }}
+              className="nm-btn flex size-10 items-center justify-center rounded-xl text-primary"
+            >
+              <Plus className="size-5" />
+            </button>
+          )}
+        </div>
+        <ul className="space-y-3">
+          {employees.map((e) => {
+            const onShift = shifts.some(
+              (s) => s.employee_id === e.id && !s.clock_out,
+            )
+            return (
+              <li
+                key={e.id}
+                className={cn(
+                  "nm-inset flex items-center justify-between rounded-2xl px-4 py-3 transition-opacity",
+                  !e.is_active && "opacity-50"
+                )}
               >
-                <Plus className="size-5" />
-              </button>
-            )}
-          </div>
-          <ul className="space-y-3">
-            {employees.map((e) => {
-              const onShift = shifts.some(
-                (s) => s.employee_id === e.id && !s.clock_out,
-              )
-              return (
-                <li
-                  key={e.id}
-                  className={cn(
-                    "nm-inset flex items-center justify-between rounded-2xl px-4 py-3 transition-opacity",
-                    !e.is_active && "opacity-50"
-                  )}
-                >
-                  <div className="flex flex-1 items-center gap-3 min-w-0">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)]">
-                      {['admin', 'owner'].includes(e.role) ? (
-                        <ShieldCheck className="size-5 text-primary" />
-                      ) : (
-                        <User className="size-5 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-bold leading-tight truncate">{e.name}</p>
-                        {onShift && <span className="size-1.5 rounded-full bg-[var(--status-free)] animate-pulse shadow-[0_0_8px_var(--status-free)]" />}
-                      </div>
-                      <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-wider">
-                        {ROLE_LABELS[e.role]} • {gel(e.salary_amount || 0)} / {SALARY_LABELS[e.salary_type || 'hourly']}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    {canManage && (
-                      <div className="flex gap-1.5">
-                        <button 
-                          onClick={() => { setEditingEmp(e); setModalOpen(true); }}
-                          className="nm-btn size-9 flex items-center justify-center rounded-xl text-primary/70 hover:text-primary transition-colors"
-                        >
-                          <Edit2 className="size-4" />
-                        </button>
-                        <button 
-                          onClick={() => toggleActive(e)}
-                          className={cn("nm-btn size-9 flex items-center justify-center rounded-xl transition-colors", e.is_active ? "text-amber-500/70 hover:text-amber-500" : "text-green-500/70 hover:text-green-500")}
-                        >
-                          {e.is_active ? <Trash2 className="size-4" /> : <Plus className="size-4" />}
-                        </button>
-                      </div>
+                <div className="flex flex-1 items-center gap-3 min-w-0">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)]">
+                    {['admin', 'owner'].includes(e.role) ? (
+                      <ShieldCheck className="size-5 text-primary" />
+                    ) : (
+                      <User className="size-5 text-muted-foreground" />
                     )}
                   </div>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-
-        {/* shift log */}
-        <div className="nm-raised rounded-3xl p-6">
-          <h3 className="text-base font-extrabold">ცვლების ჟურნალი</h3>
-          <ul className="mt-4 space-y-2">
-            {shifts.map((s) => (
-              <li
-                key={s.id}
-                className="flex items-center justify-between border-b border-border py-2.5 last:border-b-0"
-              >
-                <div>
-                  <p className="text-sm font-semibold">{s.employee_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {dateLabel(s.clock_in)} • {timeOfDay(s.clock_in)} —{' '}
-                    {s.clock_out ? timeOfDay(s.clock_out) : 'მიმდინარე'}
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold leading-tight truncate">{e.name}</p>
+                      {onShift && <span className="size-1.5 rounded-full bg-[var(--status-free)] animate-pulse shadow-[0_0_8px_var(--status-free)]" />}
+                    </div>
+                    <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-wider">
+                      {ROLE_LABELS[e.role]} • {gel(e.salary_amount || 0)} / {SALARY_LABELS[e.salary_type || 'hourly']}
+                    </p>
+                  </div>
                 </div>
-                <span className="text-sm font-bold text-primary">
-                  {s.hours_worked != null ? (
-                    <>
-                      <span className="font-mono">
-                        {s.hours_worked.toFixed(1)}
-                      </span>{' '}
-                      სთ
-                    </>
-                  ) : (
-                    '—'
+                <div className="flex items-center gap-2">
+                  {canManage && (
+                    <div className="flex gap-1.5">
+                      <button 
+                        onClick={() => { setEditingEmp(e); setModalOpen(true); }}
+                        className="nm-btn size-9 flex items-center justify-center rounded-xl text-primary/70 hover:text-primary transition-colors"
+                      >
+                        <Edit2 className="size-4" />
+                      </button>
+                      <button 
+                        onClick={() => toggleActive(e)}
+                        className={cn("nm-btn size-9 flex items-center justify-center rounded-xl transition-colors", e.is_active ? "text-amber-500/70 hover:text-amber-500" : "text-green-500/70 hover:text-green-500")}
+                      >
+                        {e.is_active ? <Trash2 className="size-4" /> : <Plus className="size-4" />}
+                      </button>
+                    </div>
                   )}
-                </span>
+                </div>
               </li>
-            ))}
-          </ul>
-        </div>
+            )
+          })}
+        </ul>
       </div>
 
+      <div className="nm-raised rounded-3xl p-6">
+        <h3 className="text-base font-extrabold">ცვლების ჟურნალი</h3>
+        <ul className="mt-4 space-y-2">
+          {shifts.map((s) => (
+            <li
+              key={s.id}
+              className="flex items-center justify-between border-b border-border py-2.5 last:border-b-0"
+            >
+              <div>
+                <p className="text-sm font-semibold">{s.employee_name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {dateLabel(s.clock_in)} • {timeOfDay(s.clock_in)} —{' '}
+                  {s.clock_out ? timeOfDay(s.clock_out) : 'მიმდინარე'}
+                </p>
+              </div>
+              <span className="text-sm font-bold text-primary">
+                {s.hours_worked != null ? (
+                  <>
+                    <span className="font-mono">
+                      {s.hours_worked.toFixed(1)}
+                    </span>{' '}
+                    სთ
+                  </>
+                ) : (
+                  '—'
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+
+  const tabs = [
+    { id: 'clockin', label: 'Clock In/Out', icon: <LogIn className="size-4" />, content: <PinPad /> },
+    ...(canManage ? [
+      { id: 'payroll', label: 'ხელფასი', icon: <Wallet className="size-4" />, content: <div className="space-y-6"><PayrollPanel /><StaffLeaderboard /></div> },
+    ] : []),
+    { id: 'roster', label: 'გუნდი', icon: <User className="size-4" />, content: rosterTab },
+  ]
+
+  return (
+    <>
+      <ModuleTabs
+        tabs={tabs}
+        desktopClassName="grid gap-6 lg:grid-cols-5"
+      />
       {modalOpen && (
         <EmployeeModal 
           employee={editingEmp} 
@@ -558,6 +564,6 @@ export function Employees() {
           onRefresh={refreshStaff} 
         />
       )}
-    </div>
+    </>
   )
 }

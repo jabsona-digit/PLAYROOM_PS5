@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CalendarClock, LoaderCircle, CheckCircle2, XCircle } from 'lucide-react'
+import { CalendarClock, LoaderCircle, CheckCircle2, XCircle, List } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useOrg } from '@/lib/org'
 import { usePlayroom } from '@/lib/store'
 import { supabase } from '@/lib/supabase/client'
 import type { Reservation, ReservationStatus } from '@/lib/types'
+import { ModuleTabs } from './module-tabs'
 
 type ResWithConsole = Reservation & { consoles: { name: string } | null }
 
@@ -150,24 +151,84 @@ export function Reservations() {
     else loadData()
   }
 
-  if (loading) {
-    return (
-      <div className="flex h-64 w-full items-center justify-center">
-        <LoaderCircle className="size-8 animate-spin text-primary" />
+  const listContent = (
+    <div className={cn("nm-raised rounded-3xl p-6", !isManager && "md:col-span-2")}>
+      <div className="mb-6 flex items-center justify-between">
+        <h2 className="text-xl font-extrabold tracking-tight">ჟავშნები</h2>
+        <span className="nm-inset flex items-center justify-center rounded-xl px-3 py-1 text-xs font-bold text-muted-foreground">
+          {reservations.length}
+        </span>
       </div>
-    )
-  }
 
-  return (
-    <div className="grid gap-6 md:grid-cols-2 items-start">
-      {/* Left: Form */}
-      {isManager && (
+      {reservations.length === 0 ? (
+        <div className="flex h-32 items-center justify-center text-sm font-bold text-muted-foreground">
+          ჟავშნები არ არის
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {reservations.map(r => (
+            <div key={r.id} className="nm-raised-sm rounded-2xl p-4">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <p className="font-bold leading-tight flex-1 line-clamp-2">{r.customer_name}</p>
+                <span className={cn("px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider shrink-0", STATUS_STYLES[r.status])}>
+                  {STATUS_LABELS[r.status]}
+                </span>
+              </div>
+              
+              <p className="text-sm font-semibold text-primary mb-1">
+                {formatDateTime(r.start_time)} <span className="text-muted-foreground px-1">•</span> {r.duration_min} წთ
+              </p>
+              <p className="text-xs text-muted-foreground mb-1">
+                {r.consoles?.name || "კონსოლი არ არის მითითებული"}
+              </p>
+              {r.customer_phone && (
+                <p className="text-xs text-muted-foreground mb-1">📞 {r.customer_phone}</p>
+              )}
+              {r.notes && (
+                <p className="text-[11px] text-muted-foreground bg-black/10 rounded-xl px-2 py-1.5 mt-2 break-words">
+                  {r.notes}
+                </p>
+              )}
+
+              {/* Actions */}
+              {isManager && (r.status === 'pending' || r.status === 'confirmed') && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {r.status === 'pending' && (
+                    <button
+                      onClick={() => handleConfirm(r.id)}
+                      className="nm-btn flex items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-bold text-green-500"
+                    >
+                      <CheckCircle2 className="size-3.5" />
+                      დადასტურება
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleCancel(r.id)}
+                    className="nm-btn flex items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-bold text-red-500"
+                  >
+                    <XCircle className="size-3.5" />
+                    გაუქმება
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+
+  const tabs = [
+    ...(isManager ? [{
+      id: 'add',
+      label: 'ახალი ჟავშანი',
+      icon: <CalendarClock className="size-4" />,
+      content: (
         <div className="nm-raised rounded-3xl p-6">
           <div className="mb-6 flex items-center gap-2">
             <CalendarClock className="size-5 text-primary" />
-            <h2 className="text-xl font-extrabold tracking-tight">ახალი ჯავშანი</h2>
+            <h2 className="text-xl font-extrabold tracking-tight">ახალი ჟავშანი</h2>
           </div>
-
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block sm:col-span-2">
@@ -181,7 +242,6 @@ export function Reservations() {
                   className="nm-inset mt-1.5 w-full rounded-2xl px-4 py-3 text-sm font-bold outline-none placeholder:text-muted-foreground/50"
                 />
               </label>
-
               <label className="block">
                 <span className="text-xs font-semibold text-muted-foreground">ტელეფონი</span>
                 <input
@@ -192,7 +252,6 @@ export function Reservations() {
                   className="nm-inset mt-1.5 w-full rounded-2xl px-4 py-3 text-sm font-bold outline-none placeholder:text-muted-foreground/50"
                 />
               </label>
-
               <label className="block">
                 <span className="text-xs font-semibold text-muted-foreground">თარიღი და დრო *</span>
                 <input
@@ -204,7 +263,6 @@ export function Reservations() {
                   className="nm-inset mt-1.5 w-full rounded-2xl px-4 py-3 text-sm font-bold outline-none text-primary"
                 />
               </label>
-
               <label className="block">
                 <span className="text-xs font-semibold text-muted-foreground">ხანგრძლივობა (წუთი) *</span>
                 <input
@@ -217,7 +275,6 @@ export function Reservations() {
                   className="nm-inset mt-1.5 w-full rounded-2xl px-4 py-3 text-sm font-bold outline-none"
                 />
               </label>
-
               <label className="block">
                 <span className="text-xs font-semibold text-muted-foreground">კონსოლი</span>
                 <select
@@ -232,7 +289,6 @@ export function Reservations() {
                 </select>
               </label>
             </div>
-
             <label className="block">
               <span className="text-xs font-semibold text-muted-foreground">შენიშვნა</span>
               <textarea
@@ -243,7 +299,6 @@ export function Reservations() {
                 className="nm-inset mt-1.5 w-full resize-none rounded-2xl px-4 py-3 text-sm font-bold outline-none placeholder:text-muted-foreground/50"
               />
             </label>
-
             <button
               type="submit"
               disabled={adding}
@@ -253,73 +308,22 @@ export function Reservations() {
             </button>
           </form>
         </div>
-      )}
+      )
+    }] : []),
+    {
+      id: 'list',
+      label: 'ჟავშნები',
+      icon: <List className="size-4" />,
+      content: listContent,
+      wide: isManager,
+    },
+  ]
 
-      {/* Right: List */}
-      <div className={cn("nm-raised rounded-3xl p-6", !isManager && "md:col-span-2")}>
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-xl font-extrabold tracking-tight">ჯავშნები</h2>
-          <span className="nm-inset flex items-center justify-center rounded-xl px-3 py-1 text-xs font-bold text-muted-foreground">
-            {reservations.length}
-          </span>
-        </div>
-
-        {reservations.length === 0 ? (
-          <div className="flex h-32 items-center justify-center text-sm font-bold text-muted-foreground">
-            ჯავშნები არ არის
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {reservations.map(r => (
-              <div key={r.id} className="nm-raised-sm rounded-2xl p-4">
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <p className="font-bold leading-tight flex-1 line-clamp-2">{r.customer_name}</p>
-                  <span className={cn("px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider shrink-0", STATUS_STYLES[r.status])}>
-                    {STATUS_LABELS[r.status]}
-                  </span>
-                </div>
-                
-                <p className="text-sm font-semibold text-primary mb-1">
-                  {formatDateTime(r.start_time)} <span className="text-muted-foreground px-1">•</span> {r.duration_min} წთ
-                </p>
-                <p className="text-xs text-muted-foreground mb-1">
-                  {r.consoles?.name || "კონსოლი არ არის მითითებული"}
-                </p>
-                {r.customer_phone && (
-                  <p className="text-xs text-muted-foreground mb-1">📞 {r.customer_phone}</p>
-                )}
-                {r.notes && (
-                  <p className="text-[11px] text-muted-foreground bg-black/10 rounded-xl px-2 py-1.5 mt-2 break-words">
-                    {r.notes}
-                  </p>
-                )}
-
-                {/* Actions */}
-                {isManager && (r.status === 'pending' || r.status === 'confirmed') && (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {r.status === 'pending' && (
-                      <button
-                        onClick={() => handleConfirm(r.id)}
-                        className="nm-btn flex items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-bold text-green-500"
-                      >
-                        <CheckCircle2 className="size-3.5" />
-                        დადასტურება
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleCancel(r.id)}
-                      className="nm-btn flex items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-bold text-red-500"
-                    >
-                      <XCircle className="size-3.5" />
-                      გაუქმება
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+  return (
+    <ModuleTabs
+      tabs={tabs}
+      initial={isManager ? 'add' : 'list'}
+      desktopClassName="grid gap-6 md:grid-cols-2 items-start"
+    />
   )
 }

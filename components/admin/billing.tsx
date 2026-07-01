@@ -19,6 +19,7 @@ import { useOrg } from '@/lib/org'
 import { supabase } from '@/lib/supabase/client'
 import { gel } from '@/lib/ui'
 import { CryptoSubscriptionPay } from './crypto-pay-modal'
+import { ModuleTabs } from './module-tabs'
 
 const CONTACT_WHATSAPP = 'https://wa.me/995500057527?text=გამარჯობა%2C%20მინდა%20გამოვიწერო%20'
 const CONTACT_EMAIL = 'mailto:martecompanygeo@gmail.com?subject=Martelounge%20Billing'
@@ -165,233 +166,249 @@ export function Billing() {
     `${CONTACT_WHATSAPP}${planKey.toUpperCase()}%20პლანი`
 
   return (
-    <div className="space-y-6">
-      {/* Current plan card */}
-      <div className="nm-raised rounded-3xl p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="nm-inset flex size-14 items-center justify-center rounded-2xl">
-              {plan === 'enterprise' ? (
-                <Crown className="size-7 text-primary" />
-              ) : plan === 'pro' ? (
-                <Zap className="size-7 text-primary" />
-              ) : (
-                <CreditCard className="size-7 text-muted-foreground" />
-              )}
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl font-extrabold">
-                  {org?.name ?? 'ორგანიზაცია'}
-                </h2>
-                <span
-                  className="rounded-full px-3 py-1 text-xs font-bold"
-                  style={{
-                    color: status.color,
-                    background: `color-mix(in oklch, ${status.color} 14%, transparent)`,
-                  }}
-                >
-                  {status.label}
-                </span>
+    <ModuleTabs tabs={[
+      {
+        id: 'plan',
+        label: 'პლანი',
+        icon: <Building2 className="size-4" />,
+        content: (
+          <div className="nm-raised rounded-3xl p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="nm-inset flex size-14 items-center justify-center rounded-2xl">
+                  {plan === 'enterprise' ? (
+                    <Crown className="size-7 text-primary" />
+                  ) : plan === 'pro' ? (
+                    <Zap className="size-7 text-primary" />
+                  ) : (
+                    <CreditCard className="size-7 text-muted-foreground" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-xl font-extrabold">
+                      {org?.name ?? 'ორგანიზაცია'}
+                    </h2>
+                    <span
+                      className="rounded-full px-3 py-1 text-xs font-bold"
+                      style={{
+                        color: status.color,
+                        background: `color-mix(in oklch, ${status.color} 14%, transparent)`,
+                      }}
+                    >
+                      {status.label}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    პლანი:{' '}
+                    <span className="font-bold text-foreground">
+                      {currentPlanDef.label}
+                      {currentPlanDef.price > 0 ? ` — ${gel(currentPlanDef.price)}/თვე` : ' — უფასო'}
+                    </span>
+                  </p>
+                </div>
               </div>
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                პლანი:{' '}
-                <span className="font-bold text-foreground">
-                  {currentPlanDef.label}
-                  {currentPlanDef.price > 0 ? ` — ${gel(currentPlanDef.price)}/თვე` : ' — უფასო'}
-                </span>
-              </p>
-            </div>
-          </div>
 
-          {isOwnerOrAdmin && plan !== 'enterprise' && (
-            <div className="flex flex-col gap-2 self-start sm:items-end">
-              <a
-                href={upgradeUrl(plan === 'trial' ? 'pro' : 'enterprise')}
-                target="_blank"
-                rel="noreferrer"
-                className="nm-btn flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary"
-              >
-                <MessageCircle className="size-4" />
-                {plan === 'trial' ? 'PRO-ზე გადასვლა' : 'ENTERPRISE-ზე გადასვლა'}
-              </a>
-            </div>
-          )}
-        </div>
-
-        {/* Trial countdown */}
-        {trialDays !== null && (
-          <div
-            className="mt-5 flex items-center gap-3 rounded-2xl px-4 py-3"
-            style={{
-              background:
-                trialDays <= 3
-                  ? 'color-mix(in oklch, var(--status-expired) 10%, transparent)'
-                  : 'color-mix(in oklch, var(--status-active) 10%, transparent)',
-              boxShadow: `inset 0 0 0 1px color-mix(in oklch, ${trialDays <= 3 ? 'var(--status-expired)' : 'var(--status-active)'} 30%, transparent)`,
-            }}
-          >
-            <Calendar
-              className="size-5 shrink-0"
-              style={{ color: trialDays <= 3 ? 'var(--status-expired)' : 'var(--status-active)' }}
-            />
-            <p
-              className="text-sm font-bold"
-              style={{ color: trialDays <= 3 ? 'var(--status-expired)' : 'var(--status-active)' }}
-            >
-              {trialDays === 0
-                ? 'Trial-ი დასრულდა — გთხოვთ განაახლოთ'
-                : `Trial-ი: ${trialDays} დღე დარჩა`}
-            </p>
-          </div>
-        )}
-
-        {/* Canceled warning */}
-        {details.subscription_status === 'canceled' && (
-          <div
-            className="mt-5 flex items-center gap-3 rounded-2xl px-4 py-3"
-            style={{
-              background: 'color-mix(in oklch, var(--status-expired) 10%, transparent)',
-              boxShadow: 'inset 0 0 0 1px color-mix(in oklch, var(--status-expired) 30%, transparent)',
-            }}
-          >
-            <XCircle className="size-5 shrink-0" style={{ color: 'var(--status-expired)' }} />
-            <p className="text-sm font-bold" style={{ color: 'var(--status-expired)' }}>
-              გამოწერა შეჩერებულია — დასაბრუნებლად დაგვიკავშირდით
-            </p>
-          </div>
-        )}
-
-        {/* Usage stats */}
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <Stat icon={Building2} label="ფილიალები" value={String(details.venue_count)} />
-          <Stat icon={Users2} label="წევრები" value={String(details.member_count)} />
-          <Stat
-            icon={BadgeCheck}
-            label="გამოწერა"
-            value={new Date(details.created_at).toLocaleDateString('ka-GE', {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
-            })}
-          />
-        </div>
-      </div>
-
-      {/* Plan comparison */}
-      <div className="nm-raised rounded-3xl p-6">
-        <h3 className="mb-5 flex items-center gap-2 text-base font-extrabold">
-          <Crown className="size-5 text-primary" />
-          პლანები
-        </h3>
-        <div className="grid gap-4 md:grid-cols-3">
-          {PLANS.map((p) => {
-            const isCurrent = p.key === plan
-            return (
-              <div
-                key={p.key}
-                className={cn(
-                  'relative flex flex-col rounded-2xl p-5',
-                  isCurrent ? 'nm-daylight' : 'nm-inset',
-                )}
-              >
-                {p.badge && (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-[var(--primary)] px-3 py-0.5 text-[10px] font-extrabold text-white">
-                    {p.badge}
-                  </span>
-                )}
-                {isCurrent && (
-                  <span className="absolute -top-2.5 right-4 rounded-full bg-[var(--status-free)] px-3 py-0.5 text-[10px] font-extrabold text-white">
-                    მიმდინარე
-                  </span>
-                )}
-
-                <p
-                  className={cn(
-                    'text-base font-extrabold',
-                    isCurrent ? 'text-primary text-glow' : '',
-                  )}
-                >
-                  {p.label}
-                </p>
-                <p className="mt-1 font-mono text-2xl font-extrabold">
-                  {p.price === 0 ? 'უფასო' : `${gel(p.price)}`}
-                  {p.price > 0 && (
-                    <span className="text-sm font-normal text-muted-foreground">/თვე</span>
-                  )}
-                </p>
-
-                <ul className="mt-4 flex-1 space-y-2">
-                  {p.features.map((f) => (
-                    <li key={f.text} className="flex items-start gap-2 text-sm">
-                      {f.included ? (
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[var(--status-free)]" />
-                      ) : (
-                        <XCircle className="mt-0.5 size-4 shrink-0 text-muted-foreground opacity-40" />
-                      )}
-                      <span
-                        className={cn(
-                          f.included ? 'text-foreground' : 'text-muted-foreground opacity-50',
-                        )}
-                      >
-                        {f.text}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                {isOwnerOrAdmin && !isCurrent && p.key !== 'trial' && (
+              {isOwnerOrAdmin && plan !== 'enterprise' && (
+                <div className="flex flex-col gap-2 self-start sm:items-end">
                   <a
-                    href={upgradeUrl(p.key)}
+                    href={upgradeUrl(plan === 'trial' ? 'pro' : 'enterprise')}
                     target="_blank"
                     rel="noreferrer"
-                    className="nm-btn mt-5 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold text-primary"
+                    className="nm-btn flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary"
                   >
                     <MessageCircle className="size-4" />
-                    {p.key === 'pro' ? 'PRO-ზე გადასვლა' : 'ENTERPRISE-ზე'}
+                    {plan === 'trial' ? 'PRO-ზე გადასვლა' : 'ENTERPRISE-ზე გადასვლა'}
                   </a>
-                )}
-                {isCurrent && (
-                  <div className="mt-5 space-y-2">
-                    <div className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-bold text-[var(--status-free)]">
-                      <CheckCircle2 className="size-4" />
-                      მიმდინარე პლანი
-                    </div>
-                    {isOwnerOrAdmin && p.key !== 'trial' && (
-                      <CryptoSubscriptionPay
-                        orgId={currentOrgId}
-                        plan={plan}
-                        buttonClassName="nm-btn flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold text-primary"
-                      />
+                </div>
+              )}
+            </div>
+
+            {/* Trial countdown */}
+            {trialDays !== null && (
+              <div
+                className="mt-5 flex items-center gap-3 rounded-2xl px-4 py-3"
+                style={{
+                  background:
+                    trialDays <= 3
+                      ? 'color-mix(in oklch, var(--status-expired) 10%, transparent)'
+                      : 'color-mix(in oklch, var(--status-active) 10%, transparent)',
+                  boxShadow: `inset 0 0 0 1px color-mix(in oklch, ${trialDays <= 3 ? 'var(--status-expired)' : 'var(--status-active)'} 30%, transparent)`,
+                }}
+              >
+                <Calendar
+                  className="size-5 shrink-0"
+                  style={{ color: trialDays <= 3 ? 'var(--status-expired)' : 'var(--status-active)' }}
+                />
+                <p
+                  className="text-sm font-bold"
+                  style={{ color: trialDays <= 3 ? 'var(--status-expired)' : 'var(--status-active)' }}
+                >
+                  {trialDays === 0
+                    ? 'Trial-ი დასრულდა — გთხოვთ განაახლოთ'
+                    : `Trial-ი: ${trialDays} დღე დარჩა`}
+                </p>
+              </div>
+            )}
+
+            {/* Canceled warning */}
+            {details.subscription_status === 'canceled' && (
+              <div
+                className="mt-5 flex items-center gap-3 rounded-2xl px-4 py-3"
+                style={{
+                  background: 'color-mix(in oklch, var(--status-expired) 10%, transparent)',
+                  boxShadow: 'inset 0 0 0 1px color-mix(in oklch, var(--status-expired) 30%, transparent)',
+                }}
+              >
+                <XCircle className="size-5 shrink-0" style={{ color: 'var(--status-expired)' }} />
+                <p className="text-sm font-bold" style={{ color: 'var(--status-expired)' }}>
+                  გამოწერა შეჩერებულია — დასაბრუნებლად დაგვიკავშირდით
+                </p>
+              </div>
+            )}
+
+            {/* Usage stats */}
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <Stat icon={Building2} label="ფილიალები" value={String(details.venue_count)} />
+              <Stat icon={Users2} label="წევრები" value={String(details.member_count)} />
+              <Stat
+                icon={BadgeCheck}
+                label="გამოწერა"
+                value={new Date(details.created_at).toLocaleDateString('ka-GE', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              />
+            </div>
+          </div>
+        )
+      },
+      {
+        id: 'plans',
+        label: 'პლანები',
+        icon: <Crown className="size-4" />,
+        content: (
+          <div className="nm-raised rounded-3xl p-6">
+            <h3 className="mb-5 flex items-center gap-2 text-base font-extrabold">
+              <Crown className="size-5 text-primary" />
+              პლანები
+            </h3>
+            <div className="grid gap-4 md:grid-cols-3">
+              {PLANS.map((p) => {
+                const isCurrent = p.key === plan
+                return (
+                  <div
+                    key={p.key}
+                    className={cn(
+                      'relative flex flex-col rounded-2xl p-5',
+                      isCurrent ? 'nm-daylight' : 'nm-inset',
+                    )}
+                  >
+                    {p.badge && (
+                      <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-[var(--primary)] px-3 py-0.5 text-[10px] font-extrabold text-white">
+                        {p.badge}
+                      </span>
+                    )}
+                    {isCurrent && (
+                      <span className="absolute -top-2.5 right-4 rounded-full bg-[var(--status-free)] px-3 py-0.5 text-[10px] font-extrabold text-white">
+                        მიმდინარე
+                      </span>
+                    )}
+
+                    <p
+                      className={cn(
+                        'text-base font-extrabold',
+                        isCurrent ? 'text-primary text-glow' : '',
+                      )}
+                    >
+                      {p.label}
+                    </p>
+                    <p className="mt-1 font-mono text-2xl font-extrabold">
+                      {p.price === 0 ? 'უფასო' : `${gel(p.price)}`}
+                      {p.price > 0 && (
+                        <span className="text-sm font-normal text-muted-foreground">/თვე</span>
+                      )}
+                    </p>
+
+                    <ul className="mt-4 flex-1 space-y-2">
+                      {p.features.map((f) => (
+                        <li key={f.text} className="flex items-start gap-2 text-sm">
+                          {f.included ? (
+                            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[var(--status-free)]" />
+                          ) : (
+                            <XCircle className="mt-0.5 size-4 shrink-0 text-muted-foreground opacity-40" />
+                          )}
+                          <span
+                            className={cn(
+                              f.included ? 'text-foreground' : 'text-muted-foreground opacity-50',
+                            )}
+                          >
+                            {f.text}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {isOwnerOrAdmin && !isCurrent && p.key !== 'trial' && (
+                      <a
+                        href={upgradeUrl(p.key)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="nm-btn mt-5 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold text-primary"
+                      >
+                        <MessageCircle className="size-4" />
+                        {p.key === 'pro' ? 'PRO-ზე გადასვლა' : 'ENTERPRISE-ზე'}
+                      </a>
+                    )}
+                    {isCurrent && (
+                      <div className="mt-5 space-y-2">
+                        <div className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-bold text-[var(--status-free)]">
+                          <CheckCircle2 className="size-4" />
+                          მიმდინარე პლანი
+                        </div>
+                        {isOwnerOrAdmin && p.key !== 'trial' && (
+                          <CryptoSubscriptionPay
+                            orgId={currentOrgId}
+                            plan={plan}
+                            buttonClassName="nm-btn flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold text-primary"
+                          />
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Invoices placeholder */}
-      <div className="nm-raised rounded-3xl p-6">
-        <h3 className="mb-4 flex items-center gap-2 text-base font-extrabold">
-          <CreditCard className="size-5 text-primary" />
-          ინვოისები
-        </h3>
-        <p className="py-8 text-center text-sm text-muted-foreground">
-          ინვოისები გამოჩნდება გადახდის სისტემის ინტეგრაციის შემდეგ.
-          <br />
-          ახლა ანგარიშსწორება ხდება ხელნაწერი ინვოისით.{' '}
-          <a
-            href={CONTACT_EMAIL}
-            className="text-primary underline underline-offset-2"
-          >
-            დაგვიკავშირდით
-          </a>
-          .
-        </p>
-      </div>
-    </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      },
+      {
+        id: 'invoices',
+        label: 'ინვოისები',
+        icon: <CreditCard className="size-4" />,
+        content: (
+          <div className="nm-raised rounded-3xl p-6">
+            <h3 className="mb-4 flex items-center gap-2 text-base font-extrabold">
+              <CreditCard className="size-5 text-primary" />
+              ინვოისები
+            </h3>
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              ინვოისები გამოჩნდება გადახდის სისტემის ინტეგრაციის შემდეგ.
+              <br />
+              ახლა ანგარიშსწორება ხდება ხელნაწერი ინვოისით.{' '}
+              <a
+                href={CONTACT_EMAIL}
+                className="text-primary underline underline-offset-2"
+              >
+                დაგვიკავშირდით
+              </a>
+              .
+            </p>
+          </div>
+        )
+      }
+    ]} />
   )
 }
 

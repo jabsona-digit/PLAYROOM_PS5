@@ -13,7 +13,14 @@ import {
   FileText,
   Save,
   QrCode,
+  Users2,
+  Store,
+  CreditCard,
+  Cpu,
+  KeyRound,
+  Send,
 } from 'lucide-react'
+import { ModuleTabs } from './module-tabs'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
@@ -597,195 +604,202 @@ export function Settings() {
   const [qrOpen, setQrOpen] = useState(false)
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      {/* General settings */}
-      <section className="nm-raised rounded-3xl p-6">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
-            <Building2 className="size-5 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-lg font-extrabold tracking-tight">ზოგადი</h2>
-            <p className="text-xs text-muted-foreground">
-              დაწესებულების მონაცემები და გაფრთხილებები
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-5">
-          <label className="block">
-            <span className="text-sm text-muted-foreground">დაწესებულების სახელი</span>
-            <input
-              value={settings.venue_name}
-              onChange={(e) => updateSettings({ venue_name: e.target.value })}
-              className="nm-inset mt-2 w-full rounded-xl px-4 py-2.5 text-sm font-semibold outline-none"
-            />
-          </label>
-
-          <label className="flex items-center justify-between gap-4">
-            <span className="text-sm text-muted-foreground">ვალუტის სიმბოლო</span>
-            <input
-              value={settings.currency}
-              maxLength={3}
-              onChange={(e) => updateSettings({ currency: e.target.value })}
-              className="nm-inset w-20 rounded-xl px-4 py-2 text-center text-sm font-bold outline-none"
-            />
-          </label>
-
-          <NumberField
-            label="პირველი გაფრთხილება"
-            value={settings.warn_10_min}
-            onChange={(v) => updateSettings({ warn_10_min: v })}
-            suffix="წთ"
-          />
-          <NumberField
-            label="ბოლო გაფრთხილება"
-            value={settings.warn_5_min}
-            onChange={(v) => updateSettings({ warn_5_min: v })}
-            suffix="წთ"
-          />
-
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold">ავტო-დასრულება</p>
-              <p className="text-xs text-muted-foreground">
-                დროის ამოწურვისას სესია ავტომატურად დასრულდეს
-              </p>
-            </div>
-            <Toggle
-              checked={settings.auto_end_on_expire}
-              onChange={(v) => updateSettings({ auto_end_on_expire: v })}
-              label="ავტო-დასრულება"
-            />
-          </div>
-
-          <EarlyEndToggle />
-
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold">ხმოვანი სიგნალი</p>
-              <p className="text-xs text-muted-foreground">
-                გაფრთხილებისას გაისმას ხმა
-              </p>
-            </div>
-            <Toggle
-              checked={settings.sound_alerts}
-              onChange={(v) => updateSettings({ sound_alerts: v })}
-              label="ხმოვანი სიგნალი"
-            />
-          </div>
-
-          {/* reset device settings (does not touch DB data) */}
-          <div className="mt-2 border-t border-border pt-5">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold">პარამეტრების განულება</p>
-                <p className="text-xs text-muted-foreground text-pretty">
-                  ინტერფეისის პარამეტრები დაუბრუნდება ნაგულისხმევს — მონაცემები DB-ში არ იშლება.
-                </p>
-              </div>
-              {confirmReset ? (
-                <div className="flex shrink-0 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setConfirmReset(false)}
-                    className="nm-btn rounded-xl px-3 py-2 text-xs font-bold text-muted-foreground"
-                  >
-                    გაუქმება
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      resetSettings()
-                      setConfirmReset(false)
-                    }}
-                    className="nm-btn rounded-xl px-3 py-2 text-xs font-bold text-[var(--status-expired)]"
-                  >
-                    დადასტურება
-                  </button>
+    <>
+      <ModuleTabs
+        desktopClassName="grid gap-6 lg:grid-cols-2"
+        tabs={[
+          {
+            id: 'general',
+            label: 'ზოგადი',
+            icon: <Building2 className="size-4" />,
+            content: (
+              <section className="nm-raised rounded-3xl p-6">
+                <div className="mb-5 flex items-center gap-3">
+                  <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
+                    <Building2 className="size-5 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-extrabold tracking-tight">ზოგადი</h2>
+                    <p className="text-xs text-muted-foreground">
+                      დაწესებულების მონაცემები და გაფრთხილებები
+                    </p>
+                  </div>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmReset(true)}
-                  className="nm-btn flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-[var(--status-expired)]"
-                >
-                  <RotateCcw className="size-3.5" />
-                  განულება
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
 
-      <VenuesSettings />
+                <div className="space-y-5">
+                  <label className="block">
+                    <span className="text-sm text-muted-foreground">დაწესებულების სახელი</span>
+                    <input
+                      value={settings.venue_name}
+                      onChange={(e) => updateSettings({ venue_name: e.target.value })}
+                      className="nm-inset mt-2 w-full rounded-xl px-4 py-2.5 text-sm font-semibold outline-none"
+                    />
+                  </label>
 
-      <DataImport />
+                  <label className="flex items-center justify-between gap-4">
+                    <span className="text-sm text-muted-foreground">ვალუტის სიმბოლო</span>
+                    <input
+                      value={settings.currency}
+                      maxLength={3}
+                      onChange={(e) => updateSettings({ currency: e.target.value })}
+                      className="nm-inset w-20 rounded-xl px-4 py-2 text-center text-sm font-bold outline-none"
+                    />
+                  </label>
 
-      {/* Console management */}
-      <section className="nm-raised rounded-3xl p-6">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
-              <Gamepad2 className="size-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-extrabold tracking-tight">{vl.plural}</h2>
-              <p className="text-xs text-muted-foreground">
-                {consoles.length} {vl.singular} დარეგისტრირებულია
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setQrOpen(true)}
-              className="nm-btn flex items-center justify-center rounded-2xl px-3 py-2.5 text-sm font-bold text-muted-foreground"
-              title="QR კოდების ბეჭდვა"
-            >
-              <QrCode className="size-4 sm:mr-2" />
-              <span className="hidden sm:inline">QR კოდები</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setNewName('')
-                setAddOpen(true)
-              }}
-              className="nm-btn flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary"
-            >
-              <Plus className="size-4" />
-              <span className="hidden sm:inline">{vl.genitive} დამატება</span>
-            </button>
-          </div>
-        </div>
+                  <NumberField
+                    label="პირველი გაფრთხილება"
+                    value={settings.warn_10_min}
+                    onChange={(v) => updateSettings({ warn_10_min: v })}
+                    suffix="წთ"
+                  />
+                  <NumberField
+                    label="ბოლო გაფრთხილება"
+                    value={settings.warn_5_min}
+                    onChange={(v) => updateSettings({ warn_5_min: v })}
+                    suffix="წთ"
+                  />
 
-        <div className="space-y-3">
-          {consoles.map((unit) => (
-            <ConsoleRow key={unit.id} unit={unit} />
-          ))}
-          {consoles.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              {vl.plural} არ არის. დაამატე პირველი.
-            </p>
-          ) : null}
-        </div>
-      </section>
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold">ავტო-დასრულება</p>
+                      <p className="text-xs text-muted-foreground">
+                        დროის ამოწურვისას სესია ავტომატურად დასრულდეს
+                      </p>
+                    </div>
+                    <Toggle
+                      checked={settings.auto_end_on_expire}
+                      onChange={(v) => updateSettings({ auto_end_on_expire: v })}
+                      label="ავტო-დასრულება"
+                    />
+                  </div>
 
-      <TeamSettings />
+                  <EarlyEndToggle />
 
-      <FiscalSettings />
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold">ხმოვანი სიგნალი</p>
+                      <p className="text-xs text-muted-foreground">
+                        გაფრთხილებისას გაისმას ხმა
+                      </p>
+                    </div>
+                    <Toggle
+                      checked={settings.sound_alerts}
+                      onChange={(v) => updateSettings({ sound_alerts: v })}
+                      label="ხმოვანი სიგნალი"
+                    />
+                  </div>
 
-      <MarketplaceSettings />
+                  {/* reset device settings (does not touch DB data) */}
+                  <div className="mt-2 border-t border-border pt-5">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold">პარამეტრების განულება</p>
+                        <p className="text-xs text-muted-foreground text-pretty">
+                          ინტერფეისის პარამეტრები დაუბრუნდება ნაგულისხმევს — მონაცემები DB-ში არ იშლება.
+                        </p>
+                      </div>
+                      {confirmReset ? (
+                        <div className="flex shrink-0 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setConfirmReset(false)}
+                            className="nm-btn rounded-xl px-3 py-2 text-xs font-bold text-muted-foreground"
+                          >
+                            გაუქმება
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              resetSettings()
+                              setConfirmReset(false)
+                            }}
+                            className="nm-btn rounded-xl px-3 py-2 text-xs font-bold text-[var(--status-expired)]"
+                          >
+                            დადასტურება
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmReset(true)}
+                          className="nm-btn flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-[var(--status-expired)]"
+                        >
+                          <RotateCcw className="size-3.5" />
+                          განულება
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            ),
+          },
+          { id: 'venues', label: 'ფილიალები', icon: <Building2 className="size-4" />, wide: true, content: <VenuesSettings /> },
+          { id: 'import', label: 'იმპორტი', icon: <FileText className="size-4" />, content: <DataImport /> },
+          {
+            id: 'consoles',
+            label: vl.plural,
+            icon: <Gamepad2 className="size-4" />,
+            content: (
+              <section className="nm-raised rounded-3xl p-6">
+                <div className="mb-5 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
+                      <Gamepad2 className="size-5 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-extrabold tracking-tight">{vl.plural}</h2>
+                      <p className="text-xs text-muted-foreground">
+                        {consoles.length} {vl.singular} დარეგისტრირებულია
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setQrOpen(true)}
+                      className="nm-btn flex items-center justify-center rounded-2xl px-3 py-2.5 text-sm font-bold text-muted-foreground"
+                      title="QR კოდების ბეჭდვა"
+                    >
+                      <QrCode className="size-4 sm:mr-2" />
+                      <span className="hidden sm:inline">QR კოდები</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewName('')
+                        setAddOpen(true)
+                      }}
+                      className="nm-btn flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-primary"
+                    >
+                      <Plus className="size-4" />
+                      <span className="hidden sm:inline">{vl.genitive} დამატება</span>
+                    </button>
+                  </div>
+                </div>
 
-      <PaymentSettings />
-
-      <HardwareSettings />
-
-      <ApiKeysPanel />
-
-      <TelegramSettings />
+                <div className="space-y-3">
+                  {consoles.map((unit) => (
+                    <ConsoleRow key={unit.id} unit={unit} />
+                  ))}
+                  {consoles.length === 0 ? (
+                    <p className="py-8 text-center text-sm text-muted-foreground">
+                      {vl.plural} არ არის. დაამატე პირველი.
+                    </p>
+                  ) : null}
+                </div>
+              </section>
+            ),
+          },
+          { id: 'team', label: 'გუნდი', icon: <Users2 className="size-4" />, wide: true, content: <TeamSettings /> },
+          { id: 'fiscal', label: 'ფისკალი', icon: <FileText className="size-4" />, content: <FiscalSettings /> },
+          { id: 'marketplace', label: 'Marketplace', icon: <Store className="size-4" />, wide: true, content: <MarketplaceSettings /> },
+          { id: 'payment', label: 'გადახდები', icon: <CreditCard className="size-4" />, wide: true, content: <PaymentSettings /> },
+          { id: 'hardware', label: 'ჰარდვეარი', icon: <Cpu className="size-4" />, wide: true, content: <HardwareSettings /> },
+          { id: 'api', label: 'API', icon: <KeyRound className="size-4" />, wide: true, content: <ApiKeysPanel /> },
+          { id: 'telegram', label: 'Telegram', icon: <Send className="size-4" />, content: <TelegramSettings /> },
+        ]}
+      />
 
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title={`ახალი ${vl.singular}`}>
         <div className="space-y-5">
@@ -822,6 +836,6 @@ export function Settings() {
       </Modal>
 
       <QrPrintModal open={qrOpen} onClose={() => setQrOpen(false)} />
-    </div>
+    </>
   )
 }

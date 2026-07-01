@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Gamepad2, Minus, Plus, Tag, Trash2, X } from 'lucide-react'
+import { Check, Gamepad2, Minus, Plus, Tag, Trash2, X, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlayroom } from '@/lib/store'
 import { gel } from '@/lib/ui'
 import type { PricingPlan } from '@/lib/types'
 import { Modal } from './modal'
 import { DynamicPricing } from './dynamic-pricing'
+import { ModuleTabs } from './module-tabs'
 
 // What a tariff applies to: asset class + optional sub-type (console_type). The
 // sub-types (PS5/VIP under playroom, snooker under billiard) sit UNDER their class —
@@ -299,26 +300,42 @@ export function Pricing() {
   const { plans } = usePlayroom()
   const [addOpen, setAddOpen] = useState(false)
 
+  const tabs = [
+    {
+      id: 'plans',
+      label: 'ტარიფები',
+      icon: <Tag className="size-4" />,
+      content: (
+        <div className="grid gap-5 sm:grid-cols-2">
+          {plans.map((p) => (
+            <PlanCard key={p.id} plan={p} />
+          ))}
+          <button
+            type="button"
+            onClick={() => setAddOpen(true)}
+            className="nm-btn flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-3xl text-muted-foreground"
+          >
+            <span className="nm-inset flex size-14 items-center justify-center rounded-2xl">
+              <Plus className="size-6 text-primary" />
+            </span>
+            <span className="text-sm font-bold">ახალი ტარიფის დამატება</span>
+          </button>
+        </div>
+      ),
+      wide: true,
+    },
+    {
+      id: 'dynamic',
+      label: 'დინამიური',
+      icon: <TrendingUp className="size-4" />,
+      content: <DynamicPricing />,
+      wide: true,
+    },
+  ]
+
   return (
     <>
-      <div className="grid gap-5 sm:grid-cols-2">
-        {plans.map((p) => (
-          <PlanCard key={p.id} plan={p} />
-        ))}
-        <button
-          type="button"
-          onClick={() => setAddOpen(true)}
-          className="nm-btn flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-3xl text-muted-foreground"
-        >
-          <span className="nm-inset flex size-14 items-center justify-center rounded-2xl">
-            <Plus className="size-6 text-primary" />
-          </span>
-          <span className="text-sm font-bold">ახალი ტარიფის დამატება</span>
-        </button>
-      </div>
-
-      <DynamicPricing />
-
+      <ModuleTabs tabs={tabs} desktopClassName="space-y-6" />
       <AddPlanModal open={addOpen} onClose={() => setAddOpen(false)} />
     </>
   )
