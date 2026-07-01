@@ -12,6 +12,7 @@ import { gel, venueLabels } from '@/lib/ui'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase/client'
 import { callRpc as rpc } from '@/lib/rpc'
+import { ModuleTabs } from './module-tabs'
 
 // get_console_analytics ships in migration 0059; DB types regenerate on deploy.
 
@@ -215,7 +216,13 @@ export function RevpachAnalytics() {
       ) : !data || data.console_count === 0 ? (
         <div className="nm-inset rounded-3xl p-10 text-center text-sm text-muted-foreground">მონაცემი ვერ მოიძებნა.</div>
       ) : (
-        <>
+        <ModuleTabs tabs={[
+          {
+            id: 'overview',
+            label: 'მიმოხილვა',
+            icon: <Gauge className="size-4" />,
+            content: (
+              <div className="space-y-6">
           {/* KPIs */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Kpi icon={TrendingUp} label={vl.metric} value={gel(data.revpach)} hint={`თითო ${vl.singular}-საათზე`} />
@@ -274,7 +281,14 @@ export function RevpachAnalytics() {
             </div>
           )}
 
-          {/* Console matrix */}
+              </div>
+            ),
+          },
+          {
+            id: 'matrix',
+            label: 'მატრიცა',
+            icon: <BarChart3 className="size-4" />,
+            content: (
           <div className="nm-raised overflow-hidden rounded-3xl">
             <div className="hidden grid-cols-12 gap-3 border-b border-border px-6 py-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground md:grid">
               <span className="col-span-3">{vl.singular}</span>
@@ -311,7 +325,14 @@ export function RevpachAnalytics() {
             </ul>
           </div>
 
-          {/* Heatmap */}
+            ),
+          },
+          {
+            id: 'heatmap',
+            label: 'მოთხოვნის რუკა',
+            icon: <Flame className="size-4" />,
+            content: (
+              <div className="space-y-6">
           <div className="nm-raised rounded-3xl p-5">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-sm font-extrabold">
@@ -358,7 +379,10 @@ export function RevpachAnalytics() {
           <p className="text-center text-[11px] text-muted-foreground">
             {vl.metric} = შემოსავალი ÷ ({vl.plural} × სამუშაო საათები). მონაცემი სესიებიდან, ბარისა და დაბრუნებების გარეშე.
           </p>
-        </>
+              </div>
+            ),
+          },
+        ]} />
       )}
     </div>
   )
