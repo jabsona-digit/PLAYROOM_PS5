@@ -3,10 +3,13 @@
 import { useState, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
-// Mobile-only segmented tabs for admin modules. Our modules are long vertical stacks
-// of `nm-raised` cards → on a phone that's a lot of scrolling. On < md we show a
-// horizontal, scrollable tab bar and reveal only the active section; on md+ every
-// section renders exactly as before (tab bar hidden) — desktop is untouched.
+// Mobile/tablet segmented tabs for admin modules. Our modules are long vertical stacks
+// of `nm-raised` cards → on a phone that's a lot of scrolling. On < lg we show a
+// horizontal, scrollable tab bar and reveal only the active section; on lg+ every
+// section renders exactly as before (tab bar hidden) — desktop is untouched. The
+// breakpoint is `lg` (1024px), not `md`: below lg the grid modules are already a
+// single column anyway (their `lg:grid-cols-2` only kicks in at lg), so tablets and
+// landscape phones (768–1024px) get the tabs too instead of a long stacked scroll.
 //
 // Sections stay MOUNTED (hidden with CSS, never unmounted) so their internal state,
 // effects and data-fetching keep working when you switch tabs. Keep <Modal>/portal
@@ -38,10 +41,10 @@ export function ModuleTabs({
 
   return (
     <div>
-      {/* mobile tab bar (hidden on desktop) */}
+      {/* mobile/tablet tab bar (hidden on desktop) */}
       <div
         role="tablist"
-        className="md:hidden -mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar"
+        className="lg:hidden -mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar"
       >
         {tabs.map((t) => (
           <button
@@ -68,7 +71,7 @@ export function ModuleTabs({
             key={t.id}
             className={cn(
               active === t.id ? 'block' : 'hidden',
-              'md:block',
+              'lg:block',
               t.wide && 'lg:col-span-2',
             )}
           >
