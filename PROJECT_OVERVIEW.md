@@ -12,11 +12,11 @@
 This document is the single source of truth for anyone (human or AI) joining the project.
 **Backend = Claude (Supabase/DB/RLS/RPC/edge functions). Frontend = Gemini / Sonnet / Claude.**
 
-> 📌 **For a future reviewer (e.g. Opus 4.8):** THIS file is the **current, live** state (through migration **0141**, 2026-06-27; onboarding-prep since is no-migration). The repo root holds two prior review handoffs — `SENIOR_REVIEW_HANDOFF.md` (v1, of the 0122 snapshot) and **`SENIOR_REVIEW_HANDOFF_v2.md`** (v2, re-review of 0126). **Their entire engineering tier is now CLOSED:** P0/P1 launch-critical (token rotation, a **required** `tsc` branch-protection check, observability) PLUS v2's "proof→regression-suite" upgrade — the **money + RLS invariants now run as a CI gate on every push** (`.github/workflows/db-invariants.yml`, see §13) and the AI threat model is written down (`SECURITY_AI_THREAT_MODEL.md`). The only deferred hardening item is a **paid staging branch** (v2 P1-1 — deferred to first-venue onboarding). Read THIS overview for current reality; the handoffs are historical, not an open to-do list.
+> 📌 **For a future reviewer (e.g. Opus 4.8):** THIS file is the **current, live** state (through migration **0145**, 2026-07-03). The repo root holds two prior review handoffs — `SENIOR_REVIEW_HANDOFF.md` (v1, of the 0122 snapshot) and **`SENIOR_REVIEW_HANDOFF_v2.md`** (v2, re-review of 0126). **Their entire engineering tier is now CLOSED:** P0/P1 launch-critical (token rotation, a **required** `tsc` branch-protection check, observability) PLUS v2's "proof→regression-suite" upgrade — the **money + RLS invariants now run as a CI gate on every push** (`.github/workflows/db-invariants.yml`, see §13) and the AI threat model is written down (`SECURITY_AI_THREAT_MODEL.md`). The only deferred hardening item is a **paid staging branch** (v2 P1-1 — deferred to first-venue onboarding). Read THIS overview for current reality; the handoffs are historical, not an open to-do list.
 
 > 🩺 **Current diagnosis & phase (2026-06-22):** the product is **feature-complete, launch-hardened, and self-testing** (money + tenant-isolation invariants gate every commit; Sentry + uptime live; AI is RLS-bound). **0 real venues use it yet** — only the founder tests; demand is waiting on a polished product. **DECISION (owner + senior): FREEZE net-new feature surface.** The bottleneck is no longer code — it is **real venues using it**. Next phase = **harden + onboard the first ~10 Tbilisi venues**, sold on the anti-fraud / **"see every lari, catch theft"** + RS.ge-compliance wedge (Trust Score, hardware-tied sessions, audit log, nightly Telegram brief) — NOT a feature list. New feature work is paused until venue density exists.
 
-> _Last updated **2026-06-27** — through migration **0141** + onboarding-readiness prep (Excel import + runbook, no migration). **Since the 0076 revision (the big additions):**
+> _Last updated **2026-07-03** — through migration **0145** (crypto payments + portal timer fixes + full-audit cleanup; see the latest-wave callout below). **Since the 0076 revision (the big additions):**
 > **Tournaments 2.0** — a full platform-promoted tournament product (groups+knockout / 3-1-0, host-bidding + tenant→Global
 > promotion with commission, public marketplace listing, paid online registration → **QR pass → scan check-in (pay-at-venue)**
 > → **„ვირტუალური დოლორა" server-fair group draw** → champion; min-participants gate + 1st/2nd/3rd prizes; the **FULL money
@@ -58,11 +58,33 @@ This document is the single source of truth for anyone (human or AI) joining the
 > and **gen-types CI is a drift-CHECK** (no more bot-push fighting branch protection; types refreshed in sync with prod).
 > **Known/by-design advisor residue (accepted):** 4 `security_definer_view` ERRORs = the curated anon marketplace
 > projections (`public_venues/reviews/tournaments/venue_plans`; flipping to security_invoker would need anon base-table
-> policies — break the public site); ~17 anon + ~121 authenticated secdef-exec WARNs = the intentional self-gated RPC
+> policies — break the public site); ~15 anon (0145 revoked `org_plan`/`require_plan`) + ~121 authenticated secdef-exec WARNs = the intentional self-gated RPC
 > architecture; 6 `rls_enabled_no_policy` = RPC-only locked tables (api_keys, payment creds, platform/telegram); pg_net
 > in public; leaked-password protection OFF (owner dashboard toggle, recommended for B2C). **⛔ Only launch-blocker
 > left: prod is on the Supabase FREE plan (`pitr_enabled:false`, no restorable backups) — owner DECIDED to upgrade to
 > Pro at first-venue onboarding, not before (0 real venues = no data at risk yet).**_
+
+> _**Latest wave (0142–0145, 2026-06-28 → 2026-07-03):** **₿ CRYPTO PAYMENTS LIVE & VERIFIED** (0143 + `crypto-pay` edge fn
+> + billing modal): platform-subscription self-pay in BTC/LTC/USDT via the owner's NOWPayments account — reusable engine
+> (`crypto_payments` ledger, `order_type` subscription/booking/tournament), HMAC-SHA512-verified IPN webhook → idempotent
+> `crypto_fulfill_subscription` extends the org period with **zero manual God-Mode clicks**; QR fixed for strict wallet
+> scanners (qrcode.react v4 defaults `marginSize=0` = NO quiet zone → wallets refuse; now `marginSize={4}` + BIP-21
+> `bitcoin:`/`litecoin:` URI, owner-verified scan). **In-Seat portal open-session fixes** — 0142 (an active OPEN session
+> was reported `active:false` because `ends_at IS NULL` was the "no session" sentinel → portal showed a dead 00:00) and
+> 0144 (portal timer now counts the CURRENT rate segment via `anchor_at`, so a mid-session joystick/tier change resets it
+> to 00:00 exactly like the operator dashboard). **Mobile ModuleTabs** — `components/admin/module-tabs.tsx`, a mobile/tablet
+> (`< lg`) segmented tab bar that shows ONE section at a time (sections stay mounted; desktop `lg+` renders the original
+> layout untouched) — applied to settings/billing/pricing/reservations/employees/analytics-v2 (accounting already had
+> tabs; dashboard/inventory are intentionally not tabbed). **SEO "not indexed" false alarm diagnosed** — GSC proves
+> play.martelounge.ge IS indexed ("URL is on Google"); AI chatbots (ChatGPT/Gemini) see nothing because they use Bing
+> and/or are **blocked by our own robots** (GPTBot/ClaudeBot/Google-Extended `Disallow: /` — deliberate, owner re-confirmed);
+> www/martelounge.ge got its missing `sitemap.xml`+`robots.ts` (was 404; live 200 now). **Full strict audit (2026-07-03)
+> + cleanup (0145):** frontend↔DB drift ZERO (69/69 RPCs exist), RLS 100%, cron 7/7 green, no stub buttons; fixed —
+> `create_bar_sale` consolidated to ONE canonical fn (old 7-arg overload was a latent PGRST203 ambiguity, and the 8-arg
+> **silently dropped `customer_name`/`created_by`** = POS attribution loss, + sold inactive products; `resolve_service_request`
+> now calls it with named args), `create_organization` old 3-arg overload dropped, `org_plan`/`require_plan` anon-revoked,
+> stale `waiting` crypto rows swept + daily `expire-stale-crypto` cron, missing 0085 history row backfilled (prod history
+> now 1:1 with local files). Verified on prod incl. a rollback-wrapped live-sale smoke test (auth + suspension gates hold)._
 
 > Product was renamed **Playroom OS → Martelounge** (martel-**OU**-nge; domain bought 2026-06-08).
 > "Playroom" survives only as a demo/tenant name.
@@ -334,7 +356,9 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
 - Palette: dark `oklch` background, teal/cyan **primary** (`--primary`), status colors free/active/warning/expired.
 - Money: `gel(n)` (admin `lib/ui.ts`, web `lib/utils.ts`). Radii `rounded-2xl/3xl`. Icons lucide `size-4/5`.
 - **All UI text is Georgian (ka).** Match the existing tone.
-- **Mobile:** admin sidebar is a hamburger drawer.
+- **Mobile:** admin sidebar is a hamburger drawer. Long stacked modules use **`ModuleTabs`**
+  (`components/admin/module-tabs.tsx`): `< lg` = horizontal segmented tab bar, one section visible (sections stay
+  MOUNTED — CSS-hidden, never unmounted); `lg+` = original layout, tab bar hidden. Keep `<Modal>`/portals OUTSIDE it.
 
 ---
 
@@ -522,6 +546,22 @@ Dark neumorphic. Use these utilities (in each app's `globals.css`), not raw shad
       end_session / compute_session_bill / kill_abandoned all use accrued + segment. FIXED tier-change unchanged.
 0141  FAIR EARLY-END (per-venue): venues.early_end_actual (default OFF). When ON, ending a FIXED session before ends_at
       bills only the actual time played (5-min round-up), CAPPED at the booked price_total. Settings toggle (RLS write).
+─ crypto + portal fixes + audit cleanup (2026-06-28 → 2026-07-03) ─────────────────────────────────────────
+0142  PORTAL OPEN-SESSION status: portal_get_session_status detected "no session" via ends_at IS NULL — but an OPEN
+      session legitimately has ends_at=null → active open sessions showed a dead 00:00 on /p. Now detects by session
+      EXISTENCE + returns is_open/started_at (portal counts UP for open sessions).
+0143  CRYPTO PAYMENTS ENGINE (NOWPayments): crypto_payments ledger (np_payment_id unique = idempotency; order_type
+      subscription/booking/tournament; GEL + USD amounts) + crypto_fulfill_subscription (service-role only, idempotent,
+      extends the org period like mark_tenant_paid — the HMAC-verified IPN is the authority) + platform_payments.method
+      += 'crypto'. Pairs with the crypto-pay edge fn (deployed --no-verify-jwt) + billing modal.
+0144  PORTAL OPEN-SESSION segment anchor: portal_get_session_status += anchor_at (coalesce(open_anchor_at, started_at))
+      so the customer's /p timer resets to 00:00 on a mid-session tier change, matching the operator dashboard (0140).
+0145  FULL-AUDIT CLEANUP: create_bar_sale consolidated to ONE canonical 8-arg fn — old 7-arg jsonb overload dropped
+      (latent PGRST203 ambiguity) and the canonical one now PERSISTS customer_name/created_by (were silently dropped =
+      POS attribution loss) + filters is_active; resolve_service_request recreated to call it with NAMED args;
+      create_organization old 3-arg overload dropped; org_plan/require_plan EXECUTE revoked from anon/public (granted
+      authenticated+service_role); stale 'waiting' crypto rows swept to 'expired' + daily pg_cron expire-stale-crypto;
+      missing 0085 history row backfilled (prod migration history now 1:1 with local files).
 ```
 
 > **Session-billing UI (no migration, same wave):** the dashboard now shows the bar tab + the joystick/tariff change on
@@ -781,6 +821,16 @@ bridge → Daisy/EFTS → RS.GE) is future.
 records a `platform_payments` row + extends `current_period_end`; overdue badge + MRR in `platform.tsx`.
 Subscription auto-billing (platform's own card flow) is future.
 
+**₿ Crypto subscription self-pay (0143 — LIVE & owner-verified):** owners on a PAID plan renew in
+BTC/LTC/USDT from Billing → the current-plan card's „გადაიხადე კრიპტოთი" (`crypto-pay-modal.tsx`).
+Flow: `crypto-pay` edge fn `create_subscription` (caller-JWT `is_org_admin`; GEL→USD via `GEL_USD_RATE`,
+NOWPayments has NO GEL) → NOWPayments `POST /v1/payment` → QR (BIP-21 URI for BTC/LTC, `marginSize={4}`
+for strict wallet scanners) + status poll → NOWPayments IPN webhook (HMAC-SHA512 over key-SORTED JSON,
+`x-nowpayments-sig`) → `crypto_fulfill_subscription` extends the period **automatically** (idempotent;
+no manual "paid" click — unlike bank transfer). Owner's NOWPayments account: digitalgamesgeorgia, LTC
+payout. Abandoned checkouts auto-expire (daily `expire-stale-crypto` cron, 0145). Engine is reusable for
+booking/tournament prepay (Phase 2, deferred).
+
 **Plan entitlements (migration 0062 — ENFORCED, was cosmetic before):** `plan` now actually gates features.
 Helpers `org_plan(org)` / `plan_rank()` / `require_plan(org,min)` (raises `plan_upgrade_required:<min>`,
 **platform admins bypass**) / `plan_limit(plan,kind)`. The real boundary is **BEFORE triggers** on the tables
@@ -819,7 +869,8 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
   (Re-sync the marketplace repo's `lib/database.types.ts` copy after migrations.)
 - **Secrets:** `SUPABASE_ACCESS_TOKEN` = a User-level Windows env var (**NEVER-expiring** as of 2026-06-22
   rotation; also a GitHub secret for CI). `GEMINI_API_KEY`, `resend_api_key` (Vault), `telegram_bot_token` (Vault),
-  future `TBC_PAY_API_KEY`/`BOG_PAY_API_KEY` live ONLY as Supabase secrets/Vault. Publishable (anon) key only on the client.
+  `NOWPAYMENTS_API_KEY` / `NOWPAYMENTS_IPN_SECRET` / `GEL_USD_RATE` (edge secrets, crypto), future
+  `TBC_PAY_API_KEY`/`BOG_PAY_API_KEY` live ONLY as Supabase secrets/Vault. Publishable (anon) key only on the client.
 - **Observability (2026-06-22):** **Sentry** client error-tracking on both apps (`martelounge-admin` + `martelounge-web`,
   errors-only, public DSNs) + **uptime monitors** on both domains; a **self-hosted uptime self-check → founder
   Telegram** (pg_cron 0124, **de-bounced** — alerts only after 2 consecutive fails, 0127); and **edge-function error
@@ -858,6 +909,9 @@ online-booking money lands in the OWNER's bank — the platform never custodies 
 - 💳 **Online payments — Phase 2** — live checkout + bank callbacks as edge functions (reuse the Kale-group
   BOG/TBC logic, per-tenant Vault keys) → set `payment_status='paid'`/`payment_ref`. Phase 1 (credential
   storage) is DONE (0058); Phase 2 is blocked on the owner obtaining merchant keys.
+- ₿ **Crypto — Phase 2** — reuse the LIVE 0143 engine for `order_type='booking'` (marketplace prepay) +
+  `'tournament'` (entry fee): same create + IPN loop, each needs its own fulfillment RPC. Phase 1
+  (platform subscription self-pay) is **LIVE & verified**. Watch: per-coin minimum amounts; GEL→USD rate drift.
 - 📲 **No-show reminders** — ✅ **EMAIL DONE & LIVE** (0123: pg_cron → Resend, martelounge.ge verified). **SMS** (Twilio)
   still pending a Twilio account.
 - 🧠 **Proactive "AI Manager"** — ✅ largely DONE: AI Closing Brief (0070) + Telegram nightly brief + fraud flags
