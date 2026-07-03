@@ -23,6 +23,7 @@ import {
   Coffee,
 } from 'lucide-react'
 import { Modal } from './modal'
+import { ModuleTabs } from './module-tabs'
 import { usePlayroom } from '@/lib/store'
 import { useOrg } from '@/lib/org'
 import { supabase } from '@/lib/supabase/client'
@@ -576,6 +577,14 @@ export function Cashier() {
         </div>
       )}
 
+      <ModuleTabs tabs={[
+        {
+          id: 'overview',
+          label: 'მიმოხილვა',
+          icon: <Landmark className="size-4" />,
+          content: (
+            <div className="space-y-6">
+
       {/* Მთლიანი ჯამი (სესია + ბარი) */}
       <div className="nm-raised flex flex-col gap-4 rounded-3xl p-6">
         <div className="flex items-center gap-3 mb-2">
@@ -708,7 +717,15 @@ export function Cashier() {
         </TiltCard>
       </div>
 
-      {/* payment channels — today (cash vs card vs transfer, by bank) */}
+            </div>
+          ),
+        },
+        {
+          // payment channels — today (cash vs card vs transfer, by bank)
+          id: 'channels',
+          label: 'არხები',
+          icon: <ArrowLeftRight className="size-4" />,
+          content: (
       <div className="nm-raised rounded-3xl p-6">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-extrabold">გადახდის არხები (დღეს)</h3>
@@ -756,7 +773,13 @@ export function Cashier() {
           </div>
         ) : null}
       </div>
-
+          ),
+        },
+        {
+          id: 'units',
+          label: 'ერთეულები',
+          icon: <Gamepad2 className="size-4" />,
+          content: (
       <div className="grid gap-6 lg:grid-cols-5">
         {/* bar chart by console — today */}
         <div className="nm-raised rounded-3xl p-6 lg:col-span-3">
@@ -837,9 +860,13 @@ export function Cashier() {
           </ul>
         </div>
       </div>
-
-      {/* --- ბარი --- (whole-venue; bar isn't split by category in the owner filter) */}
-      {showBar && (
+          ),
+        },
+        ...(showBar ? [{
+          id: 'bar',
+          label: 'ბარი',
+          icon: <Coffee className="size-4" />,
+          content: (
       <div className="nm-raised rounded-3xl p-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="nm-inset flex size-11 items-center justify-center rounded-2xl">
@@ -901,7 +928,9 @@ export function Cashier() {
           </div>
         </div>
       </div>
-      )}
+          ),
+        }] : []),
+      ]} />
 
       {/* Shift modal */}
 
