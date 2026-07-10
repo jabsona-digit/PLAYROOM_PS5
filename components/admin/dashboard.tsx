@@ -48,6 +48,56 @@ const BANKS: Bank[] = ['TBC', 'BOG']
 /* live clock for the countdown display. `now` is null until mounted to avoid
    SSR/client hydration mismatch. The status/notification heartbeat lives in
    AdminShell so it keeps running on every tab. */
+// Upcoming online bookings + internal reservations for the venue (next 3h,
+// incl. 30min grace for late customers). Drives the "⏰ booked soon" hints on
+// free console cards + the start-session modal, so an operator can't unknowingly
+// seat a walk-in on (or into) a booked slot. The 0039 capacity trigger stays the
+// hard guard — this is the operator's eyes.
+type UpcomingBooking = {
+  console_id: number | null
+  console_type: string | null
+  start_time: string
+  customer_name: string | null
+}
+
+function useUpcomingBookings(venueId: string | null): UpcomingBooking[] {
+  const [rows, setRows] = useState<UpcomingBooking[]>([])
+  useEffect(() => {
+    if (!venueId) { setRows([]); return }
+    let alive = true
+    const load = async () => {
+      const from = new Date(Date.now() - 30 * 60_000).toISOString()
+      const to = new Date(Date.now() + 3 * 3600_000).toISOString()
+      const [mb, rs] = await Promise.all([
+        supabase.from('marketplace_bookings')
+          .select('console_id, console_type, start_time, customer_name')
+          .eq('venue_id', venueId)
+          .in('status', ['pending', 'confirmed'])
+          .is('checked_in_at', null)
+          .gte('start_time', from).lte('start_time', to),
+        supabase.from('reservations')
+          .select('console_id, start_time, customer_name, status')
+          .eq('venue_id', venueId)
+          .neq('status', 'cancelled')
+          .gte('start_time', from).lte('start_time', to),
+      ])
+      if (!alive) return
+      const a = (mb.data ?? []) as UpcomingBooking[]
+      const b = ((rs.data ?? []) as { console_id: number | null; start_time: string; customer_name: string | null }[])
+        .map((r) => ({ ...r, console_type: null }))
+      setRows([...a, ...b].sort((x, y) => x.start_time.localeCompare(y.start_time)))
+    }
+    load()
+    const iv = setInterval(load, 60_000)
+    return () => { alive = false; clearInterval(iv) }
+  }, [venueId])
+  return rows
+}
+
+const bookingHHMM = (iso: string) =>
+  new Date(iso).toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })
+const bookingInMin = (iso: string) => Math.round((new Date(iso).getTime() - Date.now()) / 60_000)
+
 function useNow() {
   const [now, setNow] = useState<number | null>(null)
   useEffect(() => {
@@ -105,8 +155,11 @@ function StatCard({
   )
 }
 
-function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
+function ConsoleCard({ unit, now, upcoming = [] }: { unit: ConsoleUnit; now: number | null; upcoming?: UpcomingBooking[] }) {
   const { extendSession, changeSessionTier, hardwareRequired } = usePlayroom()
+  // booked-soon awareness: a booking pinned to THIS unit, or a type-level one on its pool
+  const bkSpecific = upcoming.find((b) => b.console_id === unit.id) ?? null
+  const bkType = upcoming.find((b) => b.console_id == null && b.console_type === unit.console_type) ?? null
   const tilt = use3dTilt(4)
   const [startOpen, setStartOpen] = useState(false)
   const [extendOpen, setExtendOpen] = useState(false)
@@ -226,6 +279,19 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
 
         {isFree ? (
           <div className="mt-6">
+            {bkSpecific && (
+              <p
+                className="mb-2 flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold"
+                style={{
+                  color: 'var(--status-warning5)',
+                  background: 'color-mix(in oklch, var(--status-warning5) 12%, transparent)',
+                }}
+              >
+                ⏰ ჯავშანი {bookingHHMM(bkSpecific.start_time)}
+                {bookingInMin(bkSpecific.start_time) > 0 ? ` (${bookingInMin(bkSpecific.start_time)} წთ-ში)` : ' (დროა!)'}
+                {bkSpecific.customer_name ? ` — ${bkSpecific.customer_name}` : ''}
+              </p>
+            )}
             <p className="text-sm text-muted-foreground">
               {hwBlocked
                 ? 'სესიის დასაწყებად ჯერ დააკონფიგურირე Hardware (პარამეტრები → 🔌).'
@@ -378,6 +444,8 @@ function ConsoleCard({ unit, now }: { unit: ConsoleUnit; now: number | null }) {
         onClose={() => setStartOpen(false)}
         consoleId={unit.id}
         consoleType={unit.console_type}
+        upcomingSpecific={bkSpecific}
+        upcomingType={bkType}
       />
       <ExtendModal
         open={extendOpen}
@@ -727,11 +795,15 @@ function StartSessionModal({
   onClose,
   consoleId,
   consoleType,
+  upcomingSpecific = null,
+  upcomingType = null,
 }: {
   open: boolean
   onClose: () => void
   consoleId: number
   consoleType?: string
+  upcomingSpecific?: UpcomingBooking | null
+  upcomingType?: UpcomingBooking | null
 }) {
   const { plans, startSession, startOpenSession, pushToast } = usePlayroom()
   const { currentVenueId, currentOrgId } = useOrg()
@@ -800,6 +872,36 @@ function StartSessionModal({
   return (
     <Modal open={open} onClose={onClose} title="ახალი სესია">
       <div className="space-y-5">
+        {(upcomingSpecific || upcomingType) && (
+          <div
+            className="rounded-2xl px-4 py-3 text-sm font-bold"
+            style={{
+              color: 'var(--status-warning5)',
+              background: 'color-mix(in oklch, var(--status-warning5) 12%, transparent)',
+              boxShadow: 'inset 0 0 0 1px color-mix(in oklch, var(--status-warning5) 35%, transparent)',
+            }}
+          >
+            {upcomingSpecific ? (
+              <>
+                ⏰ ყურადღება — <b>ზუსტად ამ {consoleLabels(consoleType).singular}-ზე</b> ჯავშანია{' '}
+                {bookingHHMM(upcomingSpecific.start_time)}
+                {bookingInMin(upcomingSpecific.start_time) > 0
+                  ? ` (${bookingInMin(upcomingSpecific.start_time)} წთ-ში)`
+                  : ' (დრო უკვე მოვიდა!)'}
+                {upcomingSpecific.customer_name ? ` — ${upcomingSpecific.customer_name}` : ''}.
+                {' '}სესიის დაწყებამდე დარწმუნდი, რომ ეს walk-in ჯავშანს არ ეჯახება.
+              </>
+            ) : (
+              <>
+                ⏰ {consoleLabels(consoleType).plural}-ის პულზე ჯავშანია{' '}
+                {bookingHHMM(upcomingType!.start_time)}
+                {bookingInMin(upcomingType!.start_time) > 0 ? ` (${bookingInMin(upcomingType!.start_time)} წთ-ში)` : ''}
+                {upcomingType!.customer_name ? ` — ${upcomingType!.customer_name}` : ''} — დარწმუნდი,
+                რომ თავისუფალი ერთეული დარჩება.
+              </>
+            )}
+          </div>
+        )}
         <div>
           <p className="mb-2 text-sm font-semibold text-muted-foreground">
             ტარიფი
@@ -1130,6 +1232,8 @@ function TierModal({
 export function Dashboard() {
   const now = useNow()
   const { consoles, addConsole, venueType } = usePlayroom()
+  const { currentVenueId } = useOrg()
+  const upcoming = useUpcomingBookings(currentVenueId)
   const vl = venueLabels(venueType)
   const [addOpen, setAddOpen] = useState(false)
   const [newName, setNewName] = useState('')
@@ -1223,7 +1327,7 @@ export function Dashboard() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {consoles.map((unit, i) => (
           <div key={unit.id} style={{ animation: `slide-in-up 0.45s ease-out ${i * 0.07}s both` }}>
-            <ConsoleCard unit={unit} now={now} />
+            <ConsoleCard unit={unit} now={now} upcoming={upcoming} />
           </div>
         ))}
         <button
