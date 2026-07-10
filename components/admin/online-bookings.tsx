@@ -23,6 +23,7 @@ import { usePlayroom } from '@/lib/store'
 import { supabase } from '@/lib/supabase/client'
 import { gel, consoleLabels, consoleTypeLabel } from '@/lib/ui'
 import { Modal } from './modal'
+import { useBookingAlerts } from './booking-alerts'
 
 const BarcodeScanner = dynamic(() => import('./barcode-scanner'), { ssr: false })
 
@@ -166,6 +167,15 @@ export function OnlineBookings() {
   useEffect(() => {
     fetchBookings()
   }, [fetchBookings])
+
+  // The operator is LOOKING at the bookings now — clear the bell's "arrived
+  // since last look" part (on open and again on leave, so bookings that came
+  // in while the module was open count as seen too).
+  const { markSeen } = useBookingAlerts()
+  useEffect(() => {
+    markSeen()
+    return () => markSeen()
+  }, [markSeen])
 
   const patch = async (id: string, patch: Record<string, unknown>, msg: string) => {
     setBusyId(id)
