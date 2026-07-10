@@ -169,9 +169,25 @@ Deno.serve(async (req) => {
     return json({ ok: true, status: st })
   }
 
-  // ── create_booking_payment ────────────────────────────────────────────────
-  let payload: { action?: string; booking_id?: string; provider?: string }
+  // ── actions ───────────────────────────────────────────────────────────────
+  let payload: { action?: string; booking_id?: string; provider?: string; slug?: string }
   try { payload = await req.json() } catch { return json({ error: 'bad_json' }, 400) }
+
+  // provider_status — lets the booking widget know whether this venue can take
+  // an online card payment (real creds OR test mode). No secrets exposed.
+  if (payload.action === 'provider_status') {
+    const slug = String(payload.slug ?? '')
+    if (!slug) return json({ error: 'no_slug' }, 400)
+    const { data: venue } = await db.from('venues').select('id,org_id').eq('slug', slug).maybeSingle()
+    if (!venue) return json({ error: 'venue_not_found' }, 404)
+    for (const p of ['bog', 'tbc']) {
+      const c = await getCreds(db, venue.org_id, p)
+      if (c.ok) return json({ ok: true, card_available: true, mock: false, provider: p })
+    }
+    const { data: org } = await db.from('organizations').select('bank_test_mode').eq('id', venue.org_id).maybeSingle()
+    return json({ ok: true, card_available: !!org?.bank_test_mode, mock: !!org?.bank_test_mode })
+  }
+
   if (payload.action !== 'create_booking_payment') return json({ error: 'bad_action' }, 400)
 
   const bookingId = String(payload.booking_id ?? '')
