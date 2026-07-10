@@ -903,7 +903,7 @@ function StartSessionModal({
               </>
             ) : (
               <>
-                ⏰ {consoleLabels(consoleType).plural}-ის პულზე ჯავშანია{' '}
+                ⏰ {consoleLabels(consoleType).plural.replace(/ი$/, 'ის')} პულზე ჯავშანია{' '}
                 {bookingHHMM(upcomingType!.start_time)}
                 {bookingWhen(upcomingType!.start_time)}
                 {upcomingType!.customer_name ? ` — ${upcomingType!.customer_name}` : ''} — დარწმუნდი,
