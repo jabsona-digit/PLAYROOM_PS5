@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import {
   Globe,
@@ -154,6 +154,10 @@ export function OnlineBookings() {
   const [scannerOpen, setScannerOpen] = useState(false)
   const [scanned, setScanned] = useState<Booking | 'notfound' | null>(null)
 
+  // Fresh arrival = created in the last 24h (drives the 🆕 chip + smart filter).
+  const isFresh = (b: Booking) => Date.now() - new Date(b.created_at).getTime() < 86_400_000
+
+  const smartFilterDone = useRef(false)
   const fetchBookings = useCallback(async () => {
     if (!currentOrgId) return
     const { data } = await supabase
@@ -161,7 +165,19 @@ export function OnlineBookings() {
       .select('*, venues(name)')
       .eq('org_id', currentOrgId)
       .order('start_time', { ascending: true })
-    if (data) setBookings(data as unknown as Booking[])
+    if (data) {
+      const rows = data as unknown as Booking[]
+      setBookings(rows)
+      // On first open: the default "pending" tab is empty when a card booking
+      // auto-confirmed (paid = confirmed) — jump to the tab where the fresh
+      // booking actually is, so the operator lands on it instead of a blank list.
+      if (!smartFilterDone.current) {
+        smartFilterDone.current = true
+        const hasPending = rows.some((b) => b.status === 'pending')
+        const hasFreshConfirmed = rows.some((b) => b.status === 'confirmed' && isFresh(b))
+        if (!hasPending && hasFreshConfirmed) setFilter('confirmed')
+      }
+    }
   }, [currentOrgId])
 
   useEffect(() => {
@@ -291,6 +307,14 @@ export function OnlineBookings() {
                     {/* Left: customer + when */}
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
+                        {isFresh(b) && !terminal && (
+                          <span
+                            className="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide"
+                            style={{ background: 'color-mix(in oklch, var(--status-free) 18%, transparent)', color: 'var(--status-free)' }}
+                          >
+                            🆕 ახალი
+                          </span>
+                        )}
                         <span className="font-bold">{b.customer_name}</span>
                         <a
                           href={`tel:${b.customer_phone}`}
