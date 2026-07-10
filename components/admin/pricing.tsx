@@ -105,6 +105,20 @@ function PlanCard({ plan }: { plan: PricingPlan }) {
         </div>
       </div>
 
+      {/* The bare toggle confused the owner (an OFF tariff silently vanishes from the
+          start-session modal) — say it out loud. */}
+      {!plan.is_active && (
+        <p
+          className="mt-3 rounded-xl px-3 py-2 text-xs font-bold"
+          style={{
+            color: 'var(--status-warning5)',
+            background: 'color-mix(in oklch, var(--status-warning5) 12%, transparent)',
+          }}
+        >
+          ⏸ ტარიფი გამორთულია — სესიის დაწყებისას არ გამოჩნდება. ჩასართავად გადართე ზედა გადამრთველი.
+        </p>
+      )}
+
       <div className="mt-5">
         <p className="mb-1.5 text-xs font-semibold text-muted-foreground">ვისთვის (ერთეულის ტიპი)</p>
         <div className="flex flex-wrap gap-1.5">

@@ -57,6 +57,7 @@ type UpcomingBooking = {
   console_id: number | null
   console_type: string | null
   start_time: string
+  duration_min: number | null
   customer_name: string | null
 }
 
@@ -66,26 +67,32 @@ function useUpcomingBookings(venueId: string | null): UpcomingBooking[] {
     if (!venueId) { setRows([]); return }
     let alive = true
     const load = async () => {
-      const from = new Date(Date.now() - 30 * 60_000).toISOString()
+      // fetch a wide start_time window (max booking length is 24h), then keep only
+      // rows whose WINDOW still overlaps [now, now+3h) — a booking that started an
+      // hour ago but runs till 03:00 must still warn (it slipped through when we
+      // filtered by start_time alone).
+      const from = new Date(Date.now() - 24 * 3600_000).toISOString()
       const to = new Date(Date.now() + 3 * 3600_000).toISOString()
       const [mb, rs] = await Promise.all([
         supabase.from('marketplace_bookings')
-          .select('console_id, console_type, start_time, customer_name')
+          .select('console_id, console_type, start_time, duration_min, customer_name')
           .eq('venue_id', venueId)
           .in('status', ['pending', 'confirmed'])
           .is('checked_in_at', null)
           .gte('start_time', from).lte('start_time', to),
         supabase.from('reservations')
-          .select('console_id, start_time, customer_name, status')
+          .select('console_id, start_time, duration_min, customer_name, status')
           .eq('venue_id', venueId)
           .neq('status', 'cancelled')
           .gte('start_time', from).lte('start_time', to),
       ])
       if (!alive) return
       const a = (mb.data ?? []) as UpcomingBooking[]
-      const b = ((rs.data ?? []) as { console_id: number | null; start_time: string; customer_name: string | null }[])
+      const b = ((rs.data ?? []) as { console_id: number | null; start_time: string; duration_min: number | null; customer_name: string | null }[])
         .map((r) => ({ ...r, console_type: null }))
-      setRows([...a, ...b].sort((x, y) => x.start_time.localeCompare(y.start_time)))
+      const stillRelevant = (r: UpcomingBooking) =>
+        new Date(r.start_time).getTime() + (r.duration_min ?? 60) * 60_000 > Date.now()
+      setRows([...a, ...b].filter(stillRelevant).sort((x, y) => x.start_time.localeCompare(y.start_time)))
     }
     load()
     const iv = setInterval(load, 60_000)
@@ -97,6 +104,11 @@ function useUpcomingBookings(venueId: string | null): UpcomingBooking[] {
 const bookingHHMM = (iso: string) =>
   new Date(iso).toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' })
 const bookingInMin = (iso: string) => Math.round((new Date(iso).getTime() - Date.now()) / 60_000)
+// "in 20 min" / "it's time" / "already running" suffix for a booking's start
+const bookingWhen = (iso: string) => {
+  const m = bookingInMin(iso)
+  return m > 0 ? ` (${m} წთ-ში)` : m >= -5 ? ' (დროა!)' : ' (მიმდინარეობს)'
+}
 
 function useNow() {
   const [now, setNow] = useState<number | null>(null)
@@ -288,7 +300,7 @@ function ConsoleCard({ unit, now, upcoming = [] }: { unit: ConsoleUnit; now: num
                 }}
               >
                 ⏰ ჯავშანი {bookingHHMM(bkSpecific.start_time)}
-                {bookingInMin(bkSpecific.start_time) > 0 ? ` (${bookingInMin(bkSpecific.start_time)} წთ-ში)` : ' (დროა!)'}
+                {bookingWhen(bkSpecific.start_time)}
                 {bkSpecific.customer_name ? ` — ${bkSpecific.customer_name}` : ''}
               </p>
             )}
@@ -885,9 +897,7 @@ function StartSessionModal({
               <>
                 ⏰ ყურადღება — <b>ზუსტად ამ {consoleLabels(consoleType).singular}-ზე</b> ჯავშანია{' '}
                 {bookingHHMM(upcomingSpecific.start_time)}
-                {bookingInMin(upcomingSpecific.start_time) > 0
-                  ? ` (${bookingInMin(upcomingSpecific.start_time)} წთ-ში)`
-                  : ' (დრო უკვე მოვიდა!)'}
+                {bookingWhen(upcomingSpecific.start_time)}
                 {upcomingSpecific.customer_name ? ` — ${upcomingSpecific.customer_name}` : ''}.
                 {' '}სესიის დაწყებამდე დარწმუნდი, რომ ეს walk-in ჯავშანს არ ეჯახება.
               </>
@@ -895,7 +905,7 @@ function StartSessionModal({
               <>
                 ⏰ {consoleLabels(consoleType).plural}-ის პულზე ჯავშანია{' '}
                 {bookingHHMM(upcomingType!.start_time)}
-                {bookingInMin(upcomingType!.start_time) > 0 ? ` (${bookingInMin(upcomingType!.start_time)} წთ-ში)` : ''}
+                {bookingWhen(upcomingType!.start_time)}
                 {upcomingType!.customer_name ? ` — ${upcomingType!.customer_name}` : ''} — დარწმუნდი,
                 რომ თავისუფალი ერთეული დარჩება.
               </>
